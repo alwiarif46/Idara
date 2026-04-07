@@ -2,206 +2,448 @@
 <html dir="rtl" lang="ur">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="theme-color" content="#0c2e2e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Imam Azam College — Academic Management App">
 <link rel="manifest" href="manifest.json">
-<title>My Idara</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+<title>My Idara — ادارہ تحقیقات اسلامی</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Noto Sans Arabic','Segoe UI',Tahoma,sans-serif;background:#f5f0e8;overflow-x:hidden;direction:rtl}
-input,select,textarea,button{font-family:inherit}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;line-height:1.8}
+body{font-family:'Noto Nastaliq Urdu','Noto Sans Arabic',serif;background:#f5f0e8;overflow-x:hidden}
+input,select,textarea,button{font-family:inherit;line-height:1.4}
+table *{line-height:1.3}
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 ::-webkit-scrollbar{width:0;height:0}
-.ob{position:fixed;top:0;left:0;right:0;background:#ef4444;color:#fff;text-align:center;padding:4px;font-size:11px;font-weight:700;z-index:9999;display:none}
-.ob.show{display:block}
-.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%);background:#0c2e2e;color:#d4af37;padding:8px 20px;border-radius:10px;font-size:12px;font-weight:700;z-index:999;pointer-events:none;animation:fadeout 2s forwards}
-@keyframes fadeout{0%,70%{opacity:1}100%{opacity:0}}
+.offline-bar{position:fixed;top:0;left:0;right:0;background:#ef4444;color:#fff;text-align:center;padding:4px;font-size:11px;font-weight:700;z-index:9999;display:none}
+.offline-bar.show{display:block}
 </style>
 </head>
 <body>
-<div class="ob" id="ob">📵 آف لائن</div>
-<div id="app"></div>
+<div class="offline-bar" id="offlineBar">📵 آف لائن — ڈیٹا مقامی طور پر محفوظ ہوگا</div>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
 <script>
+// Service Worker
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-window.addEventListener('online',()=>document.getElementById('ob').classList.remove('show'));
-window.addEventListener('offline',()=>document.getElementById('ob').classList.add('show'));
-if(!navigator.onLine)document.getElementById('ob').classList.add('show');
-const DB={set(k,v){try{localStorage.setItem('iri_'+k,JSON.stringify(v))}catch(e){}},get(k){try{const v=localStorage.getItem('iri_'+k);return v?JSON.parse(v):null}catch{return null}}};
-const CL=[{id:'oola',n:'اولیٰ',c:'#f4e0c1',a:'#c8860a'},{id:'sania',n:'ثانیة',c:'#c9e0f5',a:'#2563eb'},{id:'salisa',n:'ثالثة',c:'#e0d0f0',a:'#7c3aed'},{id:'rabia',n:'رابعة',c:'#c5ede2',a:'#059669'},{id:'khamisa',n:'خامسة',c:'#faf0c8',a:'#b45309'},{id:'fazilat',n:'فضیلة',c:'#f5d0d0',a:'#dc2626'}];
-const SB=[{id:'S01',n:'منہاج العربیة',c:'oola',s:9,e:24},{id:'S02',n:'تمرین الصرف',c:'oola',s:5,e:20},{id:'S03',n:'آسان النحو',c:'oola',s:3,e:38},{id:'S04',n:'فارسی قواعد',c:'oola',s:11,e:87},{id:'S05',n:'احادیث',c:'oola',s:1,e:40},{id:'S06',n:'قرآت',c:'oola',s:584,e:611},{id:'S07',n:'میزان الصرف',c:'sania',s:3,e:53},{id:'S08',n:'نور الایضاح',c:'sania',s:1,e:73},{id:'S09',n:'معلم الانشاء',c:'sania',s:1,e:52},{id:'S10',n:'قصص النبیین',c:'sania',s:3,e:40},{id:'S11',n:'کنز الایمان',c:'sania',s:2,e:110},{id:'S12',n:'گلستان سعدی',c:'sania',s:120,e:258},{id:'S13',n:'نحو میر',c:'sania',s:9,e:93},{id:'S14',n:'فیض الادب',c:'sania',s:1,e:23},{id:'S15',n:'مجانی الادب',c:'salisa',s:1,e:36},{id:'S16',n:'معلم الانشاء ۳',c:'salisa',s:1,e:51},{id:'S17',n:'دروس البلاغة',c:'salisa',s:1,e:30},{id:'S18',n:'ہدایة النحو',c:'salisa',s:1,e:47},{id:'S19',n:'مختصر القدوری',c:'salisa',s:1,e:80},{id:'S20',n:'ریاض الصالحین',c:'salisa',s:1,e:80},{id:'S21',n:'علم الصیغة',c:'salisa',s:1,e:71},{id:'S22',n:'کافیة',c:'rabia',s:1,e:37},{id:'S23',n:'مشکوٰة',c:'rabia',s:291,e:430},{id:'S24',n:'تفسیر الجلالین',c:'rabia',s:1,e:30},{id:'S25',n:'اصول حدیث',c:'rabia',s:1,e:40},{id:'S26',n:'اصول الشاشی',c:'rabia',s:1,e:35},{id:'S27',n:'نفحة العرب',c:'rabia',s:1,e:30},{id:'S28',n:'معلم الانشاء ۴',c:'rabia',s:1,e:51},{id:'S29',n:'شرح الوقایة',c:'rabia',s:148,e:217},{id:'S30',n:'مدارک التنزیل',c:'khamisa',s:2,e:64},{id:'S31',n:'شمائل',c:'khamisa',s:2,e:24},{id:'S32',n:'ہدایة الاولین',c:'khamisa',s:3,e:76},{id:'S33',n:'السراجی',c:'khamisa',s:2,e:85},{id:'S34',n:'نور الانوار',c:'khamisa',s:1,e:38},{id:'S35',n:'قصیدة البردة',c:'khamisa',s:3,e:299},{id:'S36',n:'تفسیر بیضاوی',c:'fazilat',s:1,e:158},{id:'S37',n:'صحیح بخاری',c:'fazilat',s:3,e:73},{id:'S38',n:'صحیح مسلم',c:'fazilat',s:448,e:482},{id:'S39',n:'سنن نسائی',c:'fazilat',s:153,e:196},{id:'S40',n:'سنن ترمذی',c:'fazilat',s:21,e:52},{id:'S41',n:'ہدایة آخرین',c:'fazilat',s:1,e:39},{id:'S42',n:'المختارات',c:'fazilat',s:1,e:65}];
-const TC=[{id:'T1',n:'م۔ ارشاد حیدری',role:'principal',exam:false},{id:'T2',n:'م۔ اعجاز مخدومی',role:'teacher',exam:true},{id:'T3',n:'م۔ شاکر امجدی',role:'teacher',exam:true},{id:'T4',n:'م۔ طارق نعیمی',role:'teacher',exam:true},{id:'T5',n:'م۔ ضیاء علیمی',role:'teacher',exam:true},{id:'T6',n:'م۔ زاہد حیدری',role:'teacher',exam:true},{id:'T7',n:'م۔ منتظر نوری',role:'teacher',exam:false}];
-const AG=[{t:'T2',sub:'S13',p:3},{t:'T2',sub:'S08',p:4},{t:'T2',sub:'S23',p:5},{t:'T2',sub:'S26',p:8},{t:'T2',sub:'S12',p:9},{t:'T2',sub:'S31',p:2},{t:'T3',sub:'S24',p:1},{t:'T3',sub:'S07',p:2},{t:'T3',sub:'S41',p:3},{t:'T3',sub:'S19',p:4},{t:'T3',sub:'S39',p:5},{t:'T3',sub:'S25',p:7},{t:'T3',sub:'S32',p:9},{t:'T4',sub:'S36',p:1},{t:'T4',sub:'S03',p:2},{t:'T4',sub:'S33',p:3},{t:'T4',sub:'S40',p:4},{t:'T4',sub:'S21',p:5},{t:'T4',sub:'S35',p:7},{t:'T4',sub:'S37',p:8},{t:'T4',sub:'S29',p:9},{t:'T5',sub:'S30',p:1},{t:'T5',sub:'S22',p:2},{t:'T5',sub:'S18',p:3},{t:'T5',sub:'S34',p:4},{t:'T5',sub:'S14',p:5},{t:'T5',sub:'S17',p:7},{t:'T5',sub:'S38',p:9},{t:'T6',sub:'S20',p:2},{t:'T6',sub:'S04',p:3},{t:'T6',sub:'S28',p:4},{t:'T6',sub:'S05',p:5},{t:'T6',sub:'S42',p:7},{t:'T6',sub:'S10',p:8},{t:'T6',sub:'S01',p:9}];
-const PER=[{id:1,s:'10:00',e:'10:35'},{id:2,s:'10:35',e:'11:10'},{id:3,s:'11:10',e:'11:45'},{id:4,s:'11:45',e:'12:20'},{id:5,s:'12:20',e:'12:55'},{id:6,s:'12:55',e:'02:00',brk:true},{id:7,s:'02:00',e:'02:35'},{id:8,s:'02:35',e:'03:10'},{id:9,s:'03:10',e:'03:45'}];
+window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
+if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
+
+// LocalStorage persistence layer
+function _stLoad(k){try{const v=localStorage.getItem(k);return v?{value:v}:null;}catch{return null;}}
+function _stSave(k,v){try{localStorage.setItem(k,v);}catch{}}
+function _stDel(k){try{localStorage.removeItem(k);}catch{}}
+</script>
+
+<script type="text/babel" data-type="module">
+const {useState,useMemo,useCallback,useEffect,useRef}=React;
+
+// ═══════════════════════════════════════════════════════════
+// DEFAULTS — seed data for first launch, all overridable
+// ═══════════════════════════════════════════════════════════
+const LOGO='data:image/webp;base64,UklGRgIGAABXRUJQVlA4IPYFAAAwFwCdASpAAEAAPplClkmlpCIhN/6sALATCWwAsR/oxoEvfrwG7Mvok21XPJf3L1b/6ffAPRA6XefQc1PwyOS3L4P75Pw0TWnAUBN3a1oSgB+ifQMzpPU3sGfrd1mfRT/cNkEgnp3E+Rr8o76sQBYCgZDEVSko2LjLUHK3xNAuF5/gMFJlrZfP155r8QoyIqRPMrKWDwf0qg2Os/bRScqSgSDs/+9D/9nbycuxLQChTF16QsUSoza93UYjcCXvRLeMAAD+/vXNvZXgvdfZnnsTc2ycr4pTTclzAUMKySO3ik5nyOQx3qb1eJiu2fn7Ze72H6DUr+55cXMtX3AFtx/3RNy7qkAykmLTE021Bg+pFSS/uyaia1id/dJtFf8SGvrIiaSbg5lNY9xH7Q0/Ez3OhJfvE5/gKUdMNSFxNCSrBGSI4BF5615WnM/RMv2Tv1n6KhtRHQdhUcPv4W6m7X7iUK6aN/Ijlah8stYN0mOg/K9nmUBVIsE3ZZrxXcJr/Eo38PWHe0c18MhhEcOhWnwVZ+Z0rgFV85H3KhJO5uqKDwbYKICzK8zo9xl7gTXCOFyQa7zO/9+ICIvNkrrCMNv2JnUYO1mTA2r7wO9iGac5g5AD7/wEvdLjs+mzQES4BrWRD8r6dHXxQr/b/reKeyOQ9iT680PnjR4jNRogl0uX66ph1i7sAtRlIktmwjfOZUhwXiyOvCkmAQN+UqqvajNXlm0fHzYai5dfRQZ9IAhc3zBgQ2n1FssbF9Uf0uMGE+M/WmDz6bWds5wrnNk6cSdLiQD5j5uEdj2rqSWviJVJnlzmhUVgPXfxsVq0Kef35Mb++fhJhD6WrPny07HhuSx1FipAkp6H8G5XW3egBYu9Bq4ZztIt2mL3yVvpuOIyHxr0ZIJ0ceS3xX90Fy3tx1C0th477+KHVE3HyWBg0gOK8YYd1iIOL6oROSn/Kh8jRZGq93kmEtm5vV5RZ42z69lLTv+yjeDuXpWtGTj/Xsn+b+5SqMeuZ0S5KMEepvRGXWqpLiNaYY1MlNBEwyYCxIAMJ9f4E2+BGf8EsIN2EiA8c00/DEgT5uyfXcalkm7x13n3VEdzsN/gGIljqWGlNoP/bRHG6Wtnz6jLwxuMMmar9nFvdx/m/xcVSV+M781hhvJ5yNPNh4N5uZe2EhZA1SxaWcZg6yYOj6+V/r+OLDa2ujThorjFYWxQ6cHiXUkF0kaBBFsJq4Y77DvKx4e/6mDhoVHR1D8FdBBrMAv7rbuKx8XF4P/28HbfmeXzl5a2qgPF/np4wbmR/5AACC0vWlcWFJsRGPuw+OhcVDVXY+GQpbuW//PgddHw8In4HFqQB1DbJBR7FPF9vwvZLxolis7x7OsF4HxsyBhBWcZaAamlC/XVRwRrr1zcnUavXduOQ5McxTznxojBoPXb/CceLfkw6ZaRx2IzDaUKzRmh5CKNoM4SSdtBxFFnSDsC4ujsCVjrjUstxoan5kiwmn2DBxpaDgrZGyZTccEvh2a49ovqSSRLhy/TYQiavrJYWl/JTfKyvG5bdPGXXBv3+H57RanT+rNXx4cw3LVOvkBHi45I9g2+kexIkFfj194k3ZeszFd/fDMb/hB8NTqfQzrii/9JaINhdsbk3pilwQ7CkR8XBH8wxAbnL1oHX1RtE+2htY0V/AKNrkuUG52JyZQPi7r2QeCqG1HwD2CRh5cIIKXXiz0vHXVYWU1IPTdan/+GPIBfjX8G1MvBvCGsiePASjlL/P/fFHOWFY7yM6IDl1U9NPWrrc3LVCaM5FiPhxa/JIJog3bjo4e6HJGzwhbwap6gK8W/tvNmXlF1cLONoW3WTfh38+/drMsA5De9uZrxgw2C+eODNB64wTam3hmZLViAE2Woa+nFMUotHPXHnnQCeqxFhadlJ9rgAA+QIqTVHS97L6aQeV5npyVxKRcOtUGsST/2Ftddkai/G1Kg8lMo+CGniqLqfuoSPkP/vS8uhbXqMaIR1qnOxWdpQd9VW125H+zoy54m4YEE0Vq0s+q3hMIqMxgAAA==';
+
+const DEFAULTS={
+  institution:{name_ur:'ادارہ تحقیقات اسلامی',name_en:'Imam Azam College — My Idara',term_start:'2026-04-01',term_end:'2026-05-30',teaching_days:42,off_day:5,revision_day:4},
+  classes:[{id:'oola',n:'اولیٰ',c:'#f4e0c1',a:'#c8860a'},{id:'sania',n:'ثانیة',c:'#c9e0f5',a:'#2563eb'},{id:'salisa',n:'ثالثة',c:'#e0d0f0',a:'#7c3aed'},{id:'rabia',n:'رابعة',c:'#c5ede2',a:'#059669'},{id:'khamisa',n:'خامسة',c:'#faf0c8',a:'#b45309'},{id:'fazilat',n:'فضیلة',c:'#f5d0d0',a:'#dc2626'}],
+  subjects:[{id:'S01',n:'منہاج العربیة',c:'oola',s:9,e:24},{id:'S02',n:'تمرین الصرف',c:'oola',s:5,e:20},{id:'S03',n:'آسان النحو',c:'oola',s:3,e:38},{id:'S04',n:'فارسی قواعد',c:'oola',s:11,e:87},{id:'S05',n:'احادیث',c:'oola',s:1,e:40},{id:'S06',n:'قرآت',c:'oola',s:584,e:611},{id:'S07',n:'میزان الصرف',c:'sania',s:3,e:53},{id:'S08',n:'نور الایضاح',c:'sania',s:1,e:73},{id:'S09',n:'معلم الانشاء',c:'sania',s:1,e:52},{id:'S10',n:'قصص النبیین',c:'sania',s:3,e:40},{id:'S11',n:'کنز الایمان',c:'sania',s:2,e:110},{id:'S12',n:'گلستان سعدی',c:'sania',s:120,e:258},{id:'S13',n:'نحو میر',c:'sania',s:9,e:93},{id:'S14',n:'فیض الادب',c:'sania',s:1,e:23},{id:'S15',n:'مجانی الادب',c:'salisa',s:1,e:36},{id:'S16',n:'معلم الانشاء ۳',c:'salisa',s:1,e:51},{id:'S17',n:'دروس البلاغة',c:'salisa',s:1,e:30},{id:'S18',n:'ہدایة النحو',c:'salisa',s:1,e:47},{id:'S19',n:'مختصر القدوری',c:'salisa',s:1,e:80},{id:'S20',n:'ریاض الصالحین',c:'salisa',s:1,e:80},{id:'S21',n:'علم الصیغة',c:'salisa',s:1,e:71},{id:'S22',n:'کافیة',c:'rabia',s:1,e:37},{id:'S23',n:'مشکوٰة',c:'rabia',s:291,e:430},{id:'S24',n:'تفسیر الجلالین',c:'rabia',s:1,e:30},{id:'S25',n:'اصول حدیث',c:'rabia',s:1,e:40},{id:'S26',n:'اصول الشاشی',c:'rabia',s:1,e:35},{id:'S27',n:'نفحة العرب',c:'rabia',s:1,e:30},{id:'S28',n:'معلم الانشاء ۴',c:'rabia',s:1,e:51},{id:'S29',n:'شرح الوقایة',c:'rabia',s:148,e:217},{id:'S30',n:'مدارک التنزیل',c:'khamisa',s:2,e:64},{id:'S31',n:'شمائل',c:'khamisa',s:2,e:24},{id:'S32',n:'ہدایة الاولین',c:'khamisa',s:3,e:76},{id:'S33',n:'السراجی',c:'khamisa',s:2,e:85},{id:'S34',n:'نور الانوار',c:'khamisa',s:1,e:38},{id:'S35',n:'قصیدة البردة',c:'khamisa',s:3,e:299},{id:'S36',n:'تفسیر بیضاوی',c:'fazilat',s:1,e:158},{id:'S37',n:'صحیح بخاری',c:'fazilat',s:3,e:73},{id:'S38',n:'صحیح مسلم',c:'fazilat',s:448,e:482},{id:'S39',n:'سنن نسائی',c:'fazilat',s:153,e:196},{id:'S40',n:'سنن ترمذی',c:'fazilat',s:21,e:52},{id:'S41',n:'ہدایة آخرین',c:'fazilat',s:1,e:39},{id:'S42',n:'المختارات',c:'fazilat',s:1,e:65}],
+  teachers:[{id:'T1',n:'م۔ ارشاد حیدری',role:'principal',exam:false,email:''},{id:'T2',n:'م۔ اعجاز مخدومی',role:'teacher',exam:true,email:''},{id:'T3',n:'م۔ شاکر امجدی',role:'teacher',exam:true,email:''},{id:'T4',n:'م۔ طارق نعیمی',role:'teacher',exam:true,email:''},{id:'T5',n:'م۔ ضیاء علیمی',role:'teacher',exam:true,email:''},{id:'T6',n:'م۔ زاہد حیدری',role:'teacher',exam:true,email:''},{id:'T7',n:'م۔ منتظر نوری',role:'teacher',exam:false,email:''}],
+  assignments:[{t:'T2',sub:'S13',p:3},{t:'T2',sub:'S08',p:4},{t:'T2',sub:'S23',p:5},{t:'T2',sub:'S26',p:8},{t:'T2',sub:'S12',p:9},{t:'T2',sub:'S31',p:2},{t:'T3',sub:'S24',p:1},{t:'T3',sub:'S07',p:2},{t:'T3',sub:'S41',p:3},{t:'T3',sub:'S19',p:4},{t:'T3',sub:'S39',p:5},{t:'T3',sub:'S25',p:7},{t:'T3',sub:'S32',p:9},{t:'T4',sub:'S36',p:1},{t:'T4',sub:'S03',p:2},{t:'T4',sub:'S33',p:3},{t:'T4',sub:'S40',p:4},{t:'T4',sub:'S21',p:5},{t:'T4',sub:'S35',p:7},{t:'T4',sub:'S37',p:8},{t:'T4',sub:'S29',p:9},{t:'T5',sub:'S30',p:1},{t:'T5',sub:'S22',p:2},{t:'T5',sub:'S18',p:3},{t:'T5',sub:'S34',p:4},{t:'T5',sub:'S14',p:5},{t:'T5',sub:'S17',p:7},{t:'T5',sub:'S38',p:9},{t:'T6',sub:'S20',p:2},{t:'T6',sub:'S04',p:3},{t:'T6',sub:'S28',p:4},{t:'T6',sub:'S05',p:5},{t:'T6',sub:'S42',p:7},{t:'T6',sub:'S10',p:8},{t:'T6',sub:'S01',p:9}],
+  periods:[{id:1,s:'10:00',e:'10:35',type:'class'},{id:2,s:'10:35',e:'11:10',type:'class'},{id:3,s:'11:10',e:'11:45',type:'class'},{id:4,s:'11:45',e:'12:20',type:'class'},{id:5,s:'12:20',e:'12:55',type:'class'},{id:6,s:'12:55',e:'02:00',type:'break',brk:true},{id:7,s:'02:00',e:'02:35',type:'class'},{id:8,s:'02:35',e:'03:10',type:'class'},{id:9,s:'03:10',e:'03:45',type:'class'}],
+  pins:{ADMIN:'9999',T1:'1234',T2:'1234',T3:'1234',T4:'1234',T5:'1234',T6:'1234',T7:'1234'},
+  script_url:'',
+  scoring:{excellent:80,good:60,weak:40},
+  dashboard:{yellow:-5},
+  holidays:[],
+};
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+const ST={f:"'Noto Nastaliq Urdu','Noto Sans Arabic',serif",dk:'#0c2e2e',gd:'#d4af37',gn:'#1a4a35',sg:'#8fbc8f',mt:'#6b7c6b'};
+const stC={green:'#10b981',yellow:'#f59e0b',red:'#ef4444',unknown:'#9ca3af'};
 const catC={excellent:'#10b981',good:'#3b82f6',weak:'#f59e0b',fail:'#ef4444',absent:'#6b7280'};
-const catL={excellent:'اعلیٰ',good:'اچھا',weak:'کمزور',fail:'ناکام',absent:'غائب'};
-const gC=id=>CL.find(c=>c.id===id)||CL[0];
-const gS=id=>SB.find(s=>s.id===id);
-const cT=(s,tot,d)=>s+Math.round((tot/42)*d);
-const cSR=(sc,ab)=>{if(ab)return{t:null,p:null,c:'absent'};const f=sc.filter(s=>s!=null&&s!=='');if(!f.length)return{t:null,p:null,c:null};const n=f.map(Number);if(n.some(x=>isNaN(x)||x<0||x>10))return{t:null,p:null,c:'invalid'};const t=n.reduce((a,b)=>a+b,0),p=Math.round(t/(f.length*10)*100);return{t,p,c:p>=80?'excellent':p>=60?'good':p>=40?'weak':'fail'}};
-let S={scr:'login',user:null,pin:'',selT:'',err:'',tab:'home',reps:DB.get('reports')||{},syncQ:DB.get('syncQueue')||[],thB:0,thD:CL.map(()=>({sid:'',grid:Array.from({length:15},(_,i)=>({num:i+1,nm:'',sc:[null,null,null,null,null],ab:false}))})),admSub:null,toast:''};
-function ss(u){Object.assign(S,u);render()}
-function flash(m){S.toast=m;render();setTimeout(()=>{S.toast='';render()},2000)}
-const tDay=7;
-function getMyA(){if(!S.user)return[];return AG.filter(a=>a.t===S.user.id).map(a=>{const sub=gS(a.sub),cls=gC(sub.c),per=PER.find(p=>p.id===a.p),tot=sub.e-sub.s;return{...a,sub,cls,per,target:cT(sub.s,tot,tDay),total:tot}}).sort((a,b)=>a.p-b.p)}
-function el(tag,props,...kids){const e=document.createElement(tag);if(props)Object.entries(props).forEach(([k,v])=>{if(k==='style'&&typeof v==='object')Object.assign(e.style,v);else if(k.startsWith('on'))e.addEventListener(k.slice(2).toLowerCase(),v);else if(k==='value')e.value=v;else if(k==='checked')e.checked=v;else if(k==='disabled')e.disabled=v;else if(k==='placeholder')e.placeholder=v;else if(k==='type')e.type=v;else if(k==='min')e.min=v;else if(k==='max')e.max=v;else e.setAttribute(k,v)});kids.flat(9).forEach(c=>{if(c==null||c===false)return;if(typeof c==='string'||typeof c==='number')e.appendChild(document.createTextNode(c));else if(c instanceof Node)e.appendChild(c)});return e}function render(){
-const app=document.getElementById('app');app.innerHTML='';
-if(S.toast)app.appendChild(el('div',{class:'toast'},S.toast));
-if(S.scr==='login'){renderLogin(app);return}
-renderTopBar(app);
-const c=el('div',{style:{padding:'12px',paddingBottom:'72px',maxWidth:'460px',margin:'0 auto'}});
-if(S.tab==='home')renderHome(c);
-else if(S.tab==='report')renderReport(c);
-else if(S.tab==='thu'&&S.user?.exam)renderThu(c);
-else if(S.tab==='tt')renderTT(c);
-else if(S.tab==='adm'&&S.user?.role==='admin')renderAdm(c);
-app.appendChild(c);renderNav(app)}
+const gC=(CL,id)=>(CL||[]).find(c=>c.id===id)||{id:'?',n:'?',c:'#ccc',a:'#666'};
 
-function renderLogin(app){
-const w=el('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'linear-gradient(170deg,#0c2e2e,#0a1f1f 30%,#132b20 70%)',padding:'20px'}});
-w.appendChild(el('div',{style:{width:'64px',height:'64px',borderRadius:'16px',marginBottom:'14px',background:'linear-gradient(135deg,#d4af37,#b8860b)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 32px rgba(212,175,55,0.5)',fontSize:'30px'}},'📖'));
-w.appendChild(el('h1',{style:{fontSize:'24px',fontWeight:'800',color:'#d4af37'}},'ادارہ تحقیقات اسلامی'));
-w.appendChild(el('p',{style:{color:'#8fbc8f',fontSize:'11px',margin:'4px 0 24px',direction:'ltr'}},'Imam Azam College — My Idara'));
-const bx=el('div',{style:{width:'100%',maxWidth:'310px',background:'rgba(255,255,255,0.04)',borderRadius:'20px',padding:'22px',border:'1px solid rgba(212,175,55,0.25)'}});
-const sel=el('select',{style:{width:'100%',padding:'10px',borderRadius:'12px',border:'1px solid rgba(212,175,55,0.3)',background:'rgba(0,0,0,0.3)',color:'#e0d9c8',fontSize:'13px',direction:'rtl',marginBottom:'12px',outline:'none'},onChange:e=>{S.selT=e.target.value;S.err='';render()}});
-sel.appendChild(el('option',{value:''},'— منتخب کریں —'));
-TC.forEach(t=>sel.appendChild(el('option',{value:t.id},t.n)));
-sel.appendChild(el('option',{value:'ADMIN'},'🔧 ایڈمن'));
-sel.value=S.selT;bx.appendChild(sel);
-const dots=el('div',{style:{display:'flex',gap:'7px',justifyContent:'center',marginBottom:'12px',direction:'ltr'}});
-for(let i=0;i<4;i++){dots.appendChild(el('div',{style:{width:'44px',height:'48px',borderRadius:'11px',border:S.pin.length>i?'2px solid #d4af37':'1px solid rgba(255,255,255,0.1)',background:S.pin.length>i?'rgba(212,175,55,0.1)':'rgba(0,0,0,0.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',color:'#d4af37',fontWeight:'800'}},S.pin[i]?'●':''))}
-bx.appendChild(dots);
-const pad=el('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px',marginBottom:'12px',direction:'ltr'}});
-[1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(k=>{pad.appendChild(el('button',{style:{padding:'12px 0',borderRadius:'11px',border:'none',fontSize:'17px',fontWeight:'700',background:k===''?'transparent':k==='⌫'?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.06)',color:k==='⌫'?'#f87171':'#c8b88a',cursor:k===''?'default':'pointer'},disabled:k==='',onClick:()=>{if(k==='⌫')S.pin=S.pin.slice(0,-1);else if(k!==''&&S.pin.length<4)S.pin+=k;S.err='';render()}},String(k)))});
-bx.appendChild(pad);
-if(S.err)bx.appendChild(el('div',{style:{background:'rgba(239,68,68,0.12)',borderRadius:'9px',padding:'6px',marginBottom:'10px',color:'#fca5a5',fontSize:'11px',textAlign:'center',fontWeight:'600'}},S.err));
-bx.appendChild(el('button',{style:{width:'100%',padding:'12px',borderRadius:'13px',border:'none',background:'linear-gradient(135deg,#d4af37,#b8860b)',color:'#1a0e00',fontSize:'14px',fontWeight:'800',cursor:'pointer'},onClick:()=>{if(!S.selT){S.err='استاد منتخب کریں';render();return}if(S.pin.length<4){S.err='۴ ہندسے';render();return}if(S.pin!==(S.selT==='ADMIN'?'9999':'1234')){S.err='غلط پن';render();return}S.user=S.selT==='ADMIN'?{id:'ADMIN',n:'ایڈمن',role:'admin',exam:false}:TC.find(t=>t.id===S.selT);S.scr='main';S.tab='home';render()}},'داخل ہوں'));
-w.appendChild(bx);app.appendChild(w)}
+function calcTD(cfg){
+  const st=new Date(cfg.term_start+'T00:00:00'),now=new Date();let c=0;
+  for(let d=new Date(st);d<=now;d.setDate(d.getDate()+1)){
+    const w=d.getDay();
+    if(w!==cfg.off_day&&w!==cfg.revision_day&&!cfg.holidays?.includes(d.toISOString().split('T')[0]))c++;
+  }
+  return Math.min(Math.max(c,1),cfg.teaching_days);
+}
+function genThursdays(cfg){
+  const st=new Date(cfg.term_start+'T00:00:00'),en=new Date(cfg.term_end+'T00:00:00');
+  const dates=[];for(let d=new Date(st);d<=en;d.setDate(d.getDate()+1)){if(d.getDay()===cfg.revision_day)dates.push(d.toISOString().split('T')[0]);}
+  return dates;
+}
+function genThuSch(dates,examiners){return dates.map((dt,i)=>({wk:i+1,dt,ex:examiners.length?examiners[i%examiners.length]:null}));}
+function cSR(sc,ab,scoring){
+  if(ab)return{t:null,p:null,c:'absent'};const f=sc.filter(s=>s!=null&&s!=='');
+  if(!f.length)return{t:null,p:null,c:null};const n=f.map(Number);
+  if(n.some(x=>isNaN(x)||x<0||x>10))return{t:null,p:null,c:'invalid'};
+  const t=n.reduce((a,b)=>a+b,0),p=Math.round(t/(f.length*10)*100);
+  return{t,p,c:p>=scoring.excellent?'excellent':p>=scoring.good?'good':p>=scoring.weak?'weak':'fail'};
+}
 
-function renderTopBar(app){
-const b=el('div',{style:{background:'linear-gradient(135deg,#0c2e2e,#1a4a35)',padding:'11px 15px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:'0',zIndex:'100',boxShadow:'0 2px 16px rgba(0,0,0,0.2)'}});
-const l=el('div',{style:{display:'flex',alignItems:'center',gap:'9px'}});
-l.appendChild(el('div',{style:{width:'34px',height:'34px',borderRadius:'9px',background:'linear-gradient(135deg,#d4af37,#b8860b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'15px'}},'📖'));
-const i=el('div',{});i.appendChild(el('div',{style:{color:'#d4af37',fontSize:'12px',fontWeight:'800'}},S.user?.n||''));i.appendChild(el('div',{style:{color:'#8fbc8f',fontSize:'9px'}},'دن '+tDay+'/42'));l.appendChild(i);b.appendChild(l);
-const r=el('div',{style:{display:'flex',gap:'6px',alignItems:'center'}});
-if(S.syncQ.length>0)r.appendChild(el('span',{style:{background:'#f59e0b',color:'#fff',padding:'2px 7px',borderRadius:'10px',fontSize:'9px',fontWeight:'800'}},S.syncQ.length+'⏳'));
-r.appendChild(el('button',{style:{background:'rgba(255,255,255,0.08)',border:'none',color:'#8fbc8f',padding:'4px 9px',borderRadius:'7px',fontSize:'9px',cursor:'pointer',fontWeight:'700'},onClick:()=>{S.scr='login';S.user=null;S.pin='';S.selT='';S.admSub=null;render()}},'خروج'));
-b.appendChild(r);app.appendChild(b)}
+// Shared components
+const Card=({children,style})=><div style={{background:'#fff',borderRadius:13,padding:14,marginBottom:8,boxShadow:'0 1px 3px rgba(0,0,0,0.04)',lineHeight:1.8,...style}}>{children}</div>;
+const Btn=({children,onClick,color='#10b981',full,small,disabled,style})=><button onClick={onClick} disabled={disabled} style={{padding:small?'6px 12px':'12px 16px',borderRadius:small?8:12,border:'none',background:disabled?'#ccc':`linear-gradient(135deg,${color},${color}dd)`,color:'#fff',fontSize:small?11:14,fontWeight:700,cursor:disabled?'not-allowed':'pointer',fontFamily:ST.f,width:full?'100%':undefined,opacity:disabled?.5:1,...style}}>{children}</button>;
+const Inp=({value,onChange,placeholder,type='text',style})=><input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #d5d0c5',fontSize:12,fontFamily:'inherit',direction:'rtl',outline:'none',background:'#faf8f3',...style}}/>;
+const Sel=({value,onChange,children,style})=><select value={value} onChange={e=>onChange(e.target.value)} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #d5d0c5',fontSize:12,fontFamily:'inherit',direction:'rtl',outline:'none',background:'#faf8f3',...style}}>{children}</select>;
+const Bk=({onClick})=><button onClick={onClick} style={{background:'none',border:'none',fontSize:12,color:ST.mt,cursor:'pointer',fontFamily:'inherit'}}>← واپس</button>;
+const Bdg=({text,bg,color})=><span style={{background:bg||'#f0ebe0',color:color||'#6b7c6b',padding:'3px 8px',borderRadius:5,fontSize:10,fontWeight:700,lineHeight:1.8}}>{text}</span>;
+const Ttl=({icon,text})=><div style={{fontSize:16,fontWeight:800,marginBottom:10,lineHeight:2}}>{icon} {text}</div>;
+const Row=({label,children})=><div style={{marginBottom:8}}><div style={{fontSize:9,color:'#999',marginBottom:2}}>{label}</div>{children}</div>;
 
-function renderHome(c){
-const myA=getMyA();const filled=myA.filter(a=>(S.reps[a.sub.id]||{}).actual).length;
-const h=el('div',{style:{background:'linear-gradient(135deg,#0c2e2e,#1a4a35)',borderRadius:'16px',padding:'18px',marginBottom:'12px'}});
-h.appendChild(el('div',{style:{fontSize:'18px',fontWeight:'800',color:'#d4af37'}},'السلام علیکم'));
-h.appendChild(el('div',{style:{color:'#8fbc8f',fontSize:'11px',marginTop:'2px'}},myA.length+' مضامین • '+filled+' مکمل'));
-const bar=el('div',{style:{marginTop:'8px',background:'rgba(255,255,255,0.08)',borderRadius:'7px',height:'5px'}});
-bar.appendChild(el('div',{style:{height:'100%',borderRadius:'7px',background:'linear-gradient(90deg,#d4af37,#10b981)',width:(myA.length?(filled/myA.length)*100:0)+'%'}}));
-h.appendChild(bar);c.appendChild(h);
-myA.forEach(a=>{const rr=S.reps[a.sub.id]||{};
-const cd=el('div',{style:{background:'#fff',borderRadius:'11px',padding:'11px 13px',marginBottom:'5px',borderRight:'4px solid '+a.cls.a,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'},onClick:()=>{S.tab='report';render()}});
-const lf=el('div',{});lf.appendChild(el('div',{style:{fontSize:'12px',fontWeight:'700'}},a.sub.n));lf.appendChild(el('div',{style:{fontSize:'9px',color:'#8a9a8a'}},a.cls.n+' • P'+a.p));cd.appendChild(lf);
-cd.appendChild(el('div',{style:{fontSize:'14px',fontWeight:'800',color:a.cls.a}},'ص'+a.target));
-cd.appendChild(el('div',{style:{width:'22px',height:'22px',borderRadius:'6px',background:rr.actual?'#10b981':'#e5e0d5',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'11px'}},rr.actual?'✓':''));
-c.appendChild(cd)})}
+// ═══════════════════════════════════════════════════════════
+// PERSISTENT STORAGE LAYER
+// ═══════════════════════════════════════════════════════════
+async function loadConfig(){
+  try{const r=await _stLoad("iri-config");return r?JSON.parse(r.value):null;}
+  catch{return null;}
+}
+async function saveConfig(cfg){
+  try{await _stSave("iri-config",JSON.stringify(cfg));}catch(e){console.error('Save failed',e);}
+}
+async function loadReports(){
+  try{const r=await _stLoad("iri-reports");return r?JSON.parse(r.value):{};}catch{return{};}
+}
+async function saveReports(reps){
+  try{await _stSave("iri-reports",JSON.stringify(reps));}catch{}}
+async function loadSyncQ(){
+  try{const r=await _stLoad("iri-syncq");return r?JSON.parse(r.value):[];}catch{return[];}
+}
+async function saveSyncQ(q){
+  try{await _stSave("iri-syncq",JSON.stringify(q));}catch{}}
 
-function renderReport(c){
-c.appendChild(el('div',{style:{fontSize:'14px',fontWeight:'800',marginBottom:'10px'}},'📝 یومیہ رپورٹ'));
-getMyA().forEach(a=>{const rr=S.reps[a.sub.id]||{};const part=rr.complete==='جزوی'||rr.complete==='نہیں';
-const cd=el('div',{style:{background:'#fff',borderRadius:'13px',padding:'14px',marginBottom:'9px',border:'1px solid '+(rr.complete==='ہاں'?'#10b981':'#e5e0d5')}});
-const hd=el('div',{style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'8px'}});
-hd.appendChild(el('span',{style:{background:a.cls.c,color:a.cls.a,padding:'1px 7px',borderRadius:'5px',fontSize:'8px',fontWeight:'700'}},a.cls.n));
-hd.appendChild(el('span',{style:{fontSize:'13px',fontWeight:'800'}},a.sub.n));cd.appendChild(hd);
-const rw=el('div',{style:{display:'flex',gap:'7px',marginBottom:'8px'}});
-const tc=el('div',{style:{flex:'1'}});tc.appendChild(el('div',{style:{fontSize:'8px',color:'#999',marginBottom:'2px'}},'ہدف'));tc.appendChild(el('div',{style:{padding:'7px',borderRadius:'7px',background:'#f0ebe0',fontSize:'14px',fontWeight:'800',color:a.cls.a,textAlign:'center'}},'ص'+a.target));rw.appendChild(tc);
-const ac=el('div',{style:{flex:'1'}});ac.appendChild(el('div',{style:{fontSize:'8px',color:'#999',marginBottom:'2px'}},'حقیقی'));
-ac.appendChild(el('input',{type:'number',value:rr.actual||'',placeholder:'—',style:{width:'100%',padding:'7px',borderRadius:'7px',border:'1.5px solid #d5d0c5',fontSize:'14px',fontWeight:'800',textAlign:'center',outline:'none',background:'#faf8f3'},onChange:e=>{S.reps[a.sub.id]={...S.reps[a.sub.id]||{},actual:e.target.value};DB.set('reports',S.reps);render()}}));rw.appendChild(ac);cd.appendChild(rw);
-const bt=el('div',{style:{display:'flex',gap:'4px'}});
-['ہاں','جزوی','نہیں'].forEach(o=>{bt.appendChild(el('button',{style:{flex:'1',padding:'6px',borderRadius:'7px',border:'none',fontSize:'10px',fontWeight:'700',cursor:'pointer',background:rr.complete===o?(o==='ہاں'?'#10b981':o==='جزوی'?'#f59e0b':'#ef4444'):'#f0ebe0',color:rr.complete===o?'#fff':'#6b7c6b'},onClick:()=>{S.reps[a.sub.id]={...S.reps[a.sub.id]||{},complete:o};DB.set('reports',S.reps);render()}},o))});cd.appendChild(bt);
-if(part){const rs=el('div',{style:{display:'flex',flexWrap:'wrap',gap:'3px',marginTop:'5px'}});['غیر حاضری','وقت','مراجعہ','تاخیر','دیگر'].forEach(rv=>{rs.appendChild(el('button',{style:{padding:'3px 7px',borderRadius:'5px',border:'none',fontSize:'8px',fontWeight:'600',cursor:'pointer',background:rr.reason===rv?'#0c2e2e':'#f0ebe0',color:rr.reason===rv?'#d4af37':'#6b7c6b'},onClick:()=>{S.reps[a.sub.id]={...S.reps[a.sub.id]||{},reason:rv};DB.set('reports',S.reps);render()}},rv))});cd.appendChild(rs)}
-c.appendChild(cd)});
-c.appendChild(el('button',{style:{width:'100%',padding:'13px',borderRadius:'13px',border:'none',background:'linear-gradient(135deg,#10b981,#059669)',color:'#fff',fontSize:'14px',fontWeight:'800',cursor:'pointer'},onClick:()=>{S.syncQ.push({type:'daily',ts:Date.now()});DB.set('syncQueue',S.syncQ);flash('✓ قطار میں')}},'ارسال ✓'))}function renderThu(c){
-c.appendChild(el('div',{style:{fontSize:'14px',fontWeight:'800',marginBottom:'8px'}},'📋 جمعرات امتحان'));
-const tb=el('div',{style:{display:'flex',gap:'3px',overflowX:'auto',marginBottom:'10px'}});
-CL.forEach((cl,i)=>{tb.appendChild(el('button',{style:{padding:'5px 10px',borderRadius:'9px',border:'none',fontSize:'9px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap',background:S.thB===i?cl.a:cl.c,color:S.thB===i?'#fff':cl.a},onClick:()=>{S.thB=i;render()}},cl.n))});c.appendChild(tb);
-const bl=S.thD[S.thB],bCl=CL[S.thB];
-const cd=el('div',{style:{background:'#fff',borderRadius:'14px',padding:'14px',border:'2px solid '+bCl.a+'30'}});
-cd.appendChild(el('div',{style:{fontSize:'13px',fontWeight:'800',color:bCl.a,marginBottom:'8px'}},'امتحان '+bCl.n));
-const ss=el('select',{style:{width:'100%',padding:'8px',borderRadius:'9px',border:'1px solid #d5d0c5',fontSize:'12px',direction:'rtl',marginBottom:'10px',outline:'none',background:'#faf8f3'},onChange:e=>{S.thD[S.thB].sid=e.target.value;render()}});
-ss.appendChild(el('option',{value:''},'— مضمون —'));SB.filter(s=>s.c===bCl.id).forEach(s=>ss.appendChild(el('option',{value:s.id},s.n)));ss.value=bl.sid;cd.appendChild(ss);
-const tw=el('div',{style:{overflowX:'auto'}});
-const tbl=el('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:'10px',direction:'rtl',minWidth:'380px'}});
-const th=el('thead',{});const hr=el('tr',{style:{background:bCl.a,color:'#fff'}});
-[{t:'#',w:'20px'},{t:'نام',w:'65px'},{t:'س1',w:'30px'},{t:'س2',w:'30px'},{t:'س3',w:'30px'},{t:'س4',w:'30px'},{t:'س5',w:'30px'},{t:'کل',w:'30px'},{t:'%',w:'26px'},{t:'غ',w:'16px'}].forEach(h=>{hr.appendChild(el('th',{style:{padding:'5px',width:h.w,textAlign:h.t==='نام'?'right':'center'}},h.t))});
-th.appendChild(hr);tbl.appendChild(th);
-const tby=el('tbody',{});
-bl.grid.forEach((st,si)=>{const rs=cSR(st.sc,st.ab);
-const tr=el('tr',{style:{background:st.ab?'#f0f0f0':si%2?'#fff':'#faf8f3',opacity:st.ab?'0.5':'1'}});
-tr.appendChild(el('td',{style:{textAlign:'center',color:'#999',fontSize:'9px'}},String(st.num)));
-const ntd=el('td',{});ntd.appendChild(el('input',{value:st.nm,style:{width:'100%',border:'none',background:'transparent',fontSize:'10px',outline:'none',direction:'rtl',padding:'2px'},onChange:e=>{S.thD[S.thB].grid[si].nm=e.target.value;render()}}));tr.appendChild(ntd);
-for(let q=0;q<5;q++){const qtd=el('td',{});qtd.appendChild(el('input',{type:'number',min:'0',max:'10',value:st.sc[q]!=null?String(st.sc[q]):'',disabled:st.ab,style:{width:'26px',padding:'2px',borderRadius:'4px',border:'1px solid #e5e0d5',fontSize:'10px',textAlign:'center',outline:'none',background:st.ab?'#eee':'#fff'},onChange:e=>{const sc=[...S.thD[S.thB].grid[si].sc];sc[q]=e.target.value===''?null:parseInt(e.target.value);S.thD[S.thB].grid[si].sc=sc;render()}}));tr.appendChild(qtd)}
-tr.appendChild(el('td',{style:{textAlign:'center',fontWeight:'800',fontSize:'11px',color:rs.c?catC[rs.c]||'#ccc':'#ccc'}},rs.t!=null?String(rs.t):'—'));
-tr.appendChild(el('td',{style:{textAlign:'center',fontSize:'9px',color:rs.c?catC[rs.c]||'#ccc':'#ccc'}},rs.p!=null?rs.p+'%':'—'));
-const abtd=el('td',{style:{textAlign:'center'}});abtd.appendChild(el('input',{type:'checkbox',checked:st.ab,style:{width:'12px',height:'12px'},onChange:e=>{S.thD[S.thB].grid[si].ab=e.target.checked;render()}}));tr.appendChild(abtd);
-tby.appendChild(tr)});tbl.appendChild(tby);tw.appendChild(tbl);cd.appendChild(tw);
-const named=bl.grid.filter(s=>s.nm&&s.nm.trim());
-if(named.length){const sm={excellent:0,good:0,weak:0,fail:0,absent:0};const ts=[];
-named.forEach(s=>{const rs=cSR(s.sc,s.ab);if(rs.c==='absent')sm.absent++;else if(rs.c&&rs.c!=='invalid'){sm[rs.c]++;if(rs.t!=null)ts.push(rs.t)}});
-const av=ts.length?Math.round(ts.reduce((a,b)=>a+b,0)/ts.length):0;
-const sr=el('div',{style:{display:'flex',gap:'4px',flexWrap:'wrap',padding:'7px 0',borderTop:'1px solid #f0ebe0'}});
-Object.entries(sm).forEach(([k,v])=>{const d=el('div',{style:{background:(catC[k]||'#999')+'15',borderRadius:'6px',padding:'3px 7px',textAlign:'center',minWidth:'40px'}});d.appendChild(el('div',{style:{fontSize:'13px',fontWeight:'800',color:catC[k]||'#999'}},String(v)));d.appendChild(el('div',{style:{fontSize:'7px',color:'#999'}},catL[k]||k));sr.appendChild(d)});
-const avd=el('div',{style:{background:'#0c2e2e',borderRadius:'6px',padding:'3px 7px',textAlign:'center'}});avd.appendChild(el('div',{style:{fontSize:'13px',fontWeight:'800',color:'#d4af37'}},String(av)));avd.appendChild(el('div',{style:{fontSize:'7px',color:'#8fbc8f'}},'اوسط'));sr.appendChild(avd);cd.appendChild(sr)}
-c.appendChild(cd);
-c.appendChild(el('button',{style:{width:'100%',padding:'13px',borderRadius:'13px',border:'none',background:'linear-gradient(135deg,'+bCl.a+','+bCl.a+'dd)',color:'#fff',fontSize:'14px',fontWeight:'800',cursor:'pointer',marginTop:'8px'},onClick:()=>{S.syncQ.push({type:'thu',ts:Date.now()});DB.set('syncQueue',S.syncQ);flash('✓ قطار میں')}},'ارسال امتحان ✓'))}
+// ═══════════════════════════════════════════════════════════
+// APP
+// ═══════════════════════════════════════════════════════════
+function App(){
+  const[loading,setLoading]=useState(true);
+  const[cfg,setCfgRaw]=useState(null);
+  const[reps,setRepsRaw]=useState({});
+  const[syncQ,setSyncQRaw]=useState([]);
+  const[scr,setScr]=useState('login');const[user,setUser]=useState(null);const[pin,setPin]=useState('');const[selT,setSelT]=useState('');const[err,setErr]=useState('');const[tab,setTab]=useState('home');const[toast,setToast]=useState('');const[admSub,setAdmSub]=useState(null);const[syncSt,setSyncSt]=useState(null);
+  const[loginEmail,setLoginEmail]=useState('');const[loginStep,setLoginStep]=useState(1);const[otpCode,setOtpCode]=useState('');const[otpSending,setOtpSending]=useState(false);const[isAdminLogin,setIsAdminLogin]=useState(false);
+  const[showForm,setShowForm]=useState(null);const[newT,setNewT]=useState({id:'',n:'',exam:false,email:''});const[newAsg,setNewAsg]=useState({t:'',sub:'',p:''});const[newPer,setNewPer]=useState({s:'',e:'',type:'class'});
+  const[dashFilter,setDashFilter]=useState('all');const[confirmDel,setConfirmDel]=useState(null);const[pinEdit,setPinEdit]=useState({tid:'',val:''});const[urlInp,setUrlInp]=useState('');
+  const[thB,setThB]=useState(0);const[thD,setThD]=useState([]);
+  const saveTimer=useRef(null);
 
-function renderTT(c){
-c.appendChild(el('div',{style:{fontSize:'14px',fontWeight:'800',marginBottom:'10px'}},'🕐 نظام الاوقات'));
-const myA=getMyA();
-PER.forEach(p=>{if(p.brk){c.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'9px',margin:'5px 0',background:'linear-gradient(135deg,#0c2e2e,#1a4a35)',borderRadius:'9px',padding:'8px 11px'}},el('div',{style:{fontSize:'8px',color:'#8fbc8f',width:'65px',textAlign:'center',direction:'ltr',fontFamily:'monospace'}},p.s+'–'+p.e),el('div',{style:{color:'#d4af37',fontSize:'11px',fontWeight:'700'}},'🕌 نماز و کھانا')));return}
-const a=myA.find(a2=>a2.p===p.id);
-const rw=el('div',{style:{display:'flex',alignItems:'center',gap:'9px',marginBottom:'4px',background:a?'#fff':'#f5f0e8',borderRadius:'9px',padding:'8px 11px',border:a?'1px solid '+a.cls.a+'25':'none'}});
-rw.appendChild(el('div',{style:{fontSize:'8px',color:'#8a9a8a',width:'65px',textAlign:'center',direction:'ltr',fontFamily:'monospace'}},p.s+'–'+p.e));
-if(a){const d=el('div',{style:{flex:'1'}});d.appendChild(el('span',{style:{background:a.cls.c,color:a.cls.a,padding:'1px 6px',borderRadius:'4px',fontSize:'7px',fontWeight:'700',marginLeft:'4px'}},a.cls.n));d.appendChild(el('span',{style:{fontSize:'11px',fontWeight:'700'}},a.sub.n));rw.appendChild(d)}
-else rw.appendChild(el('div',{style:{flex:'1',color:'#c5c0b5',fontSize:'10px'}},'—'));
-c.appendChild(rw)})}
+  // Wrapped setters that auto-persist
+  const setCfg=useCallback((updater)=>{
+    setCfgRaw(prev=>{const next=typeof updater==='function'?updater(prev):{...prev,...updater};
+      clearTimeout(saveTimer.current);saveTimer.current=setTimeout(()=>saveConfig(next),300);return next;});
+  },[]);
+  const setReps=useCallback((updater)=>{setRepsRaw(prev=>{const next=typeof updater==='function'?updater(prev):updater;saveReports(next);return next;});},[]);
+  const setSyncQ=useCallback((updater)=>{setSyncQRaw(prev=>{const next=typeof updater==='function'?updater(prev):updater;saveSyncQ(next);return next;});},[]);
 
-function renderAdm(c){
-if(!S.admSub){
-c.appendChild(el('div',{style:{fontSize:'14px',fontWeight:'800',marginBottom:'10px'}},'⚙️ ایڈمن سینٹر'));
-[{ic:'🚦',l:'ڈیش بورڈ',d:'نصاب کی کارکردگی',k:'dash'},{ic:'📋',l:'تفویض',d:AG.length+' تفویض',k:'asg'},{ic:'🔄',l:'ہم آہنگی',d:S.syncQ.length?S.syncQ.length+' زیر التوا':'سب اچھا ✓',k:'sync'}].forEach(it=>{
-const cd=el('div',{style:{background:'#fff',borderRadius:'12px',padding:'12px 14px',marginBottom:'6px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer'},onClick:()=>{S.admSub=it.k;render()}});
-cd.appendChild(el('div',{style:{width:'38px',height:'38px',borderRadius:'10px',background:'#f0ebe0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}},it.ic));
-const inf=el('div',{style:{flex:'1'}});inf.appendChild(el('div',{style:{fontSize:'13px',fontWeight:'700'}},it.l));inf.appendChild(el('div',{style:{fontSize:'9px',color:'#8a9a8a'}},it.d));cd.appendChild(inf);
-cd.appendChild(el('span',{style:{color:'#ccc'}},'←'));c.appendChild(cd)});return}
-c.appendChild(el('button',{style:{background:'none',border:'none',fontSize:'12px',color:'#6b7c6b',cursor:'pointer',marginBottom:'10px'},onClick:()=>{S.admSub=null;render()}},'← واپس'));
-if(S.admSub==='dash'){
-c.appendChild(el('div',{style:{fontSize:'14px',fontWeight:'800',marginBottom:'10px'}},'🚦 ڈیش بورڈ'));
-CL.forEach(cl=>{const subs=SB.filter(s=>s.c===cl.id);if(!subs.length)return;
-c.appendChild(el('div',{style:{fontSize:'10px',fontWeight:'800',color:cl.a,padding:'3px 8px',background:cl.c,borderRadius:'6px',display:'inline-block',marginBottom:'5px',marginTop:'8px'}},cl.n+' ('+subs.length+')'));
-subs.forEach(s=>{const tot=s.e-s.s,target=cT(s.s,tot,tDay),rr=S.reps[s.id],actual=rr?.actual?parseInt(rr.actual):null,variance=actual!=null?actual-target:null;
-const stc=variance==null?'#9ca3af':variance>=0?'#10b981':variance>=-5?'#f59e0b':'#ef4444';
-const cd=el('div',{style:{background:'#fff',borderRadius:'11px',padding:'9px 11px',marginBottom:'4px',display:'flex',alignItems:'center',gap:'8px',borderRight:'4px solid '+stc}});
-const lf=el('div',{style:{flex:'1'}});lf.appendChild(el('div',{style:{fontSize:'11px',fontWeight:'700'}},s.n));lf.appendChild(el('div',{style:{fontSize:'8px',color:'#999'}},'ہدف ص'+target+(actual!=null?' • حقیقی ص'+actual:'')));cd.appendChild(lf);
-cd.appendChild(el('div',{style:{background:stc+'18',color:stc,padding:'2px 7px',borderRadius:'5px',fontSize:'11px',fontWeight:'800'}},variance!=null?(variance>=0?'+'+variance:String(variance)):'—'));
-c.appendChild(cd)})})}
-else if(S.admSub==='sync'){
-const cd=el('div',{style:{background:'#fff',borderRadius:'13px',padding:'20px',textAlign:'center'}});
-cd.appendChild(el('div',{style:{fontSize:'32px'}},S.syncQ.length===0?'✅':'⏳'));
-cd.appendChild(el('div',{style:{fontSize:'14px',fontWeight:'800',color:S.syncQ.length?'#f59e0b':'#10b981',marginTop:'6px'}},S.syncQ.length===0?'سب ارسال شدہ':S.syncQ.length+' زیر التوا'));
-if(S.syncQ.length>0)cd.appendChild(el('button',{style:{marginTop:'12px',padding:'6px 12px',borderRadius:'8px',border:'none',background:'#10b981',color:'#fff',fontSize:'11px',fontWeight:'700',cursor:'pointer'},onClick:()=>{S.syncQ=[];DB.set('syncQueue',S.syncQ);flash('✓ ارسال')}},'ابھی ارسال'));
-c.appendChild(cd)}
-else{const cd=el('div',{style:{background:'#fff',borderRadius:'13px',padding:'30px',textAlign:'center'}});cd.appendChild(el('div',{style:{fontSize:'28px',marginBottom:'8px'}},'🚧'));cd.appendChild(el('div',{style:{fontSize:'13px',fontWeight:'700',color:'#6b7c6b'}},'اگلی تعمیر میں'));c.appendChild(cd)}}
+  // Load on mount
+  useEffect(()=>{
+    (async()=>{
+      const[saved,savedReps,savedQ]=await Promise.all([loadConfig(),loadReports(),loadSyncQ()]);
+      setCfgRaw(saved?{...DEFAULTS,...saved}:{...DEFAULTS});
+      setRepsRaw(savedReps||{});
+      setSyncQRaw(savedQ||[]);
+      setLoading(false);
+    })();
+  },[]);
 
-function renderNav(app){
-const isEx=S.user?.exam,isAd=S.user?.role==='admin';
-const tabs=[{id:'home',ic:'🏠',l:'ہوم'},{id:'report',ic:'📝',l:'رپورٹ'},...(isEx?[{id:'thu',ic:'📋',l:'امتحان'}]:[]),{id:'tt',ic:'🕐',l:'اوقات'},...(isAd?[{id:'adm',ic:'⚙️',l:'ایڈمن'}]:[])];
-const nav=el('div',{style:{position:'fixed',bottom:'0',left:'0',right:'0',background:'#fff',borderTop:'1px solid #e5e0d5',display:'flex',justifyContent:'space-around',padding:'5px 0 9px',zIndex:'100'}});
-tabs.forEach(t=>{const btn=el('button',{style:{background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:'1px',color:S.tab===t.id?'#0c2e2e':'#b5b0a5',padding:'2px 10px'},onClick:()=>{S.tab=t.id;S.admSub=null;render()}});
-btn.appendChild(el('span',{style:{fontSize:'18px',transform:S.tab===t.id?'scale(1.1)':'scale(1)',transition:'transform 0.2s'}},t.ic));
-btn.appendChild(el('span',{style:{fontSize:'8px',fontWeight:'700'}},t.l));
-if(S.tab===t.id)btn.appendChild(el('div',{style:{width:'14px',height:'2.5px',borderRadius:'2px',background:'#d4af37'}}));
-nav.appendChild(btn)});app.appendChild(nav)}
+  // Load Nastaliq font
+  useEffect(()=>{
+    if(!document.querySelector('link[href*="Noto+Nastaliq+Urdu"]')){const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap';document.head.appendChild(l);}
+    const s=document.createElement('style');s.textContent='*{line-height:1.8}input,select,textarea{line-height:1.4}table *{line-height:1.3}button{line-height:1.5}';document.head.appendChild(s);
+    return()=>{try{document.head.removeChild(s)}catch{}};
+  },[]);
 
-render();
+  // Init Thursday test grid when classes change
+  useEffect(()=>{if(cfg)setThD(cfg.classes.map(()=>({sid:'',grid:Array.from({length:15},(_,i)=>({num:i+1,nm:'',sc:[null,null,null,null,null],ab:false})),nt:'',sg:''})));},[cfg?.classes?.length]);
+
+  const flash=useCallback(m=>{setToast(m);setTimeout(()=>setToast(''),2500)},[]);
+  if(loading||!cfg)return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:`linear-gradient(170deg,${ST.dk},#132b20)`,fontFamily:ST.f}}><div style={{color:ST.gd,fontSize:18,fontWeight:700}}>جاری ہے...</div></div>;
+
+  // ── Derived ──
+  const{institution:inst,classes:CL,subjects,teachers,assignments,periods,pins,scoring,dashboard:dashCfg}=cfg;
+  const tDay=calcTD(inst);
+  const cT=(s,tot)=>s+Math.round((tot/inst.teaching_days)*tDay);
+  const gS=id=>subjects.find(s=>s.id===id);
+  const cPer=periods.filter(p=>p.type!=='break');
+  const examiners=teachers.filter(t=>t.exam).map(t=>t.id);
+  const thuDates=genThursdays(inst);
+  const thuSch=genThuSch(thuDates,examiners);
+  const tA=tid=>assignments.filter(a=>a.t===tid).length;
+  const pA=pid=>assignments.filter(a=>a.p===pid).length;
+  const unassigned=subjects.filter(s=>!assignments.some(a=>a.sub===s.id));
+  const myA=user?assignments.filter(a=>a.t===user.id).map(a=>{const sub=gS(a.sub);if(!sub)return null;const cls=gC(CL,sub.c),tot=sub.e-sub.s;return{...a,sub,cls,target:cT(sub.s,tot),total:tot};}).filter(Boolean).sort((a,b)=>a.p-b.p):[];
+  const myThu=user?thuSch.filter(w=>w.ex===user.id):[];
+  const upd=(sid,f,v)=>{const n={...reps,[sid]:{...(reps[sid]||{}),[f]:v}};setReps(n);};
+  const r=sid=>reps[sid]||{};
+  const uTh=(bi,si,f,v)=>setThD(prev=>{const nx=[...prev];if(!nx[bi])return nx;const bl={...nx[bi]};if(f==='sid')bl.sid=v;else if(f==='nt')bl.nt=v;else if(f==='sg')bl.sg=v;else{const gr=[...bl.grid];const st={...gr[si]};if(f==='nm')st.nm=v;else if(f==='ab')st.ab=v;else{const sc=[...st.sc];sc[parseInt(f[1])]=v===''?null:parseInt(v);st.sc=sc;}gr[si]=st;bl.grid=gr;}nx[bi]=bl;return nx;});
+  const dashData=subjects.map(s=>{const tot=s.e-s.s,target=cT(s.s,tot),rep=reps[s.id],actual=rep?.actual?parseInt(rep.actual):null,variance=actual!==null?actual-target:null,status=variance===null?'unknown':variance>=0?'green':variance>=dashCfg.yellow?'yellow':'red';return{id:s.id,n:s.n,c:s.c,target,actual,variance,status};});
+  const dS={g:dashData.filter(s=>s.status==='green').length,y:dashData.filter(s=>s.status==='yellow').length,r:dashData.filter(s=>s.status==='red').length};
+
+  // ── Config mutators ──
+  const updCfg=(key,val)=>setCfg(p=>({...p,[key]:val}));
+  const updInst=(field,val)=>setCfg(p=>({...p,institution:{...p.institution,[field]:val}}));
+  const updScoring=(field,val)=>setCfg(p=>({...p,scoring:{...p.scoring,[field]:parseInt(val)||0}}));
+  const updDash=(field,val)=>setCfg(p=>({...p,dashboard:{...p.dashboard,[field]:parseInt(val)||0}}));
+
+  // ── CRUD ──
+  const addT=()=>{const{id,n,exam,email}=newT;if(!id.trim()||!n.trim()){flash('⚠️ غلط');return}if(teachers.find(t=>t.id===id)){flash('⚠️ موجود');return}updCfg('teachers',[...teachers,{id,n,role:'teacher',exam,email:email.trim().toLowerCase()}]);updCfg('pins',{...pins,[id]:'1234'});setNewT({id:'',n:'',exam:false,email:''});setShowForm(null);flash('✓');};
+  const rmT=id=>{if(tA(id)>0){flash('⚠️ تفویض');setConfirmDel(null);return}updCfg('teachers',teachers.filter(t=>t.id!==id));setConfirmDel(null);flash('✓');};
+  const togEx=tid=>updCfg('teachers',teachers.map(t=>t.id===tid?{...t,exam:!t.exam}:t));
+  const addAsg=()=>{const{t:tid,sub:sid,p:pid}=newAsg;if(!tid||!sid||!pid){flash('⚠️');return}if(assignments.find(a=>a.t===tid&&a.p===parseInt(pid))){flash('⚠️ تصادم');return}if(assignments.find(a=>a.sub===sid)){flash('⚠️ تفویض شدہ');return}updCfg('assignments',[...assignments,{t:tid,sub:sid,p:parseInt(pid)}]);setNewAsg({t:'',sub:'',p:''});setShowForm(null);flash('✓');};
+  const rmAsg=(tid,sid)=>{updCfg('assignments',assignments.filter(a=>!(a.t===tid&&a.sub===sid)));flash('✓');};
+  const addPer=()=>{const{s,e,type}=newPer;if(!s||!e||s>=e){flash('⚠️');return}for(const p of periods)if(s<p.e&&e>p.s){flash('⚠️ تصادم');return}updCfg('periods',[...periods,{id:Math.max(0,...periods.map(x=>x.id))+1,s,e,type,brk:type==='break'}].sort((a,b)=>a.s.localeCompare(b.s)));setNewPer({s:'',e:'',type:'class'});setShowForm(null);flash('✓');};
+  const rmPer=id=>{if(pA(id)>0){flash('⚠️ تفویض');setConfirmDel(null);return}updCfg('periods',periods.filter(x=>x.id!==id));setConfirmDel(null);flash('✓');};
+
+  // ── Sync ──
+  const syncPost=async(type,payload)=>{if(!cfg.script_url){flash('⚠️ URL نہیں');return{success:false};}setSyncSt('sending');const body={type,...payload,submitted_at:new Date().toISOString()};try{
+    // Try POST first
+    const r=await fetch(cfg.script_url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body),redirect:'follow'});
+    const d=await r.json();if(d.success){setSyncSt('ok');setTimeout(()=>setSyncSt(null),3000);return d;}
+    throw new Error('POST failed');
+  }catch{try{
+    // Fallback: GET with data parameter (bypasses Apps Script 302 redirect issue)
+    const encoded=encodeURIComponent(JSON.stringify(body));
+    const r2=await fetch(cfg.script_url+'?data='+encoded);
+    const d2=await r2.json();setSyncSt(d2.success?'ok':'error');setTimeout(()=>setSyncSt(null),3000);return d2;
+  }catch{setSyncSt('error');setTimeout(()=>setSyncSt(null),3000);return{success:false};}}};
+  const processQ=async()=>{if(!syncQ.length||!cfg.script_url)return;const it=syncQ[0];const r=await syncPost(it.type,it.payload);if(r.success){setSyncQ(p=>p.slice(1));flash('✓');}};
+  useEffect(()=>{const iv=setInterval(()=>{if(syncQ.length&&cfg?.script_url&&navigator.onLine)processQ();},300000);return()=>clearInterval(iv);},[syncQ,cfg?.script_url]);
+
+  const submitD=()=>{const entries=myA.filter(a=>r(a.sub.id).actual).map(a=>{const rp=r(a.sub.id);return{subject_id:a.sub.id,class_id:a.sub.c,target_page:a.target,actual_page:parseInt(rp.actual),complete:rp.complete||'',reason_code:rp.reason||''};});if(!entries.length){flash('⚠️ خالی');return}const pl={teacher_id:user.id,date:new Date().toISOString().split('T')[0],entries};if(cfg.script_url)syncPost('daily_report',pl);else{setSyncQ(p=>[...p,{type:'daily_report',payload:pl}]);flash('✓ قطار');}};
+  const submitTh=()=>{const blocks=CL.map((cl,i)=>{const d=thD[i];if(!d?.sid)return null;const f=d.grid.filter(st=>st.nm.trim());if(!f.length)return null;const ct={excellent:0,good:0,weak:0,fail:0,absent:0};let tp=0,cn=0;f.forEach(st=>{const rs=cSR(st.sc,st.ab,scoring);if(rs.c&&rs.c!=='invalid'){ct[rs.c]++;if(rs.p!=null){tp+=rs.p;cn++;}}});return{class_id:cl.id,subject_id:d.sid,...ct,average:cn?Math.round(tp/cn):0,notes:d.nt,suggestions:d.sg};}).filter(Boolean);if(!blocks.length){flash('⚠️');return}const w=myThu[0];const pl={examiner_id:user.id,week:w?.wk||0,date:w?.dt||'',blocks};if(cfg.script_url)syncPost('thursday_test',pl);else{setSyncQ(p=>[...p,{type:'thursday_test',payload:pl}]);flash('✓ قطار');}};
+
+  // ═══ LOGIN ═══
+  // ═══ LOGIN HANDLERS ═══
+  const sendOTP=async()=>{
+    const email=loginEmail.trim().toLowerCase();
+    if(!email){setErr('ای میل درج کریں');return}
+    // Whitelist check
+    const teacher=teachers.find(t=>t.email&&t.email.toLowerCase()===email);
+    if(!teacher){setErr('یہ ای میل رجسٹرڈ نہیں ہے');return}
+    if(!cfg.script_url){setErr('سنک URL سیٹ نہیں — ایڈمن سے رابطہ کریں');return}
+    setOtpSending(true);setErr('');
+    try{
+      const body=JSON.stringify({type:'send_otp',email});
+      let r;try{r=await(await fetch(cfg.script_url,{method:'POST',headers:{'Content-Type':'text/plain'},body})).json();}
+      catch{const enc=encodeURIComponent(body);r=await(await fetch(cfg.script_url+'?data='+enc)).json();}
+      if(r.success){setLoginStep(2);setErr('');}
+      else setErr(r.error==='EMAIL_FAILED'?'ای میل بھیجنے میں خرابی':'خرابی: '+r.error);
+    }catch(e){setErr('نیٹ ورک خرابی');}
+    setOtpSending(false);
+  };
+  const verifyOTP=async()=>{
+    if(otpCode.length!==6){setErr('۶ ہندسے درج کریں');return}
+    setOtpSending(true);setErr('');
+    try{
+      const body=JSON.stringify({type:'verify_otp',email:loginEmail.trim().toLowerCase(),code:otpCode});
+      let r;try{r=await(await fetch(cfg.script_url,{method:'POST',headers:{'Content-Type':'text/plain'},body})).json();}
+      catch{const enc=encodeURIComponent(body);r=await(await fetch(cfg.script_url+'?data='+enc)).json();}
+      if(r.success){
+        const teacher=teachers.find(t=>t.email&&t.email.toLowerCase()===loginEmail.trim().toLowerCase());
+        setUser(teacher);setScr('main');setTab('home');setLoginStep(1);setOtpCode('');setLoginEmail('');
+      }else{
+        const msgs={WRONG_CODE:'غلط کوڈ',EXPIRED:'کوڈ ختم ہو گیا — دوبارہ بھیجیں',TOO_MANY_ATTEMPTS:'بہت زیادہ کوششیں',NO_OTP:'کوڈ نہیں ملا — دوبارہ بھیجیں'};
+        setErr(msgs[r.error]||r.error);
+      }
+    }catch{setErr('نیٹ ورک خرابی');}
+    setOtpSending(false);
+  };
+  const adminLogin=()=>{if(pin.length<4){setErr('۴ ہندسے');return}if(pin!==(pins.ADMIN||'9999')){setErr('غلط پن');return}setUser({id:'ADMIN',n:'ایڈمن',role:'admin',exam:false});setScr('main');setTab('home');setPin('');};
+
+  if(scr==='login')return(
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:`linear-gradient(170deg,${ST.dk},#0a1f1f 30%,#132b20 70%)`,fontFamily:ST.f,direction:'rtl',padding:20}}>
+      <img src={LOGO} alt="IRI" style={{width:64,height:64,borderRadius:16,marginBottom:10,boxShadow:`0 8px 32px ${ST.gd}40`}}/>
+      <h1 style={{fontSize:26,fontWeight:800,color:ST.gd,margin:0,lineHeight:2}}>{inst.name_ur}</h1>
+      <p style={{color:ST.sg,fontSize:10,margin:'4px 0 20px',direction:'ltr'}}>{inst.name_en}</p>
+      <div style={{width:'100%',maxWidth:310,background:'rgba(255,255,255,0.04)',borderRadius:20,padding:22,border:`1px solid ${ST.gd}25`}}>
+
+        {/* Toggle: Teacher (email OTP) / Admin (PIN) */}
+        <div style={{display:'flex',gap:6,marginBottom:14}}>
+          <button onClick={()=>{setIsAdminLogin(false);setErr('');setLoginStep(1);}} style={{flex:1,padding:8,borderRadius:10,border:'none',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:!isAdminLogin?ST.gd+'30':'rgba(255,255,255,0.06)',color:!isAdminLogin?ST.gd:'#8a9a8a'}}>👨‍🏫 استاد</button>
+          <button onClick={()=>{setIsAdminLogin(true);setErr('');}} style={{flex:1,padding:8,borderRadius:10,border:'none',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:isAdminLogin?ST.gd+'30':'rgba(255,255,255,0.06)',color:isAdminLogin?ST.gd:'#8a9a8a'}}>🔧 ایڈمن</button>
+        </div>
+
+        {!isAdminLogin&&loginStep===1&&<>
+          <div style={{fontSize:11,color:ST.sg,marginBottom:6,textAlign:'center'}}>اپنا رجسٹرڈ ای میل درج کریں</div>
+          <input type="email" value={loginEmail} onChange={e=>{setLoginEmail(e.target.value);setErr('');}} placeholder="teacher@gmail.com" style={{width:'100%',padding:12,borderRadius:12,border:`1px solid ${ST.gd}30`,background:'rgba(0,0,0,0.3)',color:'#e0d9c8',fontSize:14,fontFamily:'inherit',direction:'ltr',marginBottom:12,outline:'none',textAlign:'center'}}/>
+          <button onClick={sendOTP} disabled={otpSending} style={{width:'100%',padding:12,borderRadius:13,border:'none',background:otpSending?'#666':`linear-gradient(135deg,${ST.gd},#b8860b)`,color:'#1a0e00',fontSize:14,fontWeight:800,cursor:otpSending?'wait':'pointer',fontFamily:'inherit'}}>{otpSending?'بھیج رہا ہے...':'کوڈ بھیجیں 📧'}</button>
+        </>}
+
+        {!isAdminLogin&&loginStep===2&&<>
+          <div style={{fontSize:11,color:'#10b981',marginBottom:4,textAlign:'center'}}>✓ کوڈ بھیج دیا گیا</div>
+          <div style={{fontSize:9,color:ST.sg,marginBottom:10,textAlign:'center',direction:'ltr'}}>{loginEmail}</div>
+          <div style={{display:'flex',gap:5,justifyContent:'center',marginBottom:12,direction:'ltr'}}>
+            {[0,1,2,3,4,5].map(i=><div key={i} style={{width:38,height:44,borderRadius:10,border:otpCode.length>i?`2px solid ${ST.gd}`:'1px solid rgba(255,255,255,0.1)',background:otpCode.length>i?`${ST.gd}18`:'rgba(0,0,0,0.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,color:ST.gd,fontWeight:800}}>{otpCode[i]||''}</div>)}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:5,marginBottom:12,direction:'ltr'}}>{[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((k,i)=><button key={i} onClick={()=>{if(k==='⌫')setOtpCode(p=>p.slice(0,-1));else if(k!==''&&otpCode.length<6)setOtpCode(p=>p+k);setErr('');}} disabled={k===''} style={{padding:'12px 0',borderRadius:11,border:'none',fontSize:17,fontWeight:700,background:k===''?'transparent':k==='⌫'?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.06)',color:k==='⌫'?'#f87171':'#c8b88a',cursor:k===''?'default':'pointer',fontFamily:'inherit'}}>{k}</button>)}</div>
+          <button onClick={verifyOTP} disabled={otpSending} style={{width:'100%',padding:12,borderRadius:13,border:'none',background:otpSending?'#666':`linear-gradient(135deg,#10b981,#059669)`,color:'#fff',fontSize:14,fontWeight:800,cursor:otpSending?'wait':'pointer',fontFamily:'inherit',marginBottom:6}}>{otpSending?'تصدیق...':'تصدیق کریں ✓'}</button>
+          <button onClick={()=>{setLoginStep(1);setOtpCode('');setErr('');}} style={{width:'100%',padding:8,borderRadius:10,border:'none',background:'rgba(255,255,255,0.06)',color:ST.sg,fontSize:10,cursor:'pointer',fontFamily:'inherit'}}>← واپس / دوبارہ بھیجیں</button>
+        </>}
+
+        {isAdminLogin&&<>
+          <div style={{fontSize:11,color:ST.sg,marginBottom:6,textAlign:'center'}}>ایڈمن پن درج کریں</div>
+          <div style={{display:'flex',gap:7,justifyContent:'center',marginBottom:12,direction:'ltr'}}>{[0,1,2,3].map(i=><div key={i} style={{width:44,height:48,borderRadius:11,border:pin.length>i?`2px solid ${ST.gd}`:'1px solid rgba(255,255,255,0.1)',background:pin.length>i?`${ST.gd}18`:'rgba(0,0,0,0.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,color:ST.gd,fontWeight:800}}>{pin[i]?'●':''}</div>)}</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:5,marginBottom:12,direction:'ltr'}}>{[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map((k,i)=><button key={i} onClick={()=>{if(k==='⌫')setPin(p=>p.slice(0,-1));else if(k!==''&&pin.length<4)setPin(p=>p+k);setErr('');}} disabled={k===''} style={{padding:'12px 0',borderRadius:11,border:'none',fontSize:17,fontWeight:700,background:k===''?'transparent':k==='⌫'?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.06)',color:k==='⌫'?'#f87171':'#c8b88a',cursor:k===''?'default':'pointer',fontFamily:'inherit'}}>{k}</button>)}</div>
+          <button onClick={adminLogin} style={{width:'100%',padding:12,borderRadius:13,border:'none',background:`linear-gradient(135deg,${ST.gd},#b8860b)`,color:'#1a0e00',fontSize:14,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>داخل ہوں 🔧</button>
+        </>}
+
+        {err&&<div style={{background:'rgba(239,68,68,0.12)',borderRadius:9,padding:6,marginTop:10,color:'#fca5a5',fontSize:11,textAlign:'center',fontWeight:600}}>{err}</div>}
+      </div>
+    </div>);
+
+  const isEx=user?.exam,isAd=user?.role==='admin';
+  const tabs=[{id:'home',ic:'🏠',l:'ہوم'},{id:'report',ic:'📝',l:'رپورٹ'},...(isEx?[{id:'thu',ic:'📋',l:'امتحان'}]:[]),{id:'tt',ic:'🕐',l:'اوقات'},...(isAd?[{id:'adm',ic:'⚙️',l:'ایڈمن'}]:[])];
+  const goHome=()=>{setTab('home');setAdmSub(null);setShowForm(null);};
+
+  const CDM=()=>{if(!confirmDel)return null;const{type,id,name,deps}=confirmDel;return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setConfirmDel(null)}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:16,padding:20,maxWidth:340,width:'100%',direction:'rtl',fontFamily:ST.f}}>
+        <div style={{fontSize:28,textAlign:'center',marginBottom:6}}>{deps>0?'🚫':'⚠️'}</div>
+        <div style={{fontSize:13,fontWeight:800,textAlign:'center',color:deps>0?'#ef4444':'#333'}}>{deps>0?'حذف ممکن نہیں':'تصدیق حذف'}</div>
+        <div style={{fontSize:11,color:'#666',textAlign:'center',margin:'4px 0 8px'}}>{name}</div>
+        {deps>0?<div style={{background:'#fef2f2',borderRadius:10,padding:8,fontSize:10,color:'#991b1b',textAlign:'center',marginBottom:12}}>{deps} تفویض — پہلے حذف کریں</div>
+        :<div style={{background:'#fefce8',borderRadius:10,padding:8,fontSize:10,color:'#854d0e',textAlign:'center',marginBottom:12}}>واقعی حذف کریں؟</div>}
+        <div style={{display:'flex',gap:8}}><Btn full small color="#9ca3af" onClick={()=>setConfirmDel(null)}>واپس</Btn>{deps===0&&<Btn full small color="#ef4444" onClick={()=>{if(type==='teacher')rmT(id);else if(type==='period')rmPer(id);}}>حذف</Btn>}</div>
+      </div>
+    </div>);};
+
+  // ═══ ADMIN MENU ITEMS ═══
+  const adminItems=[
+    {ic:'🏫',l:'ادارہ ترتیبات',k:'inst'},
+    {ic:'🚦',l:'ڈیش بورڈ',k:'dash'},
+    {ic:'📋',l:'تفویض',k:'assign'},
+    {ic:'📅',l:'جمعرات شیڈول',k:'thuSch'},
+    {ic:'👨‍🏫',l:'اساتذہ',k:'teachers'},
+    {ic:'📚',l:`مضامین (${subjects.length})`,k:'subjects'},
+    {ic:'🕐',l:'اوقات',k:'periods'},
+    {ic:'📊',l:'درجہ بندی / حدود',k:'thresholds'},
+    {ic:'🔐',l:'پن',k:'pins'},
+    {ic:'🔄',l:'سنک',k:'sync'},
+    {ic:'🔁',l:'ری سیٹ',k:'reset'},
+  ];
+
+  return(<div style={{minHeight:'100vh',fontFamily:ST.f,direction:'rtl',background:'#f5f0e8'}}><CDM/>
+    {toast&&<div style={{position:'fixed',top:56,left:'50%',transform:'translateX(-50%)',background:ST.dk,color:ST.gd,padding:'8px 20px',borderRadius:10,fontSize:12,fontWeight:700,zIndex:999,whiteSpace:'nowrap'}}>{toast}</div>}
+    <div style={{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,padding:'11px 15px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100}}>
+      <div style={{display:'flex',alignItems:'center',gap:9}}><img src={LOGO} alt="" style={{width:32,height:32,borderRadius:7}}/><div><div style={{color:ST.gd,fontSize:12,fontWeight:800}}>{user?.n}</div><div style={{color:ST.sg,fontSize:9}}>دن {tDay}/{inst.teaching_days} {syncSt==='sending'?'⏳':syncSt==='ok'?'✓':syncSt==='error'?'✗':''}</div></div></div>
+      <div style={{display:'flex',gap:6,alignItems:'center'}}>{syncQ.length>0&&<span style={{background:'#f59e0b',color:'#fff',padding:'2px 7px',borderRadius:10,fontSize:9,fontWeight:800}}>{syncQ.length}⏳</span>}<button onClick={()=>{setScr('login');setUser(null);setPin('');setSelT('');setLoginEmail('');setLoginStep(1);setOtpCode('');setIsAdminLogin(false);goHome();}} style={{background:'rgba(255,255,255,0.08)',border:'none',color:ST.sg,padding:'4px 9px',borderRadius:7,fontSize:9,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>خروج</button></div>
+    </div>
+    <div style={{padding:12,paddingBottom:72,maxWidth:460,margin:'0 auto'}}>
+
+    {/* HOME */}
+    {tab==='home'&&<div>
+      <div style={{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,borderRadius:16,padding:18,marginBottom:12}}>
+        <div style={{fontSize:22,fontWeight:800,color:ST.gd,lineHeight:2}}>السلام علیکم</div>
+        <div style={{color:ST.sg,fontSize:11,marginTop:2}}>{isAd?`${teachers.length} اساتذہ • ${subjects.length} مضامین`:`${myA.length} مضامین • ${myA.filter(a=>r(a.sub.id).actual).length} مکمل`}</div>
+        {isEx&&myThu.length>0&&<div style={{marginTop:6,background:'rgba(255,255,255,0.06)',borderRadius:8,padding:'4px 8px',fontSize:9,color:'#f59e0b'}}>📋 ممتحن: ہفتہ {myThu.map(w=>w.wk).join('،')}</div>}
+      </div>
+      {!isAd&&myA.map((a,i)=><div key={i} onClick={()=>setTab('report')} style={{background:'#fff',borderRadius:11,padding:'11px 13px',marginBottom:5,borderRight:`4px solid ${a.cls.a}`,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}><div><div style={{fontSize:13,fontWeight:700}}>{a.sub.n}</div><div style={{fontSize:9,color:'#8a9a8a'}}>{a.cls.n} • P{a.p}</div></div><div style={{fontSize:14,fontWeight:800,color:a.cls.a}}>ص{a.target}</div><div style={{width:22,height:22,borderRadius:6,background:r(a.sub.id).actual?'#10b981':'#e5e0d5',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:11}}>{r(a.sub.id).actual?'✓':''}</div></div>)}
+      {isAd&&adminItems.map((it,i)=><div key={i} onClick={()=>{setTab('adm');setAdmSub(it.k);}} style={{background:'#fff',borderRadius:12,padding:'12px 14px',marginBottom:6,display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}><div style={{width:38,height:38,borderRadius:10,background:'#f0ebe0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{it.ic}</div><div style={{flex:1,fontSize:13,fontWeight:700}}>{it.l}</div><span style={{color:'#ccc'}}>←</span></div>)}
+    </div>}
+
+    {/* REPORT */}
+    {tab==='report'&&!isAd&&<div><Ttl icon="📝" text="یومیہ رپورٹ"/>{myA.map((a,i)=>{const rp=r(a.sub.id);const part=rp.complete==='جزوی'||rp.complete==='نہیں';return(<Card key={i} style={{border:`1px solid ${rp.complete==='ہاں'?'#10b981':'#e5e0d5'}`}}><div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}><Bdg text={a.cls.n} bg={a.cls.c} color={a.cls.a}/><span style={{fontSize:13,fontWeight:800}}>{a.sub.n}</span></div><div style={{display:'flex',gap:7,marginBottom:8}}><div style={{flex:1}}><div style={{fontSize:8,color:'#999'}}>ہدف</div><div style={{padding:7,borderRadius:7,background:'#f0ebe0',fontSize:14,fontWeight:800,color:a.cls.a,textAlign:'center'}}>ص{a.target}</div></div><div style={{flex:1}}><div style={{fontSize:8,color:'#999'}}>حقیقی</div><input type="number" value={rp.actual||''} onChange={e=>upd(a.sub.id,'actual',e.target.value)} placeholder="—" style={{width:'100%',padding:7,borderRadius:7,border:'1.5px solid #d5d0c5',fontSize:14,fontWeight:800,textAlign:'center',fontFamily:'inherit',outline:'none',background:'#faf8f3'}}/></div></div><div style={{display:'flex',gap:4}}>{['ہاں','جزوی','نہیں'].map(o=><button key={o} onClick={()=>upd(a.sub.id,'complete',o)} style={{flex:1,padding:6,borderRadius:7,border:'none',fontSize:10,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:rp.complete===o?(o==='ہاں'?'#10b981':o==='جزوی'?'#f59e0b':'#ef4444'):'#f0ebe0',color:rp.complete===o?'#fff':'#6b7c6b'}}>{o}</button>)}</div>{part&&<div style={{display:'flex',flexWrap:'wrap',gap:3,marginTop:5}}>{['غیر حاضری','وقت','مراجعہ','تاخیر','دیگر'].map(rv=><button key={rv} onClick={()=>upd(a.sub.id,'reason',rv)} style={{padding:'3px 7px',borderRadius:5,border:'none',fontSize:8,fontWeight:600,fontFamily:'inherit',cursor:'pointer',background:rp.reason===rv?ST.dk:'#f0ebe0',color:rp.reason===rv?ST.gd:'#6b7c6b'}}>{rv}</button>)}</div>}</Card>)})}<Btn full onClick={submitD}>ارسال ✓</Btn></div>}
+
+    {/* THURSDAY */}
+    {tab==='thu'&&isEx&&<div><Ttl icon="📋" text="جمعرات امتحان"/>{myThu.length===0?<Card style={{textAlign:'center',padding:20}}><div style={{color:'#999'}}>کوئی ہفتہ مقرر نہیں</div></Card>:<>{CL.length>0&&thD.length>0&&<><div style={{display:'flex',gap:3,overflowX:'auto',marginBottom:10}}>{CL.map((cl,i)=><button key={cl.id} onClick={()=>setThB(i)} style={{padding:'5px 10px',borderRadius:9,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap',background:thB===i?cl.a:cl.c,color:thB===i?'#fff':cl.a}}>{cl.n}</button>)}</div><Card style={{border:`2px solid ${CL[thB]?.a}30`}}><Sel value={thD[thB]?.sid||''} onChange={v=>uTh(thB,0,'sid',v)}><option value="">— مضمون —</option>{subjects.filter(s=>s.c===CL[thB]?.id).map(s=><option key={s.id} value={s.id}>{s.n}</option>)}</Sel><div style={{overflowX:'auto',marginTop:8}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:10,direction:'rtl',minWidth:380}}><thead><tr style={{background:CL[thB]?.a,color:'#fff'}}><th style={{padding:5,width:20}}>#</th><th style={{padding:5,textAlign:'right',minWidth:65}}>نام</th>{[1,2,3,4,5].map(q=><th key={q} style={{padding:5,width:30}}>س{q}</th>)}<th style={{width:30}}>کل</th><th style={{width:26}}>%</th><th style={{width:16}}>غ</th></tr></thead><tbody>{(thD[thB]?.grid||[]).map((st,si)=>{const rs=cSR(st.sc,st.ab,scoring);return(<tr key={si} style={{background:st.ab?'#f0f0f0':si%2?'#fff':'#faf8f3'}}><td style={{textAlign:'center',color:'#999',fontSize:9}}>{st.num}</td><td><input value={st.nm} onChange={e=>uTh(thB,si,'nm',e.target.value)} style={{width:'100%',border:'none',background:'transparent',fontSize:10,fontFamily:'inherit',outline:'none',direction:'rtl',padding:2}}/></td>{[0,1,2,3,4].map(q=><td key={q}><input type="number" min="0" max="10" value={st.sc[q]??''} disabled={st.ab} onChange={e=>uTh(thB,si,`q${q}`,e.target.value)} style={{width:26,padding:2,borderRadius:4,border:'1px solid #e5e0d5',fontSize:10,textAlign:'center',fontFamily:'inherit',outline:'none',background:st.ab?'#eee':'#fff'}}/></td>)}<td style={{textAlign:'center',fontWeight:800,fontSize:11,color:rs.c?catC[rs.c]:'#ccc'}}>{rs.t??'—'}</td><td style={{textAlign:'center',fontSize:9,color:rs.c?catC[rs.c]:'#ccc'}}>{rs.p!=null?rs.p+'%':'—'}</td><td><input type="checkbox" checked={st.ab} onChange={e=>uTh(thB,si,'ab',e.target.checked)} style={{width:12,height:12}}/></td></tr>)})}</tbody></table></div></Card><Btn full color={CL[thB]?.a} onClick={submitTh}>ارسال ✓</Btn></>}</>}</div>}
+
+    {/* TIMETABLE */}
+    {tab==='tt'&&<div><Ttl icon="🕐" text="نظام الاوقات"/>{periods.map(p=>{const isB=p.brk||p.type==='break';const a=myA.find(a2=>a2.p===p.id);return(<div key={p.id} style={{display:'flex',alignItems:'center',gap:9,marginBottom:4,background:isB?`linear-gradient(135deg,${ST.dk},${ST.gn})`:a?'#fff':'#f5f0e8',borderRadius:9,padding:'8px 11px'}}><div style={{fontSize:8,color:isB?ST.sg:'#8a9a8a',width:65,textAlign:'center',direction:'ltr',fontFamily:'monospace'}}>{p.s}–{p.e}</div>{isB?<div style={{color:ST.gd,fontSize:11,fontWeight:700}}>🕌 وقفہ</div>:a?<div style={{flex:1}}><Bdg text={a.cls.n} bg={a.cls.c} color={a.cls.a}/> <span style={{fontSize:11,fontWeight:700}}>{a.sub.n}</span></div>:<div style={{flex:1,color:'#c5c0b5',fontSize:10}}>—</div>}</div>);})}</div>}
+
+    {/* ═══ ADMIN ═══ */}
+    {tab==='adm'&&isAd&&<div>
+
+      {/* INSTITUTION SETTINGS */}
+      {admSub==='inst'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="🏫" text="ادارہ ترتیبات"/><div/></div>
+        <Card><Row label="نام (اردو)"><Inp value={inst.name_ur} onChange={v=>updInst('name_ur',v)}/></Row>
+        <Row label="Name (English)"><Inp value={inst.name_en} onChange={v=>updInst('name_en',v)} style={{direction:'ltr'}}/></Row>
+        <Row label="تاریخ آغاز"><input type="date" value={inst.term_start} onChange={e=>updInst('term_start',e.target.value)} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}}/></Row>
+        <Row label="تاریخ اختتام"><input type="date" value={inst.term_end} onChange={e=>updInst('term_end',e.target.value)} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}}/></Row>
+        <div style={{display:'flex',gap:8}}>
+          <Row label="تدریسی دن"><Inp type="number" value={inst.teaching_days} onChange={v=>updInst('teaching_days',parseInt(v)||42)} style={{direction:'ltr',textAlign:'center'}}/></Row>
+          <Row label="چھٹی (0=اتوار)"><Inp type="number" value={inst.off_day} onChange={v=>updInst('off_day',parseInt(v))} style={{direction:'ltr',textAlign:'center'}}/></Row>
+          <Row label="مراجعہ دن"><Inp type="number" value={inst.revision_day} onChange={v=>updInst('revision_day',parseInt(v))} style={{direction:'ltr',textAlign:'center'}}/></Row>
+        </div></Card>
+        <Card style={{background:'#f0fdf4'}}><div style={{fontSize:10,color:'#065f46'}}>✓ تبدیلیاں خودکار محفوظ — حساب شدہ: {thuDates.length} جمعرات، دن {tDay}/{inst.teaching_days}</div></Card>
+      </div>}
+
+      {/* DASHBOARD */}
+      {admSub==='dash'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="🚦" text="ڈیش بورڈ"/><div/></div><div style={{display:'flex',gap:5,marginBottom:10}}>{[{l:'سب',k:'all',v:subjects.length},{l:'✓',k:'green',v:dS.g,c:stC.green},{l:'⚠',k:'yellow',v:dS.y,c:stC.yellow},{l:'✗',k:'red',v:dS.r,c:stC.red}].map(f=><button key={f.k} onClick={()=>setDashFilter(f.k)} style={{flex:1,padding:'6px 0',borderRadius:8,border:dashFilter===f.k?`2px solid ${f.c||ST.gd}`:'2px solid transparent',background:f.c?`${f.c}15`:'#f0ebe0',fontSize:12,fontWeight:800,cursor:'pointer',fontFamily:'inherit',color:f.c||'#333'}}>{f.v} {f.l}</button>)}</div>{CL.map(cl=>{const items=dashData.filter(d=>d.c===cl.id&&(dashFilter==='all'||d.status===dashFilter));if(!items.length)return null;return(<div key={cl.id} style={{marginBottom:10}}><Bdg text={cl.n} bg={cl.c} color={cl.a}/>{items.map(d=><Card key={d.id} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 11px',borderRight:`4px solid ${stC[d.status]}`,marginTop:4}}><div style={{flex:1}}><div style={{fontSize:11,fontWeight:700}}>{d.n}</div><div style={{fontSize:8,color:'#999'}}>ہدف ص{d.target}{d.actual!=null?` • ص${d.actual}`:''}</div></div><div style={{background:`${stC[d.status]}18`,color:stC[d.status],padding:'2px 7px',borderRadius:5,fontSize:11,fontWeight:800}}>{d.variance!=null?(d.variance>=0?`+${d.variance}`:d.variance):'—'}</div></Card>)}</div>);})}</div>}
+
+      {/* THRESHOLDS */}
+      {admSub==='thresholds'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="📊" text="درجہ بندی / حدود"/><div/></div>
+        <Card><div style={{fontSize:12,fontWeight:700,marginBottom:8}}>امتحان درجات (%)</div>
+          <div style={{display:'flex',gap:8}}><Row label="اعلیٰ ≥"><Inp type="number" value={scoring.excellent} onChange={v=>updScoring('excellent',v)} style={{direction:'ltr',textAlign:'center'}}/></Row>
+          <Row label="اچھا ≥"><Inp type="number" value={scoring.good} onChange={v=>updScoring('good',v)} style={{direction:'ltr',textAlign:'center'}}/></Row>
+          <Row label="کمزور ≥"><Inp type="number" value={scoring.weak} onChange={v=>updScoring('weak',v)} style={{direction:'ltr',textAlign:'center'}}/></Row></div>
+          <div style={{fontSize:9,color:'#999',marginTop:4}}>ناکام = {scoring.weak}% سے کم</div>
+        </Card>
+        <Card><div style={{fontSize:12,fontWeight:700,marginBottom:8}}>ڈیش بورڈ ٹریفک لائٹ</div>
+          <Row label="زرد حد (منفی فرق)"><Inp type="number" value={dashCfg.yellow} onChange={v=>updDash('yellow',v)} style={{direction:'ltr',textAlign:'center'}}/></Row>
+          <div style={{fontSize:9,color:'#999'}}>سبز = ہدف پر یا آگے • زرد = {dashCfg.yellow} تک پیچھے • سرخ = {dashCfg.yellow} سے زیادہ پیچھے</div>
+        </Card>
+        <Card style={{background:'#f0fdf4'}}><div style={{fontSize:10,color:'#065f46'}}>✓ خودکار محفوظ</div></Card>
+      </div>}
+
+      {/* THURSDAY SCHEDULE */}
+      {admSub==='thuSch'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="📅" text="جمعرات شیڈول"/><div/></div><Card style={{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`}}><div style={{color:ST.gd,fontSize:11,fontWeight:700}}>خودکار — {examiners.length} ممتحن • {thuDates.length} جمعرات</div><div style={{color:ST.sg,fontSize:9,marginTop:2}}>تاریخیں ادارہ ترتیبات سے آتی ہیں</div></Card>{thuSch.map(w=>{const t=teachers.find(x=>x.id===w.ex);return(<Card key={w.wk} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 13px'}}><div style={{width:36,height:36,borderRadius:9,background:'#fff3cd',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:'#92400e'}}>W{w.wk}</div><div style={{flex:1}}><div style={{fontSize:12,fontWeight:700}}>{w.dt}</div><div style={{fontSize:10,color:t?'#333':'#999'}}>{t?t.n:'—'}</div></div><Bdg text={t?'✓':'✗'} bg={t?'#d1fae5':'#fef2f2'} color={t?'#065f46':'#991b1b'}/></Card>);})}</div>}
+
+      {/* TEACHERS */}
+      {admSub==='teachers'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="👨‍🏫" text="اساتذہ"/><Btn small color={ST.gd} onClick={()=>setShowForm(showForm==='t'?null:'t')}>{showForm==='t'?'✗':'+'}</Btn></div>
+      {showForm==='t'&&<Card style={{border:`2px solid ${ST.gd}40`}}><div style={{display:'flex',gap:6,marginBottom:6}}><Inp value={newT.id} onChange={v=>setNewT(p=>({...p,id:v}))} placeholder="ID" style={{flex:1,direction:'ltr'}}/><Inp value={newT.n} onChange={v=>setNewT(p=>({...p,n:v}))} placeholder="نام" style={{flex:2}}/></div><Inp value={newT.email} onChange={v=>setNewT(p=>({...p,email:v}))} placeholder="email@gmail.com" style={{direction:'ltr',marginBottom:6}}/><label style={{fontSize:11,display:'flex',alignItems:'center',gap:4,marginBottom:8}}><input type="checkbox" checked={newT.exam} onChange={e=>setNewT(p=>({...p,exam:e.target.checked}))}/> ممتحن</label><Btn full color="#10b981" onClick={addT}>شامل ✓</Btn></Card>}
+      {teachers.map(t=><Card key={t.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 13px'}}><div style={{width:34,height:34,borderRadius:8,background:t.role==='principal'?`linear-gradient(135deg,${ST.gd},#b8860b)`:t.exam?'#dbeafe':'#f0ebe0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}}>{t.role==='principal'?'👑':t.exam?'📋':'👤'}</div><div style={{flex:1}}><div style={{fontSize:12,fontWeight:700}}>{t.n}</div><div style={{fontSize:8,color:'#999'}}>{t.id}{t.email?` • ${t.email}`:' • ای میل نہیں'}</div></div>{t.role!=='principal'&&<><button onClick={()=>{const em=prompt('ای میل:',t.email||'');if(em!==null)updCfg('teachers',teachers.map(x=>x.id===t.id?{...x,email:em.trim().toLowerCase()}:x));}} style={{width:26,height:26,borderRadius:6,border:'none',fontSize:11,cursor:'pointer',background:t.email?'#d1fae5':'#fef3c7',color:t.email?'#065f46':'#92400e'}}>📧</button><button onClick={()=>togEx(t.id)} style={{width:26,height:26,borderRadius:6,border:'none',fontSize:11,cursor:'pointer',background:t.exam?'#dbeafe':'#f0ebe0',color:t.exam?'#2563eb':'#999'}}>{t.exam?'✓':'○'}</button><button onClick={()=>setConfirmDel({type:'teacher',id:t.id,name:t.n,deps:tA(t.id)})} style={{width:26,height:26,borderRadius:6,border:'none',fontSize:10,cursor:'pointer',background:'#fef2f2',color:'#ef4444'}}>✗</button></>}</Card>)}</div>}
+
+      {/* SUBJECTS */}
+      {admSub==='subjects'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="📚" text={`مضامین (${subjects.length})`}/><div/></div>{CL.map(cl=>{const cs=subjects.filter(s=>s.c===cl.id);if(!cs.length)return null;return(<div key={cl.id} style={{marginBottom:8}}><Bdg text={`${cl.n} (${cs.length})`} bg={cl.c} color={cl.a}/>{cs.map(s=><Card key={s.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 11px',borderRight:`3px solid ${cl.a}`,marginTop:3}}><div style={{flex:1}}><div style={{fontSize:11,fontWeight:700}}>{s.n}</div><div style={{fontSize:8,color:'#999'}}>ص{s.s}–{s.e} ({s.e-s.s})</div></div></Card>)}</div>);})}</div>}
+
+      {/* PERIODS */}
+      {admSub==='periods'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="🕐" text="اوقات"/><Btn small color={ST.gd} onClick={()=>setShowForm(showForm==='p'?null:'p')}>{showForm==='p'?'✗':'+'}</Btn></div>
+      {showForm==='p'&&<Card style={{border:`2px solid ${ST.gd}40`}}><div style={{display:'flex',gap:6,marginBottom:6}}><div style={{flex:1}}><div style={{fontSize:8,color:'#999'}}>شروع</div><input type="time" value={newPer.s} onChange={e=>setNewPer(p=>({...p,s:e.target.value}))} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}}/></div><div style={{flex:1}}><div style={{fontSize:8,color:'#999'}}>آخر</div><input type="time" value={newPer.e} onChange={e=>setNewPer(p=>({...p,e:e.target.value}))} style={{width:'100%',padding:8,borderRadius:8,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}}/></div></div><div style={{display:'flex',gap:6,marginBottom:8}}>{['class','break'].map(tp=><button key={tp} onClick={()=>setNewPer(p=>({...p,type:tp}))} style={{flex:1,padding:6,borderRadius:7,border:'none',fontSize:10,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:newPer.type===tp?(tp==='class'?'#10b981':'#f59e0b'):'#f0ebe0',color:newPer.type===tp?'#fff':'#6b7c6b'}}>{tp==='class'?'کلاس':'وقفہ'}</button>)}</div><Btn full color="#10b981" onClick={addPer}>شامل ✓</Btn></Card>}
+      {periods.map(p=>{const isB=p.brk||p.type==='break';return(<Card key={p.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 13px',background:isB?`linear-gradient(135deg,${ST.dk},${ST.gn})`:'#fff'}}><div style={{fontSize:12,fontWeight:700,color:isB?ST.gd:'#333',fontFamily:'monospace',direction:'ltr',width:90,textAlign:'center'}}>{p.s}–{p.e}</div><div style={{flex:1}}><Bdg text={isB?'وقفہ':'کلاس'} bg={isB?'rgba(255,255,255,0.1)':'#f0ebe0'} color={isB?ST.gd:'#6b7c6b'}/></div><button onClick={()=>setConfirmDel({type:'period',id:p.id,name:`${p.s}–${p.e}`,deps:pA(p.id)})} style={{width:22,height:22,borderRadius:5,border:'none',fontSize:9,cursor:'pointer',background:isB?'rgba(239,68,68,0.2)':'#fef2f2',color:'#ef4444'}}>✗</button></Card>);})}</div>}
+
+      {/* ASSIGNMENTS */}
+      {admSub==='assign'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="📋" text="تفویض"/><Btn small color={ST.gd} onClick={()=>setShowForm(showForm==='a'?null:'a')}>{showForm==='a'?'✗':'+'}</Btn></div>
+      {showForm==='a'&&<Card style={{border:`2px solid ${ST.gd}40`}}><Sel value={newAsg.t} onChange={v=>setNewAsg(p=>({...p,t:v}))} style={{marginBottom:6}}><option value="">— استاد —</option>{teachers.filter(t=>t.role!=='principal').map(t=><option key={t.id} value={t.id}>{t.n} ({tA(t.id)})</option>)}</Sel><Sel value={newAsg.sub} onChange={v=>setNewAsg(p=>({...p,sub:v}))} style={{marginBottom:6}}><option value="">— مضمون ({unassigned.length}) —</option>{unassigned.map(s=><option key={s.id} value={s.id}>{s.n} ({gC(CL,s.c).n})</option>)}</Sel><Sel value={newAsg.p} onChange={v=>setNewAsg(p=>({...p,p:v}))} style={{marginBottom:8}}><option value="">— پیریڈ —</option>{cPer.map(p=><option key={p.id} value={p.id}>P{p.id}: {p.s}–{p.e}</option>)}</Sel><Btn full color="#10b981" onClick={addAsg}>✓</Btn></Card>}
+      <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:9,minWidth:500}}><thead><tr style={{background:ST.dk}}><th style={{padding:6,color:ST.gd,textAlign:'right',position:'sticky',right:0,background:ST.dk,zIndex:1,minWidth:70}}>استاد</th>{cPer.map(p=><th key={p.id} style={{padding:4,color:'#8fbc8f',textAlign:'center',minWidth:55,direction:'ltr',fontFamily:'monospace',fontSize:8}}>{p.s}<br/>{p.e}</th>)}</tr></thead><tbody>{teachers.filter(t=>t.role!=='principal').map(t=><tr key={t.id} style={{borderBottom:'1px solid #e5e0d5'}}><td style={{padding:'6px 4px',fontWeight:700,fontSize:10,textAlign:'right',position:'sticky',right:0,background:'#fff',zIndex:1}}>{t.n}</td>{cPer.map(p=>{const asg=assignments.find(a=>a.t===t.id&&a.p===p.id);if(!asg)return <td key={p.id} style={{padding:2}}><div style={{height:36,borderRadius:6,background:'#f5f0e8',border:'1px dashed #d5d0c5'}}/></td>;const sub=gS(asg.sub);if(!sub)return <td key={p.id}/>;const cl=gC(CL,sub.c);return(<td key={p.id} style={{padding:2}}><div style={{background:cl.c,borderRadius:6,padding:'4px 3px',textAlign:'center',position:'relative',height:36,display:'flex',flexDirection:'column',justifyContent:'center'}}><div style={{fontSize:8,fontWeight:700,color:cl.a,lineHeight:1.2}}>{sub.n}</div><div style={{fontSize:7,color:'#999'}}>{cl.n}</div><button onClick={()=>rmAsg(t.id,asg.sub)} style={{position:'absolute',top:-4,left:-4,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'none',color:'#fff',fontSize:8,cursor:'pointer',lineHeight:'14px',padding:0}}>✗</button></div></td>);})}</tr>)}</tbody></table></div><div style={{fontSize:10,color:ST.mt,textAlign:'center',marginTop:8}}>{assignments.length} تفویض • {unassigned.length} باقی</div></div>}
+
+      {/* PINS */}
+      {admSub==='pins'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="🔐" text="پن"/><div/></div>
+      <Card style={{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`}}><div style={{color:ST.gd,fontSize:11,fontWeight:700}}>ایڈمن: {pins.ADMIN}</div><div style={{display:'flex',gap:6,marginTop:6}}><Inp value={pinEdit.tid==='ADMIN'?pinEdit.val:''} onChange={v=>setPinEdit({tid:'ADMIN',val:v})} placeholder="نیا" style={{flex:1,color:'#fff',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',direction:'ltr',textAlign:'center'}}/><Btn small color={ST.gd} onClick={()=>{if(pinEdit.tid==='ADMIN'&&pinEdit.val.length===4){updCfg('pins',{...pins,ADMIN:pinEdit.val});setPinEdit({tid:'',val:''});flash('✓');}else flash('⚠️');}}>محفوظ</Btn></div></Card>
+      {teachers.map(t=><Card key={t.id} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 13px'}}><div style={{flex:1}}><div style={{fontSize:12,fontWeight:700}}>{t.n}</div><div style={{fontSize:10,color:'#999',fontFamily:'monospace'}}>{pins[t.id]||'1234'}</div></div><Inp value={pinEdit.tid===t.id?pinEdit.val:''} onChange={v=>setPinEdit({tid:t.id,val:v})} placeholder="نیا" style={{width:55,direction:'ltr',textAlign:'center',fontSize:13,fontWeight:800}}/><Btn small color="#10b981" onClick={()=>{if(pinEdit.tid===t.id&&pinEdit.val.length===4){updCfg('pins',{...pins,[t.id]:pinEdit.val});setPinEdit({tid:'',val:''});flash('✓');}else flash('⚠️');}}>✓</Btn><Btn small color="#f59e0b" onClick={()=>{updCfg('pins',{...pins,[t.id]:'1234'});flash('↺');}}>↺</Btn></Card>)}</div>}
+
+      {/* SYNC */}
+      {admSub==='sync'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="🔄" text="سنک"/><div/></div>
+      <Card><Row label="Apps Script URL"><Inp value={urlInp||cfg.script_url} onChange={v=>setUrlInp(v)} placeholder="https://script.google.com/macros/s/.../exec" style={{direction:'ltr',fontSize:10}}/></Row><div style={{display:'flex',gap:6}}><Btn full small color="#10b981" onClick={()=>{const u=(urlInp||'').trim();if(!u){flash('⚠️');return}updCfg('script_url',u);setUrlInp('');flash('✓');}}>محفوظ</Btn><Btn full small color="#3b82f6" disabled={!cfg.script_url} onClick={async()=>{try{const r=await fetch(cfg.script_url+'?action=ping');const d=await r.json();flash(d.success?'✓ کامیاب':'⚠️');}catch{flash('⚠️ ناکام');}}}>ٹیسٹ</Btn></div></Card>
+      {cfg.script_url?<Card style={{background:'#f0fdf4',borderRight:'4px solid #10b981'}}><div style={{fontSize:10,color:'#065f46'}}>✓ URL سیٹ</div><div style={{fontSize:8,color:'#166534',fontFamily:'monospace',direction:'ltr',wordBreak:'break-all'}}>{cfg.script_url}</div></Card>:<Card style={{background:'#fef2f2',borderRight:'4px solid #ef4444'}}><div style={{fontSize:10,color:'#991b1b'}}>⚠️ URL نہیں</div></Card>}
+      <Card style={{textAlign:'center',padding:16}}><div style={{fontSize:28}}>{syncQ.length===0?'✅':'⏳'}</div><div style={{fontSize:13,fontWeight:800,color:syncQ.length?'#f59e0b':'#10b981'}}>{syncQ.length===0?'سب ارسال':`${syncQ.length} زیر التوا`}</div>{syncQ.length>0&&<Btn small style={{marginTop:10}} onClick={processQ}>ابھی ارسال</Btn>}</Card></div>}
+
+      {/* RESET TO DEFAULTS */}
+      {admSub==='reset'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><Bk onClick={goHome}/><Ttl icon="🔁" text="ری سیٹ"/><div/></div>
+      <Card style={{textAlign:'center',padding:20}}><div style={{fontSize:28}}>⚠️</div><div style={{fontSize:13,fontWeight:800,color:'#ef4444',marginTop:6}}>تمام ترتیبات ڈیفالٹ پر واپس</div><div style={{fontSize:10,color:'#999',margin:'8px 0 16px'}}>اساتذہ، مضامین، تفویض، اوقات، پن — سب ری سیٹ ہوں گے</div>
+      <Btn full color="#ef4444" onClick={async()=>{try{await _stDel("iri-config");await _stDel("iri-reports");await _stDel("iri-syncq");}catch{}setCfgRaw({...DEFAULTS});setRepsRaw({});setSyncQRaw([]);flash('✓ ری سیٹ');goHome();}}>ری سیٹ کریں</Btn></Card></div>}
+
+    </div>}
+    </div>
+
+    <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#fff',borderTop:'1px solid #e5e0d5',display:'flex',justifyContent:'space-around',padding:'5px 0 9px',zIndex:100}}>{tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setAdmSub(null);setShowForm(null);}} style={{background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:1,color:tab===t.id?ST.dk:'#b5b0a5',fontFamily:'inherit',padding:'2px 10px'}}><span style={{fontSize:18,transform:tab===t.id?'scale(1.1)':'scale(1)',transition:'transform 0.2s'}}>{t.ic}</span><span style={{fontSize:8,fontWeight:700}}>{t.l}</span>{tab===t.id&&<div style={{width:14,height:2.5,borderRadius:2,background:ST.gd}}/>}</button>)}</div>
+  </div>);
+}
+
+// Render
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>

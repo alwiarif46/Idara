@@ -1,13 +1,26 @@
 {
   "name": "My Idara — ادارہ تحقیقات اسلامی",
   "short_name": "My Idara",
-  "start_url": "/Idara/",
-  "scope": "/Idara/",
+  "description": "Imam Azam College Academic Management",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#0c2e2e",
   "background_color": "#0c2e2e",
   "dir": "rtl",
   "lang": "ur",
-  "icons": [{"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230c2e2e'/><text x='256' y='320' font-size='260' text-anchor='middle' fill='%23d4af37'>📖</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230c2e2e'/><text x='96' y='120' font-size='100' text-anchor='middle' fill='%23d4af37'>📖</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230c2e2e'/><text x='256' y='320' font-size='260' text-anchor='middle' fill='%23d4af37'>📖</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
 }
