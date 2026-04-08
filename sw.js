@@ -1,12 +1,7 @@
-const CACHE_NAME = 'iri-app-v6';
-const ASSETS = ['./index.html', './manifest.json'];
+const CACHE_NAME = 'iri-app-v7';
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
@@ -18,17 +13,23 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.url.includes('script.google.com') || event.request.url.includes('/exec')) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => new Response(JSON.stringify({ success: false, error: 'OFFLINE' }), {
-          headers: { 'Content-Type': 'application/json' }
-        }))
-    );
-  } else {
-    event.respondWith(
-      caches.match(event.request)
-        .then(cached => cached || fetch(event.request))
-    );
+  // Let Apps Script requests go straight to network — no SW interference
+  if (event.request.url.includes('script.google.com') || 
+      event.request.url.includes('googleapis.com') ||
+      event.request.url.includes('/exec')) {
+    return;
   }
+
+  // For everything else: network first, cache fallback
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        if (response && response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
+  );
 });
