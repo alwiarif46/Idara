@@ -83,259 +83,49 @@ const DEFAULTS = {
     c: '#f5d0d0',
     a: '#dc2626'
   }],
-  subjects: [{
-    id: 'S01',
-    n: 'منہاج العربیة',
-    c: 'oola',
-    s: 9,
-    e: 24
-  }, {
-    id: 'S02',
-    n: 'تمرین الصرف',
-    c: 'oola',
-    s: 5,
-    e: 20
-  }, {
-    id: 'S03',
-    n: 'آسان النحو',
-    c: 'oola',
-    s: 3,
-    e: 38
-  }, {
-    id: 'S04',
-    n: 'فارسی قواعد',
-    c: 'oola',
-    s: 11,
-    e: 87
-  }, {
-    id: 'S05',
-    n: 'احادیث',
-    c: 'oola',
-    s: 1,
-    e: 40
-  }, {
-    id: 'S06',
-    n: 'قرآت',
-    c: 'oola',
-    s: 584,
-    e: 611
-  }, {
-    id: 'S07',
-    n: 'میزان الصرف',
-    c: 'sania',
-    s: 3,
-    e: 53
-  }, {
-    id: 'S08',
-    n: 'نور الایضاح',
-    c: 'sania',
-    s: 1,
-    e: 73
-  }, {
-    id: 'S09',
-    n: 'معلم الانشاء',
-    c: 'sania',
-    s: 1,
-    e: 52
-  }, {
-    id: 'S10',
-    n: 'قصص النبیین',
-    c: 'sania',
-    s: 3,
-    e: 40
-  }, {
-    id: 'S11',
-    n: 'کنز الایمان',
-    c: 'sania',
-    s: 2,
-    e: 110
-  }, {
-    id: 'S12',
-    n: 'گلستان سعدی',
-    c: 'sania',
-    s: 120,
-    e: 258
-  }, {
-    id: 'S13',
-    n: 'نحو میر',
-    c: 'sania',
-    s: 9,
-    e: 93
-  }, {
-    id: 'S14',
-    n: 'فیض الادب',
-    c: 'sania',
-    s: 1,
-    e: 23
-  }, {
-    id: 'S15',
-    n: 'مجانی الادب',
-    c: 'salisa',
-    s: 1,
-    e: 36
-  }, {
-    id: 'S16',
-    n: 'معلم الانشاء ۳',
-    c: 'salisa',
-    s: 1,
-    e: 51
-  }, {
-    id: 'S17',
-    n: 'دروس البلاغة',
-    c: 'salisa',
-    s: 1,
-    e: 30
-  }, {
-    id: 'S18',
-    n: 'ہدایة النحو',
-    c: 'salisa',
-    s: 1,
-    e: 47
-  }, {
-    id: 'S19',
-    n: 'مختصر القدوری',
-    c: 'salisa',
-    s: 1,
-    e: 80
-  }, {
-    id: 'S20',
-    n: 'ریاض الصالحین',
-    c: 'salisa',
-    s: 1,
-    e: 80
-  }, {
-    id: 'S21',
-    n: 'علم الصیغة',
-    c: 'salisa',
-    s: 1,
-    e: 71
-  }, {
-    id: 'S22',
-    n: 'کافیة',
-    c: 'rabia',
-    s: 1,
-    e: 37
-  }, {
-    id: 'S23',
-    n: 'مشکوٰة',
-    c: 'rabia',
-    s: 291,
-    e: 430
-  }, {
-    id: 'S24',
-    n: 'تفسیر الجلالین',
-    c: 'rabia',
-    s: 1,
-    e: 30
-  }, {
-    id: 'S25',
-    n: 'اصول حدیث',
-    c: 'rabia',
-    s: 1,
-    e: 40
-  }, {
-    id: 'S26',
-    n: 'اصول الشاشی',
-    c: 'rabia',
-    s: 1,
-    e: 35
-  }, {
-    id: 'S27',
-    n: 'نفحة العرب',
-    c: 'rabia',
-    s: 1,
-    e: 30
-  }, {
-    id: 'S28',
-    n: 'معلم الانشاء ۴',
-    c: 'rabia',
-    s: 1,
-    e: 51
-  }, {
-    id: 'S29',
-    n: 'شرح الوقایة',
-    c: 'rabia',
-    s: 148,
-    e: 217
-  }, {
-    id: 'S30',
-    n: 'مدارک التنزیل',
-    c: 'khamisa',
-    s: 2,
-    e: 64
-  }, {
-    id: 'S31',
-    n: 'شمائل',
-    c: 'khamisa',
-    s: 2,
-    e: 24
-  }, {
-    id: 'S32',
-    n: 'ہدایة الاولین',
-    c: 'khamisa',
-    s: 3,
-    e: 76
-  }, {
-    id: 'S33',
-    n: 'السراجی',
-    c: 'khamisa',
-    s: 2,
-    e: 85
-  }, {
-    id: 'S34',
-    n: 'نور الانوار',
-    c: 'khamisa',
-    s: 1,
-    e: 38
-  }, {
-    id: 'S35',
-    n: 'قصیدة البردة',
-    c: 'khamisa',
-    s: 3,
-    e: 299
-  }, {
-    id: 'S36',
-    n: 'تفسیر بیضاوی',
-    c: 'fazilat',
-    s: 1,
-    e: 158
-  }, {
-    id: 'S37',
-    n: 'صحیح بخاری',
-    c: 'fazilat',
-    s: 3,
-    e: 73
-  }, {
-    id: 'S38',
-    n: 'صحیح مسلم',
-    c: 'fazilat',
-    s: 448,
-    e: 482
-  }, {
-    id: 'S39',
-    n: 'سنن نسائی',
-    c: 'fazilat',
-    s: 153,
-    e: 196
-  }, {
-    id: 'S40',
-    n: 'سنن ترمذی',
-    c: 'fazilat',
-    s: 21,
-    e: 52
-  }, {
-    id: 'S41',
-    n: 'ہدایة آخرین',
-    c: 'fazilat',
-    s: 1,
-    e: 39
-  }, {
-    id: 'S42',
-    n: 'المختارات',
-    c: 'fazilat',
-    s: 1,
-    e: 65
-  }],
+  subjects: [
+  {id:'S01',n:'جلالین',c:'rabia',s:194,e:228,pub:'مجلس برکات'},
+  {id:'S02',n:'مشکوٰة المصابیح',c:'rabia',s:391,e:430,pub:'فاروقیہ بک ڈپو'},
+  {id:'S03',n:'کافیة',c:'rabia',s:2,e:63,pub:'مجلس برکات'},
+  {id:'S04',n:'اصول الشاشی',c:'rabia',s:5,e:40,pub:'فاروقیہ بک ڈپو'},
+  {id:'S05',n:'نفحة العرب و معلم الانشاء',c:'rabia',s:9,e:52,pub:'مختلف'},
+  {id:'S06',n:'شرح الوقایة',c:'rabia',s:146,e:217,pub:'مجلس برکات'},
+  {id:'S07',n:'آسان اصول حدیث',c:'rabia',s:24,e:83,pub:'نعیمیہ دیوبند'},
+  {id:'S08',n:'قصیدة البردة',c:'khamisa',s:40,e:299,pub:'دعوت اسلامی'},
+  {id:'S09',n:'السراجی',c:'khamisa',s:2,e:84,pub:'برکات'},
+  {id:'S10',n:'ہدایة الاولین',c:'khamisa',s:3,e:76,pub:'برکات'},
+  {id:'S11',n:'ترمذی شریف',c:'khamisa',s:2,e:78,pub:'فاروقیہ'},
+  {id:'S12',n:'معلم الانشاء و آزاد انشاء',c:'khamisa',s:2,e:40,pub:'دارالعلوم ندوة'},
+  {id:'S13',n:'مدارک التنزیل',c:'khamisa',s:2,e:67,pub:'مجلس برکات'},
+  {id:'S14',n:'نور الانوار',c:'khamisa',s:14,e:90,pub:'الجامعة الاسلامیة'},
+  {id:'S15',n:'درس قرآن',c:'salisa',s:123,e:162,pub:'حافظی'},
+  {id:'S16',n:'النحو الواضح',c:'salisa',s:3,e:79,pub:'مکتبہ بلال'},
+  {id:'S17',n:'علم الصیغة',c:'salisa',s:7,e:62,pub:'مجلس برکات'},
+  {id:'S18',n:'ریاض الصالحین',c:'salisa',s:7,e:110,pub:'مجلس برکات'},
+  {id:'S19',n:'مختصر القدوری',c:'salisa',s:19,e:132,pub:'مجلس برکات'},
+  {id:'S20',n:'ہدایة النحو',c:'salisa',s:2,e:47,pub:'مجلس برکات'},
+  {id:'S21',n:'دروس البلاغة',c:'salisa',s:15,e:97,pub:'فاروقیہ'},
+  {id:'S22',n:'نحو میر',c:'sania',s:9,e:88,pub:'فاروقیہ'},
+  {id:'S23',n:'فیض الادب',c:'sania',s:1,e:23,pub:'مجلس برکات'},
+  {id:'S24',n:'گلستان سعدی',c:'sania',s:220,e:257,pub:'مجلس برکات'},
+  {id:'S25',n:'کنز الایمان',c:'sania',s:2,e:110,pub:'دعوت اسلامی'},
+  {id:'S26',n:'قصص النبیین',c:'sania',s:3,e:60,pub:'فاروقیہ'},
+  {id:'S27',n:'نور الایضاح',c:'sania',s:2,e:97,pub:'مجلس برکات'},
+  {id:'S28',n:'میزان الصرف',c:'sania',s:3,e:54,pub:'مکتبہ بلال'},
+  {id:'S29',n:'تمرین الصرف',c:'oola',s:5,e:74,pub:'مجلس صحافت'},
+  {id:'S30',n:'فارسی قواعد و انشاء',c:'oola',s:11,e:72,pub:'مجلس برکات'},
+  {id:'S31',n:'منہاج العربیة',c:'oola',s:9,e:62,pub:'حیدرآباد'},
+  {id:'S32',n:'حفظ و املا — احادیث',c:'oola',s:1,e:40,pub:'استاذ کی مرضی'},
+  {id:'S33',n:'مدنی قاعدہ و عم پارہ',c:'oola',s:1,e:30,pub:'دعوت اسلامی'},
+  {id:'S34',n:'آسان النحو',c:'oola',s:3,e:38,pub:'وحیدیہ'},
+  {id:'S35',n:'سنن نسائی',c:'fazilat',s:153,e:196,pub:'دارالکتاب دیوبند'},
+  {id:'S36',n:'تفسیر بیضاوی',c:'fazilat',s:32,e:181,pub:'دعوت اسلامی'},
+  {id:'S37',n:'صحیح بخاری',c:'fazilat',s:1,e:43,pub:'مکتبہ ملت دیوبند'},
+  {id:'S38',n:'صحیح مسلم',c:'fazilat',s:448,e:482,pub:'فاروقیہ'},
+  {id:'S39',n:'سنن ترمذی',c:'fazilat',s:21,e:66,pub:'فاروقیہ'},
+  {id:'S40',n:'ہدایة الآخرین',c:'fazilat',s:18,e:104,pub:'برکات'},
+  {id:'S41',n:'المختارات',c:'fazilat',s:22,e:65,pub:'برکات'}
+],
   teachers: [{
     id: 'T1',
     n: 'م۔ ارشاد حیدری',
@@ -379,147 +169,46 @@ const DEFAULTS = {
     exam: false,
     email: ''
   }],
-  assignments: [{
-    t: 'T2',
-    sub: 'S13',
-    p: 3
-  }, {
-    t: 'T2',
-    sub: 'S08',
-    p: 4
-  }, {
-    t: 'T2',
-    sub: 'S23',
-    p: 5
-  }, {
-    t: 'T2',
-    sub: 'S26',
-    p: 8
-  }, {
-    t: 'T2',
-    sub: 'S12',
-    p: 9
-  }, {
-    t: 'T2',
-    sub: 'S31',
-    p: 2
-  }, {
-    t: 'T3',
-    sub: 'S24',
-    p: 1
-  }, {
-    t: 'T3',
-    sub: 'S07',
-    p: 2
-  }, {
-    t: 'T3',
-    sub: 'S41',
-    p: 3
-  }, {
-    t: 'T3',
-    sub: 'S19',
-    p: 4
-  }, {
-    t: 'T3',
-    sub: 'S39',
-    p: 5
-  }, {
-    t: 'T3',
-    sub: 'S25',
-    p: 7
-  }, {
-    t: 'T3',
-    sub: 'S32',
-    p: 9
-  }, {
-    t: 'T4',
-    sub: 'S36',
-    p: 1
-  }, {
-    t: 'T4',
-    sub: 'S03',
-    p: 2
-  }, {
-    t: 'T4',
-    sub: 'S33',
-    p: 3
-  }, {
-    t: 'T4',
-    sub: 'S40',
-    p: 4
-  }, {
-    t: 'T4',
-    sub: 'S21',
-    p: 5
-  }, {
-    t: 'T4',
-    sub: 'S35',
-    p: 7
-  }, {
-    t: 'T4',
-    sub: 'S37',
-    p: 8
-  }, {
-    t: 'T4',
-    sub: 'S29',
-    p: 9
-  }, {
-    t: 'T5',
-    sub: 'S30',
-    p: 1
-  }, {
-    t: 'T5',
-    sub: 'S22',
-    p: 2
-  }, {
-    t: 'T5',
-    sub: 'S18',
-    p: 3
-  }, {
-    t: 'T5',
-    sub: 'S34',
-    p: 4
-  }, {
-    t: 'T5',
-    sub: 'S14',
-    p: 5
-  }, {
-    t: 'T5',
-    sub: 'S17',
-    p: 7
-  }, {
-    t: 'T5',
-    sub: 'S38',
-    p: 9
-  }, {
-    t: 'T6',
-    sub: 'S20',
-    p: 2
-  }, {
-    t: 'T6',
-    sub: 'S04',
-    p: 3
-  }, {
-    t: 'T6',
-    sub: 'S28',
-    p: 4
-  }, {
-    t: 'T6',
-    sub: 'S05',
-    p: 5
-  }, {
-    t: 'T6',
-    sub: 'S42',
-    p: 7
-  }, {
-    t: 'T6',
-    sub: 'S10',
-    p: 8
-  }, {
-    t: 'T6',
-    sub: 'S01',
-    p: 9
-  }],
+  assignments: [
+    {t:'T2',sub:'S15',p:1},
+    {t:'T2',sub:'S11',p:2},
+    {t:'T2',sub:'S22',p:3},
+    {t:'T2',sub:'S27',p:4},
+    {t:'T2',sub:'S02',p:5},
+    {t:'T2',sub:'S04',p:8},
+    {t:'T2',sub:'S24',p:9},
+    {t:'T3',sub:'S01',p:1},
+    {t:'T3',sub:'S28',p:2},
+    {t:'T3',sub:'S40',p:3},
+    {t:'T3',sub:'S19',p:4},
+    {t:'T3',sub:'S35',p:5},
+    {t:'T3',sub:'S07',p:7},
+    {t:'T3',sub:'S16',p:8},
+    {t:'T3',sub:'S10',p:9},
+    {t:'T4',sub:'S36',p:1},
+    {t:'T4',sub:'S34',p:2},
+    {t:'T4',sub:'S09',p:3},
+    {t:'T4',sub:'S39',p:4},
+    {t:'T4',sub:'S17',p:5},
+    {t:'T4',sub:'S08',p:7},
+    {t:'T4',sub:'S37',p:8},
+    {t:'T4',sub:'S06',p:9},
+    {t:'T5',sub:'S13',p:1},
+    {t:'T5',sub:'S03',p:2},
+    {t:'T5',sub:'S20',p:3},
+    {t:'T5',sub:'S14',p:4},
+    {t:'T5',sub:'S23',p:5},
+    {t:'T5',sub:'S21',p:7},
+    {t:'T5',sub:'S12',p:8},
+    {t:'T5',sub:'S38',p:9},
+    {t:'T6',sub:'S18',p:2},
+    {t:'T6',sub:'S30',p:3},
+    {t:'T6',sub:'S05',p:4},
+    {t:'T6',sub:'S32',p:5},
+    {t:'T6',sub:'S41',p:7},
+    {t:'T6',sub:'S26',p:8},
+    {t:'T6',sub:'S31',p:9}
+  ],
   periods: [{
     id: 1,
     s: '10:00',
@@ -568,7 +257,7 @@ const DEFAULTS = {
     type: 'class'
   }],
   pins: {
-    ADMIN: '9999',
+    ADMIN: '123456',
     T1: '1234',
     T2: '1234',
     T3: '1234',
@@ -577,6 +266,7 @@ const DEFAULTS = {
     T6: '1234',
     T7: '1234'
   },
+  pin_changed: false,
   script_url: 'https://script.google.com/macros/s/AKfycbw2HcV62ZHMn2IYD3mSh23EwuCPIEHWqwuPeCHxcTACGFs0UIv5BOgkf1TrVC8NvvJNfA/exec',
   scoring: {
     excellent: 80,
@@ -854,6 +544,12 @@ async function loadSyncQ() {
 async function saveSyncQ(q) {
   try { await _sSet('iri-syncq', JSON.stringify(q)); } catch(e) {}
 }
+async function loadThuResults() {
+  try { var v = await _sGet('iri-thu'); return v ? JSON.parse(v) : {}; } catch(e) { return {}; }
+}
+async function saveThuResults(r) {
+  try { await _sSet('iri-thu', JSON.stringify(r)); } catch(e) {}
+}
 
 // ═══════════════════════════════════════════════════════════
 // APP
@@ -904,6 +600,15 @@ function App() {
   const [urlInp, setUrlInp] = useState('');
   const [thB, setThB] = useState(0);
   const [thD, setThD] = useState([]);
+  const [thuResults, setThuResultsRaw] = useState({});
+  const [thuViewWk, setThuViewWk] = useState(1);
+  const [thuSubmitting, setThuSubmitting] = useState(false);
+  const [newCls, setNewCls] = useState({n: '', c: '#e8daef', a: '#7c3aed'});
+  const [newSub, setNewSub] = useState({id: '', n: '', c: '', s: 1, e: 100, pub: ''});
+  const [editSubId, setEditSubId] = useState(null);
+  const [editSub, setEditSub] = useState({});
+  const [editPerId, setEditPerId] = useState(null);
+  const [editPerVal, setEditPerVal] = useState({s: '', e: '', type: 'class'});
   const saveTimer = useRef(null);
 
   // Wrapped setters that auto-persist
@@ -980,6 +685,7 @@ function App() {
       }
       setRepsRaw(savedReps);
       setSyncQRaw(savedQ);
+      try { var tr = await loadThuResults(); setThuResultsRaw(tr||{}); } catch(e) {}
       setLoading(false);
     })();
   }, []);
@@ -1346,7 +1052,182 @@ function App() {
     flash('✓');
   };
 
-  // ── Sync ──
+  // ── Class CRUD ──
+  const addCls = () => {
+    const id = newCls.n.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!id || !newCls.n.trim()) { flash('⚠️ نام درکار'); return; }
+    if (CL.find(c => c.id === id)) { flash('⚠️ موجود'); return; }
+    updCfg('classes', [...CL, {id, n: newCls.n.trim(), c: newCls.c, a: newCls.a}]);
+    setNewCls({n: '', c: '#e8daef', a: '#7c3aed'});
+    setShowForm(null);
+    flash('✓');
+  };
+  const rmCls = id => {
+    if (subjects.some(s => s.c === id)) { flash('⚠️ مضامین موجود'); setConfirmDel(null); return; }
+    updCfg('classes', CL.filter(c => c.id !== id));
+    setConfirmDel(null);
+    flash('✓');
+  };
+
+  // ── Subject CRUD ──
+  const addSub = () => {
+    if (!newSub.id.trim() || !newSub.n.trim() || !newSub.c) { flash('⚠️ ادھورا'); return; }
+    if (subjects.find(s => s.id === newSub.id)) { flash('⚠️ ID موجود'); return; }
+    const s = parseInt(newSub.s) || 1;
+    const e = parseInt(newSub.e) || 100;
+    updCfg('subjects', [...subjects, {id: newSub.id.trim(), n: newSub.n.trim(), c: newSub.c, s, e, pub: newSub.pub.trim()}]);
+    setNewSub({id: '', n: '', c: '', s: 1, e: 100, pub: ''});
+    setShowForm(null);
+    flash('✓');
+  };
+  const rmSub = id => {
+    if (assignments.some(a => a.sub === id)) { flash('⚠️ تفویض موجود'); setConfirmDel(null); return; }
+    updCfg('subjects', subjects.filter(s => s.id !== id));
+    setConfirmDel(null);
+    flash('✓');
+  };
+  const startEditSub = s => { setEditSubId(s.id); setEditSub({n: s.n, c: s.c, s: s.s, e: s.e, pub: s.pub||''}); };
+  const saveEditSub = id => {
+    updCfg('subjects', subjects.map(s => s.id === id ? {...s, n: editSub.n, c: editSub.c, s: parseInt(editSub.s)||s.s, e: parseInt(editSub.e)||s.e, pub: editSub.pub||''} : s));
+    setEditSubId(null);
+    flash('✓');
+  };
+
+  // ── Period inline edit ──
+  const startEditPer = p => { setEditPerId(p.id); setEditPerVal({s: p.s, e: p.e, type: p.type||'class'}); };
+  const saveEditPer = id => {
+    if (!editPerVal.s || !editPerVal.e) { flash('⚠️'); return; }
+    updCfg('periods', periods.map(p => p.id === id ? {...p, s: editPerVal.s, e: editPerVal.e, type: editPerVal.type, brk: editPerVal.type==='break'} : p));
+    setEditPerId(null);
+    flash('✓');
+  };
+
+  // ── Thursday System ──
+  const setThuResults = (updater) => {
+    setThuResultsRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      saveThuResults(next);
+      return next;
+    });
+  };
+
+  // Generate deterministic shuffle for week N
+  // Rule: no teacher examines their own subject
+  const genThuWeekShuffle = (weekNum) => {
+    const examinerIds = teachers.filter(t => t.exam).map(t => t.id);
+    if (!examinerIds.length) return {};
+    // For each subject find which examiners CAN cover it
+    const sorted = [...subjects].sort((a,b) => a.id.localeCompare(b.id));
+    const result = {};
+    examinerIds.forEach(e => result[e] = []);
+    sorted.forEach((sub, idx) => {
+      const teacherId = assignments.find(a => a.sub === sub.id);
+      const eligible = examinerIds.filter(e => !teacherId || e !== teacherId.t);
+      if (!eligible.length) return;
+      // Deterministic rotation by weekNum and subject index
+      const pick = eligible[(idx + weekNum - 1) % eligible.length];
+      result[pick].push(sub.id);
+    });
+    return result;
+  };
+
+  // Get current Thursday week (1-9) or null if not a Thursday
+  const getTodayThuWeek = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const idx = thuDates.indexOf(today);
+    return idx >= 0 ? idx + 1 : null;
+  };
+
+  // Get last completed Thursday week
+  const getLastThuWeek = () => {
+    const today = new Date().toISOString().split('T')[0];
+    let last = null;
+    thuDates.forEach((d, i) => { if (d <= today) last = i + 1; });
+    return last;
+  };
+
+  // Get next upcoming Thursday
+  const getNextThuWeek = () => {
+    const today = new Date().toISOString().split('T')[0];
+    for (let i = 0; i < thuDates.length; i++) {
+      if (thuDates[i] > today) return {wk: i+1, dt: thuDates[i]};
+    }
+    return null;
+  };
+
+  // Add a student to a subject in current week results
+  const addThuStudent = (weekNum, examId, subId) => {
+    setThuResults(prev => {
+      const wk = 'W' + weekNum;
+      const wkData = prev[wk] || {};
+      const examData = wkData[examId] || [];
+      const subEntry = examData.find(e => e.subId === subId);
+      if (subEntry) {
+        subEntry.students = [...subEntry.students, {name:'', result:''}];
+        return {...prev, [wk]: {...wkData, [examId]: [...examData]}};
+      }
+      return {...prev, [wk]: {...wkData, [examId]: [...examData, {subId, students:[{name:'',result:''}]}]}};
+    });
+  };
+
+  const updThuStudent = (weekNum, examId, subId, sIdx, field, val) => {
+    setThuResults(prev => {
+      const wk = 'W' + weekNum;
+      const wkData = {...(prev[wk]||{})};
+      const examData = [...(wkData[examId]||[])];
+      const subIdx = examData.findIndex(e => e.subId === subId);
+      if (subIdx === -1) return prev;
+      const entry = {...examData[subIdx]};
+      const students = [...entry.students];
+      students[sIdx] = {...students[sIdx], [field]: val};
+      entry.students = students;
+      examData[subIdx] = entry;
+      wkData[examId] = examData;
+      return {...prev, [wk]: wkData};
+    });
+  };
+
+  const rmThuStudent = (weekNum, examId, subId, sIdx) => {
+    setThuResults(prev => {
+      const wk = 'W' + weekNum;
+      const wkData = {...(prev[wk]||{})};
+      const examData = [...(wkData[examId]||[])];
+      const subIdx = examData.findIndex(e => e.subId === subId);
+      if (subIdx === -1) return prev;
+      const entry = {...examData[subIdx]};
+      entry.students = entry.students.filter((_,i)=>i!==sIdx);
+      examData[subIdx] = entry;
+      wkData[examId] = examData;
+      return {...prev, [wk]: wkData};
+    });
+  };
+
+  const submitThuWeek = async (weekNum, examId) => {
+    const wk = 'W' + weekNum;
+    const data = ((thuResults[wk]||{})[examId]||[]);
+    if (!data.length) { flash('⚠️ کوئی اندراج نہیں'); return; }
+    const hasStudents = data.some(e => e.students.some(s => s.name.trim()));
+    if (!hasStudents) { flash('⚠️ طلباء کے نام درج کریں'); return; }
+    if (!cfg.script_url) { flash('✓ محفوظ (آف لائن)'); return; }
+    setThuSubmitting(true);
+    const payload = {
+      week: weekNum,
+      date: thuDates[weekNum-1]||'',
+      examiner_id: examId,
+      entries: data.map(e => ({
+        subject_id: e.subId,
+        subject_name: (gS(e.subId)||{}).n||'',
+        class_id: (gS(e.subId)||{}).c||'',
+        students: e.students.filter(s=>s.name.trim())
+      }))
+    };
+    const r = await syncPost('thursday_test', payload);
+    if (r.success) flash('✓ ارسال');
+    else flash('✓ محفوظ (قطار میں)');
+    setThuSubmitting(false);
+  };
+
+    // ── Sync ──
   const submitD = () => {
     const entries = myA.filter(a => r(a.sub.id).actual).map(a => {
       const rp = r(a.sub.id);
@@ -1526,11 +1407,11 @@ function App() {
     setOtpSending(false);
   };
   const adminLogin = () => {
-    if (pin.length < 4) {
-      setErr('۴ ہندسے');
+    if (pin.length < 6) {
+      setErr('۶ ہندسے');
       return;
     }
-    if (pin !== (pins.ADMIN || '9999')) {
+    if (pin !== (pins.ADMIN || '123456')) {
       setErr('غلط پن');
       return;
     }
@@ -1540,11 +1421,47 @@ function App() {
       role: 'admin',
       exam: false
     });
-    setScr('main');
-    setTab('home');
+    if (!cfg.pin_changed) {
+      setScr('change_pin');
+    } else {
+      setScr('main');
+      setTab('home');
+    }
     setPin('');
   };
-  if (scr === 'login') return /*#__PURE__*/React.createElement("div", {
+  if (scr === 'change_pin') return /*#__PURE__*/React.createElement("div", {style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:`linear-gradient(170deg,${ST.dk},#132b20)`,fontFamily:ST.f,padding:20}},
+    /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:18,fontWeight:800,marginBottom:6}}, "🔐 پن تبدیل کریں"),
+    /*#__PURE__*/React.createElement("div", {style:{color:'#8fbc8f',fontSize:11,marginBottom:20,textAlign:'center'}}, "پہلی بار لاگ ان — نیا ۶ ہندسہ پن مقرر کریں"),
+    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:16,direction:'ltr'}},
+      [0,1,2,3,4,5].map(i=>/*#__PURE__*/React.createElement("div", {key:i, style:{width:36,height:44,borderRadius:9,border:pin.length>i?`2px solid ${ST.gd}`:'1px solid rgba(255,255,255,0.1)',background:pin.length>i?`${ST.gd}18`:'rgba(0,0,0,0.2)',display:'flex',alignItems:'center',justifyContent:'center'}},
+        pin.length > i && /*#__PURE__*/React.createElement("div", {style:{width:10,height:10,borderRadius:'50%',background:ST.gd}})
+      ))
+    ),
+    /*#__PURE__*/React.createElement("div", {style:{color:'#ef4444',fontSize:11,marginBottom:12,minHeight:16}}, err),
+    /*#__PURE__*/React.createElement("div", {style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,width:220,marginBottom:16}},
+      [1,2,3,4,5,6,7,8,9,'','0','⌫'].map((k,i)=>/*#__PURE__*/React.createElement("button", {key:i,
+        onClick:()=>{if(k==='⌫'){setPin(p=>p.slice(0,-1));setErr('');}else if(k!==''&&pin.length<6){setPin(p=>p+k);setErr('');}},
+        disabled:k==='',
+        style:{padding:'14px 0',borderRadius:12,border:'none',fontSize:20,fontWeight:700,cursor:k===''?'default':'pointer',background:k===''?'transparent':k==='⌫'?'rgba(255,255,255,0.05)':'rgba(255,255,255,0.08)',color:k===''?'transparent':ST.gd,fontFamily:'monospace'}
+      }, k))
+    ),
+    /*#__PURE__*/React.createElement(Btn, {full:true, color:ST.gd, style:{maxWidth:220,color:ST.dk,fontWeight:800},
+      onClick:()=>{
+        if(pin.length<6){setErr('۶ ہندسے درکار');return;}
+        if(pin==='123456'){setErr('پہلے والا پن نہ رکھیں');return;}
+        updCfg('pins',{...pins,ADMIN:pin});
+        updCfg('pin_changed',true);
+        setPin('');
+        setScr('main');
+        setTab('home');
+        flash('✓ پن محفوظ');
+      }
+    }, "محفوظ کریں ✓"),
+    /*#__PURE__*/React.createElement("button", {onClick:()=>{setScr('main');setTab('home');setPin('');},
+      style:{marginTop:12,background:'none',border:'none',color:'#8fbc8f',fontSize:11,cursor:'pointer',fontFamily:'inherit'}
+    }, "ابھی نہیں — بعد میں بدلیں")
+  );
+    if (scr === 'login') return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: '100vh',
       display: 'flex',
@@ -1787,12 +1704,12 @@ function App() {
       marginBottom: 12,
       direction: 'ltr'
     }
-  }, [0, 1, 2, 3].map(i => /*#__PURE__*/React.createElement("div", {
+  }, [0, 1, 2, 3, 4, 5].map(i => /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
-      width: 44,
-      height: 48,
-      borderRadius: 11,
+      width: 36,
+      height: 44,
+      borderRadius: 9,
       border: pin.length > i ? `2px solid ${ST.gd}` : '1px solid rgba(255,255,255,0.1)',
       background: pin.length > i ? `${ST.gd}18` : 'rgba(0,0,0,0.2)',
       display: 'flex',
@@ -1813,7 +1730,7 @@ function App() {
   }, [1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'].map((k, i) => /*#__PURE__*/React.createElement("button", {
     key: i,
     onClick: () => {
-      if (k === '⌫') setPin(p => p.slice(0, -1));else if (k !== '' && pin.length < 4) setPin(p => p + k);
+      if (k === '⌫') setPin(p => p.slice(0, -1));else if (k !== '' && pin.length < (isAdminLogin ? 6 : 4)) setPin(p => p + k);
       setErr('');
     },
     disabled: k === '',
@@ -1864,7 +1781,7 @@ function App() {
     id: 'report',
     ic: '📝',
     l: 'رپورٹ'
-  }, ...(isEx ? [{
+  }, ...((isEx || isAd) ? [{
     id: 'thu',
     ic: '📋',
     l: 'امتحان'
@@ -1904,6 +1821,10 @@ function App() {
     ic: '👨‍🏫',
     l: 'اساتذہ',
     k: 'teachers'
+  }, {
+    ic: '🎨',
+    l: `جماعتیں (${CL.length})`,
+    k: 'classes'
   }, {
     ic: '📚',
     l: `مضامین (${subjects.length})`,
@@ -2014,7 +1935,10 @@ function App() {
       small: true,
       color: "#ef4444",
       onClick: () => {
-        if (type === 'teacher') rmT(id);else if (type === 'period') rmPer(id);
+        if (type === 'teacher') rmT(id);
+              else if (type === 'period') rmPer(id);
+              else if (type === 'subject') rmSub(id);
+              else if (type === 'class') rmCls(id);
       }
     }, "\u062D\u0630\u0641"))));})() : null, toast && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2343,172 +2267,167 @@ function App() {
   }), /*#__PURE__*/React.createElement(Btn, {
     full: true,
     onClick: submitD
-  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), tab === 'thu' && isEx && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
-    icon: "\uD83D\uDCCB",
-    text: "\u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646"
-  }), myThu.length === 0 ? /*#__PURE__*/React.createElement(Card, {
-    style: {
-      textAlign: 'center',
-      padding: 20
+  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), tab === 'thu' && (isEx || isAd) && /*#__PURE__*/React.createElement("div", null,
+  (function(){
+    const todayWk = getTodayThuWeek();
+    const lastWk = getLastThuWeek();
+    const nextWk = getNextThuWeek();
+    const isThursday = todayWk !== null;
+    const activeWk = isAd ? thuViewWk : (isThursday ? todayWk : null);
+    const examId = isAd ? null : (user ? user.id : null);
+    const resultColor = r => r==='اعلیٰ'?'#065f46':r==='اچھا'?'#1e40af':r==='کمزور'?'#92400e':r==='ناکام'?'#991b1b':'#6b7c6b';
+    const resultBg = r => r==='اعلیٰ'?'#d1fae5':r==='اچھا'?'#dbeafe':r==='کمزور'?'#fef3c7':r==='ناکام'?'#fee2e2':'#f3f4f6';
+
+    // ADMIN VIEW
+    if (isAd) return /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+        /*#__PURE__*/React.createElement(Ttl, {icon:"📋", text:"جمعرات امتحانات"}),
+        /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:4}},
+          thuDates.map((_,i)=>/*#__PURE__*/React.createElement("button", {key:i,onClick:()=>setThuViewWk(i+1),
+            style:{padding:'4px 8px',borderRadius:6,border:'none',fontSize:10,fontWeight:700,cursor:'pointer',
+              background:thuViewWk===i+1?ST.gd:'#f0ebe0',color:thuViewWk===i+1?ST.dk:'#6b7c6b'}
+          }, "W"+(i+1)))
+        )
+      ),
+      /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
+        /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:11,fontWeight:700}},
+          "ہفتہ "+thuViewWk+" — "+(thuDates[thuViewWk-1]||'')
+        ),
+        /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:9,marginTop:2}},
+          "شفل خودکار — کوئی استاذ اپنے مضمون کا ممتحن نہیں"
+        )
+      ),
+      teachers.filter(t=>t.exam).map(examT => {
+        const shuffle = genThuWeekShuffle(thuViewWk);
+        const mySubs = (shuffle[examT.id]||[]).map(sid=>gS(sid)).filter(Boolean);
+        const wk = 'W'+thuViewWk;
+        const submitted = ((thuResults[wk]||{})[examT.id]||[]);
+        return /*#__PURE__*/React.createElement(Card, {key:examT.id, style:{marginBottom:6}},
+          /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:800,color:ST.dk,marginBottom:6}},
+            examT.n, " — ", mySubs.length, " مضامین"
+          ),
+          mySubs.map(sub => {
+            const cl = (CL.find(c=>c.id===sub.c))||{n:'',c:'#eee',a:'#999'};
+            const entry = submitted.find(e=>e.subId===sub.id);
+            return /*#__PURE__*/React.createElement("div", {key:sub.id, style:{
+              borderRight:`3px solid ${cl.a}`,paddingRight:8,marginBottom:8,paddingBottom:4
+            }},
+              /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700}}, sub.n),
+              /*#__PURE__*/React.createElement(Bdg, {text:cl.n, bg:cl.c, color:cl.a}),
+              entry && entry.students.filter(s=>s.name.trim()).map((s,i)=>
+                /*#__PURE__*/React.createElement("div", {key:i, style:{display:'flex',gap:6,alignItems:'center',marginTop:3}},
+                  /*#__PURE__*/React.createElement("div", {style:{flex:1,fontSize:9}}, s.name),
+                  s.result && /*#__PURE__*/React.createElement(Bdg, {text:s.result, bg:resultBg(s.result), color:resultColor(s.result)})
+                )
+              ),
+              (!entry||!entry.students.filter(s=>s.name).length) && /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#bbb',marginTop:3}}, "ابھی درج نہیں")
+            );
+          })
+        );
+      })
+    );
+
+    // EXAMINER — TODAY IS THURSDAY
+    if (isThursday && examId) {
+      const shuffle = genThuWeekShuffle(todayWk);
+      const mySubs = (shuffle[examId]||[]).map(sid=>gS(sid)).filter(Boolean);
+      const wk = 'W'+todayWk;
+      const myEntries = ((thuResults[wk]||{})[examId]||[]);
+      return /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
+          /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:13,fontWeight:800}}, "جمعرات امتحان — ہفتہ "+todayWk),
+          /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
+            thuDates[todayWk-1]||'', " • ", mySubs.length, " مضامین"
+          )
+        ),
+        mySubs.map(sub => {
+          const cl = (CL.find(c=>c.id===sub.c))||{n:'',c:'#eee',a:'#999'};
+          const entry = myEntries.find(e=>e.subId===sub.id)||{subId:sub.id,students:[]};
+          return /*#__PURE__*/React.createElement(Card, {key:sub.id, style:{borderRight:`4px solid ${cl.a}`,marginBottom:8}},
+            /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
+              /*#__PURE__*/React.createElement("div", null,
+                /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:800}}, sub.n),
+                /*#__PURE__*/React.createElement(Bdg, {text:cl.n, bg:cl.c, color:cl.a})
+              ),
+              /*#__PURE__*/React.createElement(Btn, {small:true,color:ST.gd,
+                onClick:()=>addThuStudent(todayWk,examId,sub.id)
+              }, "+ طالب علم")
+            ),
+            entry.students.map((st,si)=>/*#__PURE__*/React.createElement("div", {key:si,
+              style:{display:'flex',gap:6,alignItems:'center',marginBottom:4,paddingBottom:4,borderBottom:'1px solid #f0ebe0'}},
+              /*#__PURE__*/React.createElement("input", {
+                value:st.name, placeholder:"نام",
+                onChange:e=>updThuStudent(todayWk,examId,sub.id,si,'name',e.target.value),
+                style:{flex:2,padding:'5px 7px',borderRadius:7,border:'1px solid #d5d0c5',fontSize:11,fontFamily:'inherit',outline:'none',background:'#faf8f3'}
+              }),
+              /*#__PURE__*/React.createElement(Sel, {value:st.result,
+                onChange:v=>updThuStudent(todayWk,examId,sub.id,si,'result',v),
+                style:{flex:1,fontSize:10}
+              },
+                /*#__PURE__*/React.createElement("option",{value:''},"نتیجہ"),
+                ['اعلیٰ','اچھا','کمزور','ناکام','غائب'].map(r=>
+                  /*#__PURE__*/React.createElement("option",{key:r,value:r},r))
+              ),
+              /*#__PURE__*/React.createElement("button", {
+                onClick:()=>rmThuStudent(todayWk,examId,sub.id,si),
+                style:{background:'#fef2f2',border:'none',borderRadius:5,padding:'4px 7px',cursor:'pointer',color:'#ef4444',fontSize:11}
+              }, "✗")
+            ))
+          );
+        }),
+        /*#__PURE__*/React.createElement(Btn, {full:true,color:ST.gd,
+          disabled:thuSubmitting,
+          onClick:()=>submitThuWeek(todayWk,examId)
+        }, thuSubmitting?'ارسال ہو رہا ہے...':'✓ جمع کریں')
+      );
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: '#999'
-    }
-  }, "\u06A9\u0648\u0626\u06CC \u06C1\u0641\u062A\u06C1 \u0645\u0642\u0631\u0631 \u0646\u06C1\u06CC\u06BA")) : /*#__PURE__*/React.createElement(React.Fragment, null, CL.length > 0 && thD.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 3,
-      overflowX: 'auto',
-      marginBottom: 10
-    }
-  }, CL.map((cl, i) => /*#__PURE__*/React.createElement("button", {
-    key: cl.id,
-    onClick: () => setThB(i),
-    style: {
-      padding: '5px 10px',
-      borderRadius: 9,
-      border: 'none',
-      fontSize: 9,
-      fontWeight: 700,
-      fontFamily: 'inherit',
-      cursor: 'pointer',
-      whiteSpace: 'nowrap',
-      background: thB === i ? cl.a : cl.c,
-      color: thB === i ? '#fff' : cl.a
-    }
-  }, cl.n))), /*#__PURE__*/React.createElement(Card, {
-    style: {
-      border: `2px solid ${CL[thB] && CL[thB].a}30`
-    }
-  }, /*#__PURE__*/React.createElement(Sel, {
-    value: thD[thB] && thD[thB].sid || '',
-    onChange: v => uTh(thB, 0, 'sid', v)
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "\u2014 \u0645\u0636\u0645\u0648\u0646 \u2014"), subjects.filter(s => s.c === (CL[thB] && CL[thB].id)).map(s => /*#__PURE__*/React.createElement("option", {
-    key: s.id,
-    value: s.id
-  }, s.n))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      overflowX: 'auto',
-      marginTop: 8
-    }
-  }, /*#__PURE__*/React.createElement("table", {
-    style: {
-      width: '100%',
-      borderCollapse: 'collapse',
-      fontSize: 10,
-      direction: 'rtl',
-      minWidth: 380
-    }
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
-    style: {
-      background: CL[thB] && CL[thB].a,
-      color: '#fff'
-    }
-  }, /*#__PURE__*/React.createElement("th", {
-    style: {
-      padding: 5,
-      width: 20
-    }
-  }, "#"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      padding: 5,
-      textAlign: 'right',
-      minWidth: 65
-    }
-  }, "\u0646\u0627\u0645"), [1, 2, 3, 4, 5].map(q => /*#__PURE__*/React.createElement("th", {
-    key: q,
-    style: {
-      padding: 5,
-      width: 30
-    }
-  }, "\u0633", q)), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 30
-    }
-  }, "\u06A9\u0644"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 26
-    }
-  }, "%"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 16
-    }
-  }, "\u063A"))), /*#__PURE__*/React.createElement("tbody", null, (thD[thB] && thD[thB].grid || []).map((st, si) => {
-    const rs = cSR(st.sc, st.ab, scoring);
-    return /*#__PURE__*/React.createElement("tr", {
-      key: si,
-      style: {
-        background: st.ab ? '#f0f0f0' : si % 2 ? '#fff' : '#faf8f3'
-      }
-    }, /*#__PURE__*/React.createElement("td", {
-      style: {
-        textAlign: 'center',
-        color: '#999',
-        fontSize: 9
-      }
-    }, st.num), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
-      value: st.nm,
-      onChange: e => uTh(thB, si, 'nm', e.target.value),
-      style: {
-        width: '100%',
-        border: 'none',
-        background: 'transparent',
-        fontSize: 10,
-        fontFamily: 'inherit',
-        outline: 'none',
-        direction: 'rtl',
-        padding: 2
-      }
-    })), [0, 1, 2, 3, 4].map(q => /*#__PURE__*/React.createElement("td", {
-      key: q
-    }, /*#__PURE__*/React.createElement("input", {
-      type: "number",
-      min: "0",
-      max: "10",
-      value: st.sc[q] != null ? st.sc[q] : '',
-      disabled: st.ab,
-      onChange: e => uTh(thB, si, `q${q}`, e.target.value),
-      style: {
-        width: 26,
-        padding: 2,
-        borderRadius: 4,
-        border: '1px solid #e5e0d5',
-        fontSize: 10,
-        textAlign: 'center',
-        fontFamily: 'inherit',
-        outline: 'none',
-        background: st.ab ? '#eee' : '#fff'
-      }
-    }))), /*#__PURE__*/React.createElement("td", {
-      style: {
-        textAlign: 'center',
-        fontWeight: 800,
-        fontSize: 11,
-        color: rs.c ? catC[rs.c] : '#ccc'
-      }
-    }, rs.t != null ? rs.t : '—'), /*#__PURE__*/React.createElement("td", {
-      style: {
-        textAlign: 'center',
-        fontSize: 9,
-        color: rs.c ? catC[rs.c] : '#ccc'
-      }
-    }, rs.p != null ? rs.p + '%' : '—'), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
-      type: "checkbox",
-      checked: st.ab,
-      onChange: e => uTh(thB, si, 'ab', e.target.checked),
-      style: {
-        width: 12,
-        height: 12
-      }
-    })));
-  }))))), /*#__PURE__*/React.createElement(Btn, {
-    full: true,
-    color: CL[thB] && CL[thB].a,
-    onClick: submitTh
-  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")))), tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
+
+    // EXAMINER — NOT THURSDAY: show past results + upcoming
+    return /*#__PURE__*/React.createElement("div", null,
+      nextWk && /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
+        /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:12,fontWeight:800}}, "اگلا جمعرات"),
+        /*#__PURE__*/React.createElement("div", {style:{color:'#fff',fontSize:14,fontWeight:800,marginTop:2}}, nextWk.dt),
+        /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
+          "ہفتہ "+nextWk.wk+" — آپ کے مضامین: "+(genThuWeekShuffle(nextWk.wk)[examId||'']||[]).length
+        )
+      ),
+      lastWk && /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:'#666',marginBottom:6}}, "گزشتہ امتحانات"),
+        [...Array(lastWk)].map((_,i) => {
+          const wkN = lastWk - i;
+          const wk = 'W'+wkN;
+          const entries = ((thuResults[wk]||{})[examId||'']||[]);
+          return /*#__PURE__*/React.createElement(Card, {key:wkN, style:{marginBottom:6}},
+            /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:ST.dk,marginBottom:4}},
+              "ہفتہ "+wkN+" — "+(thuDates[wkN-1]||'')
+            ),
+            entries.length === 0 ?
+              /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#bbb'}}, "درج نہیں") :
+              entries.map(entry => {
+                const sub = gS(entry.subId);
+                if (!sub) return null;
+                const cl = (CL.find(c=>c.id===sub.c))||{n:'',c:'#eee',a:'#999'};
+                const filled = entry.students.filter(s=>s.name.trim());
+                return /*#__PURE__*/React.createElement("div", {key:entry.subId,
+                  style:{borderRight:`3px solid ${cl.a}`,paddingRight:6,marginBottom:4}},
+                  /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700}}, sub.n, " • ", filled.length, " طلباء"),
+                  filled.map((s,si)=>/*#__PURE__*/React.createElement("div", {key:si,
+                    style:{display:'flex',justifyContent:'space-between',fontSize:9,marginTop:2}},
+                    /*#__PURE__*/React.createElement("span", null, s.name),
+                    s.result && /*#__PURE__*/React.createElement(Bdg, {text:s.result,bg:resultBg(s.result),color:resultColor(s.result)})
+                  ))
+                );
+              })
+          );
+        })
+      ),
+      !lastWk && !nextWk && /*#__PURE__*/React.createElement(Card, {style:{textAlign:'center',padding:20}},
+        /*#__PURE__*/React.createElement("div", {style:{color:'#999'}}, "ابھی کوئی جمعرات شیڈول نہیں")
+      )
+    );
+  })()
+),
+tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
     icon: "\uD83D\uDD50",
     text: "\u0646\u0638\u0627\u0645 \u0627\u0644\u0627\u0648\u0642\u0627\u062A"
   }), periods.map(p => {
@@ -3073,56 +2992,96 @@ function App() {
       background: '#fef2f2',
       color: '#ef4444'
     }
-  }, "\u2717"))))), admSub === 'subjects' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement(Bk, {
-    onClick: goHome
-  }), /*#__PURE__*/React.createElement(Ttl, {
-    icon: "\uD83D\uDCDA",
-    text: `مضامین (${subjects.length})`
-  }), /*#__PURE__*/React.createElement("div", null)), CL.map(cl => {
+  }, "\u2717"))))), admSub === 'subjects' && /*#__PURE__*/React.createElement("div", null,
+  /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    /*#__PURE__*/React.createElement(Bk, {onClick: goHome}),
+    /*#__PURE__*/React.createElement(Ttl, {icon:"\uD83D\uDCDA", text:`مضامین (${subjects.length})`}),
+    /*#__PURE__*/React.createElement(Btn, {small:true, color:ST.gd, onClick:()=>setShowForm(showForm==='sub'?null:'sub')}, showForm==='sub'?'✗':'+ نیا')
+  ),
+  showForm==='sub' && /*#__PURE__*/React.createElement(Card, {style:{border:`2px solid ${ST.gd}40`,marginBottom:8}},
+    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:6}},
+      /*#__PURE__*/React.createElement(Inp, {value:newSub.id, onChange:v=>setNewSub(p=>({...p,id:v})), placeholder:"ID (S43)", style:{flex:1,direction:'ltr'}}),
+      /*#__PURE__*/React.createElement(Inp, {value:newSub.n, onChange:v=>setNewSub(p=>({...p,n:v})), placeholder:"نام", style:{flex:2}})
+    ),
+    /*#__PURE__*/React.createElement(Sel, {value:newSub.c, onChange:v=>setNewSub(p=>({...p,c:v})), style:{marginBottom:6}},
+      /*#__PURE__*/React.createElement("option", {value:''},"-- جماعت --"),
+      CL.map(cl=>/*#__PURE__*/React.createElement("option", {key:cl.id, value:cl.id}, cl.n))
+    ),
+    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:6}},
+      /*#__PURE__*/React.createElement(Row, {label:"شروع صفحہ"}, /*#__PURE__*/React.createElement(Inp, {type:"number", value:newSub.s, onChange:v=>setNewSub(p=>({...p,s:v})), style:{direction:'ltr'}})),
+      /*#__PURE__*/React.createElement(Row, {label:"آخر صفحہ"}, /*#__PURE__*/React.createElement(Inp, {type:"number", value:newSub.e, onChange:v=>setNewSub(p=>({...p,e:v})), style:{direction:'ltr'}}))
+    ),
+    /*#__PURE__*/React.createElement(Inp, {value:newSub.pub, onChange:v=>setNewSub(p=>({...p,pub:v})), placeholder:"ناشر", style:{marginBottom:8}}),
+    /*#__PURE__*/React.createElement(Btn, {full:true, color:"#10b981", onClick:addSub}, "شامل ✓")
+  ),
+  CL.map(cl => {
     const cs = subjects.filter(s => s.c === cl.id);
     if (!cs.length) return null;
-    return /*#__PURE__*/React.createElement("div", {
-      key: cl.id,
-      style: {
-        marginBottom: 8
-      }
-    }, /*#__PURE__*/React.createElement(Bdg, {
-      text: `${cl.n} (${cs.length})`,
-      bg: cl.c,
-      color: cl.a
-    }), cs.map(s => /*#__PURE__*/React.createElement(Card, {
-      key: s.id,
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '8px 11px',
-        borderRight: `3px solid ${cl.a}`,
-        marginTop: 3
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        fontWeight: 700
-      }
-    }, s.n), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        color: '#999'
-      }
-    }, "\u0635", s.s, "\u2013", s.e, " (", s.e - s.s, ")")))));
-  })), admSub === 'periods' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement("div", {key:cl.id, style:{marginBottom:8}},
+      /*#__PURE__*/React.createElement(Bdg, {text:`${cl.n} (${cs.length})`, bg:cl.c, color:cl.a}),
+      cs.map(s => {
+        const asgT = assignments.filter(a=>a.sub===s.id).map(a=>teachers.find(t=>t.id===a.t)).filter(Boolean);
+        const isEditing = editSubId === s.id;
+        return /*#__PURE__*/React.createElement(Card, {key:s.id, style:{marginTop:3, borderRight:`3px solid ${cl.a}`, padding:'8px 11px'}},
+          isEditing ? /*#__PURE__*/React.createElement("div", null,
+            /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:4}},
+              /*#__PURE__*/React.createElement(Inp, {value:editSub.n, onChange:v=>setEditSub(p=>({...p,n:v})), placeholder:"نام", style:{flex:2}}),
+              /*#__PURE__*/React.createElement(Sel, {value:editSub.c, onChange:v=>setEditSub(p=>({...p,c:v})), style:{flex:1}},
+                CL.map(cl2=>/*#__PURE__*/React.createElement("option", {key:cl2.id,value:cl2.id},cl2.n))
+              )
+            ),
+            /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:4}},
+              /*#__PURE__*/React.createElement(Row, {label:"شروع"}, /*#__PURE__*/React.createElement(Inp, {type:"number",value:editSub.s,onChange:v=>setEditSub(p=>({...p,s:v})),style:{direction:'ltr'}})),
+              /*#__PURE__*/React.createElement(Row, {label:"آخر"}, /*#__PURE__*/React.createElement(Inp, {type:"number",value:editSub.e,onChange:v=>setEditSub(p=>({...p,e:v})),style:{direction:'ltr'}}))
+            ),
+            /*#__PURE__*/React.createElement(Inp, {value:editSub.pub||'', onChange:v=>setEditSub(p=>({...p,pub:v})), placeholder:"ناشر", style:{marginBottom:6}}),
+            /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6}},
+              /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#10b981",onClick:()=>saveEditSub(s.id)}, "✓ محفوظ"),
+              /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#9ca3af",onClick:()=>setEditSubId(null)}, "واپس")
+            )
+          ) : /*#__PURE__*/React.createElement("div", {style:{display:'flex',alignItems:'center',gap:8}},
+            /*#__PURE__*/React.createElement("div", {style:{flex:1}},
+              /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700}}, s.n),
+              /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999'}}, "ص", s.s, "–", s.e, " (", s.e-s.s, ")", s.pub ? ` • ${s.pub}` : ''),
+              asgT.length > 0 && /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:cl.a,fontWeight:700}}, asgT.map(t=>t.n).join('، '))
+            ),
+            /*#__PURE__*/React.createElement("button", {onClick:()=>startEditSub(s), style:{background:'#e0f2fe',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#0369a1'}}, "✏️"),
+            /*#__PURE__*/React.createElement("button", {onClick:()=>setConfirmDel({type:'subject',id:s.id,name:s.n,deps:assignments.filter(a=>a.sub===s.id).length}), style:{background:'#fef2f2',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#ef4444'}}, "✗")
+          )
+        );
+      })
+    );
+  })),
+  admSub === 'classes' && /*#__PURE__*/React.createElement("div", null,
+  /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    /*#__PURE__*/React.createElement(Bk, {onClick:goHome}),
+    /*#__PURE__*/React.createElement(Ttl, {icon:"\uD83C\uDFA8", text:`جماعتیں (${CL.length})`}),
+    /*#__PURE__*/React.createElement(Btn, {small:true,color:ST.gd,onClick:()=>setShowForm(showForm==='cls'?null:'cls')}, showForm==='cls'?'✗':'+ نیا')
+  ),
+  showForm==='cls' && /*#__PURE__*/React.createElement(Card, {style:{border:`2px solid ${ST.gd}40`,marginBottom:8}},
+    /*#__PURE__*/React.createElement(Inp, {value:newCls.n, onChange:v=>setNewCls(p=>({...p,n:v})), placeholder:"جماعت کا نام", style:{marginBottom:6}}),
+    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:8,marginBottom:8,alignItems:'center'}},
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#999'}}, "پس منظر رنگ:"),
+      /*#__PURE__*/React.createElement("input", {type:"color", value:newCls.c, onChange:e=>setNewCls(p=>({...p,c:e.target.value})), style:{width:36,height:28,border:'none',borderRadius:6,cursor:'pointer',padding:2}}),
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#999',marginRight:8}}, "بیج رنگ:"),
+      /*#__PURE__*/React.createElement("input", {type:"color", value:newCls.a, onChange:e=>setNewCls(p=>({...p,a:e.target.value})), style:{width:36,height:28,border:'none',borderRadius:6,cursor:'pointer',padding:2}})
+    ),
+    /*#__PURE__*/React.createElement(Btn, {full:true,color:"#10b981",onClick:addCls}, "شامل ✓")
+  ),
+  CL.map(cl => /*#__PURE__*/React.createElement(Card, {key:cl.id, style:{display:'flex',alignItems:'center',gap:10,padding:'10px 13px',borderRight:`4px solid ${cl.a}`}},
+    /*#__PURE__*/React.createElement("div", {style:{width:32,height:32,borderRadius:8,background:cl.c,border:`2px solid ${cl.a}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:cl.a}},
+      subjects.filter(s=>s.c===cl.id).length
+    ),
+    /*#__PURE__*/React.createElement("div", {style:{flex:1}},
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:13,fontWeight:700}}, cl.n),
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#999',fontFamily:'monospace'}}, cl.id)
+    ),
+    /*#__PURE__*/React.createElement("button", {
+      onClick:()=>setConfirmDel({type:'class',id:cl.id,name:cl.n,deps:subjects.filter(s=>s.c===cl.id).length}),
+      style:{background:'#fef2f2',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#ef4444'}
+    }, "✗")
+  ))
+), admSub === 'periods' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -3228,51 +3187,37 @@ function App() {
     onClick: addPer
   }, "\u0634\u0627\u0645\u0644 \u2713")), periods.map(p => {
     const isB = p.brk || p.type === 'break';
+    const isEditingP = editPerId === p.id;
     return /*#__PURE__*/React.createElement(Card, {
       key: p.id,
       style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 13px',
-        background: isB ? `linear-gradient(135deg,${ST.dk},${ST.gn})` : '#fff'
+        padding: '8px 11px',
+        background: isB && !isEditingP ? `linear-gradient(135deg,${ST.dk},${ST.gn})` : '#fff'
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        fontWeight: 700,
-        color: isB ? ST.gd : '#333',
-        fontFamily: 'monospace',
-        direction: 'ltr',
-        width: 90,
-        textAlign: 'center'
-      }
-    }, p.s, "\u2013", p.e), /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement(Bdg, {
-      text: isB ? 'وقفہ' : 'کلاس',
-      bg: isB ? 'rgba(255,255,255,0.1)' : '#f0ebe0',
-      color: isB ? ST.gd : '#6b7c6b'
-    })), /*#__PURE__*/React.createElement("button", {
-      onClick: () => setConfirmDel({
-        type: 'period',
-        id: p.id,
-        name: `${p.s}–${p.e}`,
-        deps: pA(p.id)
-      }),
-      style: {
-        width: 22,
-        height: 22,
-        borderRadius: 5,
-        border: 'none',
-        fontSize: 9,
-        cursor: 'pointer',
-        background: isB ? 'rgba(239,68,68,0.2)' : '#fef2f2',
-        color: '#ef4444'
-      }
-    }, "\u2717"));
+    }, isEditingP ? /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:4}},
+        /*#__PURE__*/React.createElement("div", {style:{flex:1}},
+          /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999',marginBottom:2}}, "شروع"),
+          /*#__PURE__*/React.createElement("input", {type:"time",value:editPerVal.s,onChange:e=>setEditPerVal(p=>({...p,s:e.target.value})),style:{width:'100%',padding:6,borderRadius:7,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}})
+        ),
+        /*#__PURE__*/React.createElement("div", {style:{flex:1}},
+          /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999',marginBottom:2}}, "آخر"),
+          /*#__PURE__*/React.createElement("input", {type:"time",value:editPerVal.e,onChange:e=>setEditPerVal(p=>({...p,e:e.target.value})),style:{width:'100%',padding:6,borderRadius:7,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}})
+        )
+      ),
+      /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:6}},
+        ['class','break'].map(tp=>/*#__PURE__*/React.createElement("button", {key:tp,onClick:()=>setEditPerVal(p=>({...p,type:tp})),style:{flex:1,padding:5,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:editPerVal.type===tp?tp==='class'?'#10b981':'#f59e0b':'#f0ebe0',color:editPerVal.type===tp?'#fff':'#6b7c6b'}}, tp==='class'?'کلاس':'وقفہ'))
+      ),
+      /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6}},
+        /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#10b981",onClick:()=>saveEditPer(p.id)}, "✓ محفوظ"),
+        /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#9ca3af",onClick:()=>setEditPerId(null)}, "واپس")
+      )
+    ) : /*#__PURE__*/React.createElement("div", {style:{display:'flex',alignItems:'center',gap:10}},
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:700,color:isB?ST.gd:'#333',fontFamily:'monospace',direction:'ltr',width:90,textAlign:'center'}}, p.s, "\u2013", p.e),
+      /*#__PURE__*/React.createElement("div", {style:{flex:1}}, /*#__PURE__*/React.createElement(Bdg, {text:isB?'وقفہ':'کلاس',bg:isB?'rgba(255,255,255,0.1)':'#f0ebe0',color:isB?ST.gd:'#6b7c6b'})),
+      /*#__PURE__*/React.createElement("button", {onClick:()=>startEditPer(p),style:{background:isB?'rgba(255,255,255,0.1)':'#e0f2fe',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:isB?ST.gd:'#0369a1',marginLeft:4}}, "✏️"),
+      /*#__PURE__*/React.createElement("button", {onClick:()=>setConfirmDel({type:'period',id:p.id,name:`${p.s}–${p.e}`,deps:pA(p.id)}),style:{background:isB?'rgba(239,68,68,0.2)':'#fef2f2',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#ef4444'}}, "\u2717")
+    ));
   })), admSub === 'assign' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -3513,7 +3458,7 @@ function App() {
     small: true,
     color: ST.gd,
     onClick: () => {
-      if (pinEdit.tid === 'ADMIN' && pinEdit.val.length === 4) {
+      if (pinEdit.tid === 'ADMIN' && pinEdit.val.length === 6) {
         updCfg('pins', {
           ...pins,
           ADMIN: pinEdit.val
