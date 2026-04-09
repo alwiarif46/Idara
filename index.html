@@ -24,18 +24,32 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <body>
 <div class="offline-bar" id="offlineBar">📵 آف لائن — ڈیٹا مقامی طور پر محفوظ ہوگا</div>
 <div id="root"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+
 <script>
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
-window.addEventListener('online',function(){document.getElementById('offlineBar').classList.remove('show')});
-window.addEventListener('offline',function(){document.getElementById('offlineBar').classList.add('show')});
+// Service Worker
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
 if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
+
+// LocalStorage persistence layer
+function _stLoad(k){try{const v=localStorage.getItem(k);return v?{value:v}:null;}catch(e){return null;}}
+function _stSave(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function _stDel(k){try{localStorage.removeItem(k);}catch(e){}}
 </script>
+
 <script>
-// Destructure hooks from React UMD global (CDN build doesn't auto-export them)
-const { useState, useEffect, useRef, useCallback } = React;
+const {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef
+} = React;
+
 // ═══════════════════════════════════════════════════════════
 // DEFAULTS — seed data for first launch, all overridable
 // ═══════════════════════════════════════════════════════════
@@ -80,50 +94,265 @@ const DEFAULTS = {
     n: 'فضیلة',
     c: '#f5d0d0',
     a: '#dc2626'
+  }, {
+    id: 'hifz',
+    n: 'حفظ',
+    c: '#e2e8f0',
+    a: '#475569'
   }],
-  subjects: [
-  {id:'S01',n:'جلالین',c:'rabia',s:194,e:228,pub:'مجلس برکات'},
-  {id:'S02',n:'مشکوٰة المصابیح',c:'rabia',s:391,e:430,pub:'فاروقیہ بک ڈپو'},
-  {id:'S03',n:'کافیة',c:'rabia',s:2,e:63,pub:'مجلس برکات'},
-  {id:'S04',n:'اصول الشاشی',c:'rabia',s:5,e:40,pub:'فاروقیہ بک ڈپو'},
-  {id:'S05',n:'نفحة العرب و معلم الانشاء',c:'rabia',s:9,e:52,pub:'مختلف'},
-  {id:'S06',n:'شرح الوقایة',c:'rabia',s:146,e:217,pub:'مجلس برکات'},
-  {id:'S07',n:'آسان اصول حدیث',c:'rabia',s:24,e:83,pub:'نعیمیہ دیوبند'},
-  {id:'S08',n:'قصیدة البردة',c:'khamisa',s:40,e:299,pub:'دعوت اسلامی'},
-  {id:'S09',n:'السراجی',c:'khamisa',s:2,e:84,pub:'برکات'},
-  {id:'S10',n:'ہدایة الاولین',c:'khamisa',s:3,e:76,pub:'برکات'},
-  {id:'S11',n:'ترمذی شریف',c:'khamisa',s:2,e:78,pub:'فاروقیہ'},
-  {id:'S12',n:'معلم الانشاء و آزاد انشاء',c:'khamisa',s:2,e:40,pub:'دارالعلوم ندوة'},
-  {id:'S13',n:'مدارک التنزیل',c:'khamisa',s:2,e:67,pub:'مجلس برکات'},
-  {id:'S14',n:'نور الانوار',c:'khamisa',s:14,e:90,pub:'الجامعة الاسلامیة'},
-  {id:'S15',n:'درس قرآن',c:'salisa',s:123,e:162,pub:'حافظی'},
-  {id:'S16',n:'النحو الواضح',c:'salisa',s:3,e:79,pub:'مکتبہ بلال'},
-  {id:'S17',n:'علم الصیغة',c:'salisa',s:7,e:62,pub:'مجلس برکات'},
-  {id:'S18',n:'ریاض الصالحین',c:'salisa',s:7,e:110,pub:'مجلس برکات'},
-  {id:'S19',n:'مختصر القدوری',c:'salisa',s:19,e:132,pub:'مجلس برکات'},
-  {id:'S20',n:'ہدایة النحو',c:'salisa',s:2,e:47,pub:'مجلس برکات'},
-  {id:'S21',n:'دروس البلاغة',c:'salisa',s:15,e:97,pub:'فاروقیہ'},
-  {id:'S22',n:'نحو میر',c:'sania',s:9,e:88,pub:'فاروقیہ'},
-  {id:'S23',n:'فیض الادب',c:'sania',s:1,e:23,pub:'مجلس برکات'},
-  {id:'S24',n:'گلستان سعدی',c:'sania',s:220,e:257,pub:'مجلس برکات'},
-  {id:'S25',n:'کنز الایمان',c:'sania',s:2,e:110,pub:'دعوت اسلامی'},
-  {id:'S26',n:'قصص النبیین',c:'sania',s:3,e:60,pub:'فاروقیہ'},
-  {id:'S27',n:'نور الایضاح',c:'sania',s:2,e:97,pub:'مجلس برکات'},
-  {id:'S28',n:'میزان الصرف',c:'sania',s:3,e:54,pub:'مکتبہ بلال'},
-  {id:'S29',n:'تمرین الصرف',c:'oola',s:5,e:74,pub:'مجلس صحافت'},
-  {id:'S30',n:'فارسی قواعد و انشاء',c:'oola',s:11,e:72,pub:'مجلس برکات'},
-  {id:'S31',n:'منہاج العربیة',c:'oola',s:9,e:62,pub:'حیدرآباد'},
-  {id:'S32',n:'حفظ و املا — احادیث',c:'oola',s:1,e:40,pub:'استاذ کی مرضی'},
-  {id:'S33',n:'مدنی قاعدہ و عم پارہ',c:'oola',s:1,e:30,pub:'دعوت اسلامی'},
-  {id:'S34',n:'آسان النحو',c:'oola',s:3,e:38,pub:'وحیدیہ'},
-  {id:'S35',n:'سنن نسائی',c:'fazilat',s:153,e:196,pub:'دارالکتاب دیوبند'},
-  {id:'S36',n:'تفسیر بیضاوی',c:'fazilat',s:32,e:181,pub:'دعوت اسلامی'},
-  {id:'S37',n:'صحیح بخاری',c:'fazilat',s:1,e:43,pub:'مکتبہ ملت دیوبند'},
-  {id:'S38',n:'صحیح مسلم',c:'fazilat',s:448,e:482,pub:'فاروقیہ'},
-  {id:'S39',n:'سنن ترمذی',c:'fazilat',s:21,e:66,pub:'فاروقیہ'},
-  {id:'S40',n:'ہدایة الآخرین',c:'fazilat',s:18,e:104,pub:'برکات'},
-  {id:'S41',n:'المختارات',c:'fazilat',s:22,e:65,pub:'برکات'}
-],
+  subjects: [{
+    id: 'S01',
+    n: 'منہاج العربیة',
+    c: 'oola',
+    s: 9,
+    e: 62
+  }, {
+    id: 'S02',
+    n: 'تمرین الصرف',
+    c: 'oola',
+    s: 5,
+    e: 74
+  }, {
+    id: 'S03',
+    n: 'آسان النحو',
+    c: 'oola',
+    s: 3,
+    e: 38
+  }, {
+    id: 'S04',
+    n: 'فارسی قواعد',
+    c: 'oola',
+    s: 11,
+    e: 72
+  }, {
+    id: 'S05',
+    n: 'احادیث',
+    c: 'oola',
+    s: 1,
+    e: 40
+  }, {
+    id: 'S06',
+    n: 'قرآت',
+    c: 'oola',
+    s: 584,
+    e: 611
+  }, {
+    id: 'S07',
+    n: 'میزان الصرف',
+    c: 'sania',
+    s: 3,
+    e: 54
+  }, {
+    id: 'S08',
+    n: 'نور الایضاح',
+    c: 'sania',
+    s: 2,
+    e: 97
+  }, {
+    id: 'S09',
+    n: 'معلم الانشاء',
+    c: 'sania',
+    s: 1,
+    e: 52
+  }, {
+    id: 'S10',
+    n: 'قصص النبیین',
+    c: 'sania',
+    s: 3,
+    e: 60
+  }, {
+    id: 'S11',
+    n: 'کنز الایمان',
+    c: 'sania',
+    s: 2,
+    e: 110
+  }, {
+    id: 'S12',
+    n: 'گلستان سعدی',
+    c: 'sania',
+    s: 220,
+    e: 257
+  }, {
+    id: 'S13',
+    n: 'نحو میر',
+    c: 'sania',
+    s: 9,
+    e: 88
+  }, {
+    id: 'S14',
+    n: 'فیض الادب',
+    c: 'sania',
+    s: 1,
+    e: 23
+  }, {
+    id: 'S15',
+    n: 'مجانی الادب',
+    c: 'salisa',
+    s: 1,
+    e: 36
+  }, {
+    id: 'S16',
+    n: 'معلم الانشاء ۳',
+    c: 'salisa',
+    s: 1,
+    e: 51
+  }, {
+    id: 'S17',
+    n: 'دروس البلاغة',
+    c: 'salisa',
+    s: 1,
+    e: 30
+  }, {
+    id: 'S18',
+    n: 'ہدایة النحو',
+    c: 'salisa',
+    s: 2,
+    e: 47
+  }, {
+    id: 'S19',
+    n: 'مختصر القدوری',
+    c: 'salisa',
+    s: 19,
+    e: 132
+  }, {
+    id: 'S20',
+    n: 'ریاض الصالحین',
+    c: 'salisa',
+    s: 7,
+    e: 110
+  }, {
+    id: 'S21',
+    n: 'علم الصیغة',
+    c: 'salisa',
+    s: 7,
+    e: 62
+  }, {
+    id: 'S22',
+    n: 'کافیة',
+    c: 'rabia',
+    s: 2,
+    e: 63
+  }, {
+    id: 'S23',
+    n: 'مشکوٰة',
+    c: 'rabia',
+    s: 391,
+    e: 430
+  }, {
+    id: 'S24',
+    n: 'تفسیر الجلالین',
+    c: 'rabia',
+    s: 194,
+    e: 228
+  }, {
+    id: 'S25',
+    n: 'اصول حدیث',
+    c: 'rabia',
+    s: 24,
+    e: 83
+  }, {
+    id: 'S26',
+    n: 'اصول الشاشی',
+    c: 'rabia',
+    s: 5,
+    e: 40
+  }, {
+    id: 'S27',
+    n: 'نفحة العرب',
+    c: 'rabia',
+    s: 9,
+    e: 52
+  }, {
+    id: 'S28',
+    n: 'معلم الانشاء ۴',
+    c: 'rabia',
+    s: 1,
+    e: 51
+  }, {
+    id: 'S29',
+    n: 'شرح الوقایة',
+    c: 'rabia',
+    s: 146,
+    e: 217
+  }, {
+    id: 'S30',
+    n: 'مدارک التنزیل',
+    c: 'khamisa',
+    s: 2,
+    e: 67
+  }, {
+    id: 'S31',
+    n: 'شمائل ترمذی',
+    c: 'khamisa',
+    s: 2,
+    e: 78
+  }, {
+    id: 'S32',
+    n: 'ہدایة الاولین',
+    c: 'khamisa',
+    s: 3,
+    e: 76
+  }, {
+    id: 'S33',
+    n: 'السراجی',
+    c: 'khamisa',
+    s: 2,
+    e: 84
+  }, {
+    id: 'S34',
+    n: 'نور الانوار',
+    c: 'khamisa',
+    s: 14,
+    e: 90
+  }, {
+    id: 'S35',
+    n: 'قصیدة البردة',
+    c: 'khamisa',
+    s: 40,
+    e: 299
+  }, {
+    id: 'S36',
+    n: 'تفسیر بیضاوی',
+    c: 'fazilat',
+    s: 32,
+    e: 81
+  }, {
+    id: 'S37',
+    n: 'صحیح بخاری',
+    c: 'fazilat',
+    s: 1,
+    e: 43
+  }, {
+    id: 'S38',
+    n: 'صحیح مسلم',
+    c: 'fazilat',
+    s: 448,
+    e: 482
+  }, {
+    id: 'S39',
+    n: 'سنن نسائی',
+    c: 'fazilat',
+    s: 153,
+    e: 196
+  }, {
+    id: 'S40',
+    n: 'سنن ترمذی',
+    c: 'fazilat',
+    s: 21,
+    e: 66
+  }, {
+    id: 'S41',
+    n: 'ہدایة آخرین',
+    c: 'fazilat',
+    s: 18,
+    e: 104
+  }, {
+    id: 'S42',
+    n: 'المختارات',
+    c: 'fazilat',
+    s: 22,
+    e: 65
+  }],
   teachers: [{
     id: 'T1',
     n: 'م۔ ارشاد حیدری',
@@ -166,47 +395,160 @@ const DEFAULTS = {
     role: 'teacher',
     exam: false,
     email: ''
+  }, {
+    id: 'T8',
+    n: 'ق۔ عارف رضا حسینی',
+    role: 'qari',
+    exam: false,
+    email: ''
+  }, {
+    id: 'T9',
+    n: 'ق۔ زبیر سلطانی',
+    role: 'qari',
+    exam: false,
+    email: ''
   }],
-  assignments: [
-    {t:'T2',sub:'S15',p:1},
-    {t:'T2',sub:'S11',p:2},
-    {t:'T2',sub:'S22',p:3},
-    {t:'T2',sub:'S27',p:4},
-    {t:'T2',sub:'S02',p:5},
-    {t:'T2',sub:'S04',p:8},
-    {t:'T2',sub:'S24',p:9},
-    {t:'T3',sub:'S01',p:1},
-    {t:'T3',sub:'S28',p:2},
-    {t:'T3',sub:'S40',p:3},
-    {t:'T3',sub:'S19',p:4},
-    {t:'T3',sub:'S35',p:5},
-    {t:'T3',sub:'S07',p:7},
-    {t:'T3',sub:'S16',p:8},
-    {t:'T3',sub:'S10',p:9},
-    {t:'T4',sub:'S36',p:1},
-    {t:'T4',sub:'S34',p:2},
-    {t:'T4',sub:'S09',p:3},
-    {t:'T4',sub:'S39',p:4},
-    {t:'T4',sub:'S17',p:5},
-    {t:'T4',sub:'S08',p:7},
-    {t:'T4',sub:'S37',p:8},
-    {t:'T4',sub:'S06',p:9},
-    {t:'T5',sub:'S13',p:1},
-    {t:'T5',sub:'S03',p:2},
-    {t:'T5',sub:'S20',p:3},
-    {t:'T5',sub:'S14',p:4},
-    {t:'T5',sub:'S23',p:5},
-    {t:'T5',sub:'S21',p:7},
-    {t:'T5',sub:'S12',p:8},
-    {t:'T5',sub:'S38',p:9},
-    {t:'T6',sub:'S18',p:2},
-    {t:'T6',sub:'S30',p:3},
-    {t:'T6',sub:'S05',p:4},
-    {t:'T6',sub:'S32',p:5},
-    {t:'T6',sub:'S41',p:7},
-    {t:'T6',sub:'S26',p:8},
-    {t:'T6',sub:'S31',p:9}
-  ],
+  assignments: [{
+    t: 'T2',
+    sub: 'S13',
+    p: 3
+  }, {
+    t: 'T2',
+    sub: 'S08',
+    p: 4
+  }, {
+    t: 'T2',
+    sub: 'S23',
+    p: 5
+  }, {
+    t: 'T2',
+    sub: 'S26',
+    p: 8
+  }, {
+    t: 'T2',
+    sub: 'S12',
+    p: 9
+  }, {
+    t: 'T2',
+    sub: 'S31',
+    p: 2
+  }, {
+    t: 'T3',
+    sub: 'S24',
+    p: 1
+  }, {
+    t: 'T3',
+    sub: 'S07',
+    p: 2
+  }, {
+    t: 'T3',
+    sub: 'S41',
+    p: 3
+  }, {
+    t: 'T3',
+    sub: 'S19',
+    p: 4
+  }, {
+    t: 'T3',
+    sub: 'S39',
+    p: 5
+  }, {
+    t: 'T3',
+    sub: 'S25',
+    p: 7
+  }, {
+    t: 'T3',
+    sub: 'S32',
+    p: 9
+  }, {
+    t: 'T4',
+    sub: 'S36',
+    p: 1
+  }, {
+    t: 'T4',
+    sub: 'S03',
+    p: 2
+  }, {
+    t: 'T4',
+    sub: 'S33',
+    p: 3
+  }, {
+    t: 'T4',
+    sub: 'S40',
+    p: 4
+  }, {
+    t: 'T4',
+    sub: 'S21',
+    p: 5
+  }, {
+    t: 'T4',
+    sub: 'S35',
+    p: 7
+  }, {
+    t: 'T4',
+    sub: 'S37',
+    p: 8
+  }, {
+    t: 'T4',
+    sub: 'S29',
+    p: 9
+  }, {
+    t: 'T5',
+    sub: 'S30',
+    p: 1
+  }, {
+    t: 'T5',
+    sub: 'S22',
+    p: 2
+  }, {
+    t: 'T5',
+    sub: 'S18',
+    p: 3
+  }, {
+    t: 'T5',
+    sub: 'S34',
+    p: 4
+  }, {
+    t: 'T5',
+    sub: 'S14',
+    p: 5
+  }, {
+    t: 'T5',
+    sub: 'S17',
+    p: 7
+  }, {
+    t: 'T5',
+    sub: 'S38',
+    p: 9
+  }, {
+    t: 'T6',
+    sub: 'S20',
+    p: 2
+  }, {
+    t: 'T6',
+    sub: 'S04',
+    p: 3
+  }, {
+    t: 'T6',
+    sub: 'S28',
+    p: 4
+  }, {
+    t: 'T6',
+    sub: 'S05',
+    p: 5
+  }, {
+    t: 'T6',
+    sub: 'S42',
+    p: 7
+  }, {
+    t: 'T6',
+    sub: 'S10',
+    p: 8
+  }, {
+    t: 'T6',
+    sub: 'S01',
+    p: 9
+  }],
   periods: [{
     id: 1,
     s: '10:00',
@@ -255,16 +597,17 @@ const DEFAULTS = {
     type: 'class'
   }],
   pins: {
-    ADMIN: '123456',
+    ADMIN: '9999',
     T1: '1234',
     T2: '1234',
     T3: '1234',
     T4: '1234',
     T5: '1234',
     T6: '1234',
-    T7: '1234'
+    T7: '1234',
+    T8: '1234',
+    T9: '1234'
   },
-  pin_changed: false,
   script_url: 'https://script.google.com/macros/s/AKfycbwpTl_IoeJFZ_scJibde-Ivl6kPCup2JCKZ_tNdzB2lntX66e53CPTU4-eZZ01wO-vvog/exec',
   scoring: {
     excellent: 80,
@@ -274,7 +617,473 @@ const DEFAULTS = {
   dashboard: {
     yellow: -5
   },
-  holidays: []
+  holidays: [],
+  students: [{
+    id: 'HA01',
+    n: 'اظہر فیاض',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'completed',
+    hifz: {
+      paras: 30,
+      soorah: '',
+      aayat: 0,
+      daur_para: '6'
+    }
+  }, {
+    id: 'HA02',
+    n: 'فیضان فیاض',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 16,
+      soorah: '',
+      aayat: 0,
+      daur_para: '10'
+    }
+  }, {
+    id: 'HA03',
+    n: 'مہران فاروق',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 14,
+      soorah: '',
+      aayat: 0,
+      daur_para: '10'
+    }
+  }, {
+    id: 'HA04',
+    n: 'ثاقب احمد وانی',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 17,
+      soorah: '',
+      aayat: 0,
+      daur_para: '13'
+    }
+  }, {
+    id: 'HA05',
+    n: 'جبران فیاض',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 0,
+      soorah: 'البقرة',
+      aayat: 46,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA06',
+    n: 'یونس شافع',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 26,
+      soorah: '',
+      aayat: 0,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA07',
+    n: 'فرید احمد کھتانہ',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 10,
+      soorah: '',
+      aayat: 0,
+      daur_para: '4'
+    }
+  }, {
+    id: 'HA08',
+    n: 'ارسلان جہانگیر',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 4,
+      soorah: 'النساء',
+      aayat: 180,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA09',
+    n: 'حازم سمیر ہانجی',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 9,
+      soorah: 'الأعراف',
+      aayat: 159,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA10',
+    n: 'یاسر الطاف',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 3,
+      soorah: 'آل عمران',
+      aayat: 45,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA11',
+    n: 'امتیاز احمد بٹانہ',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 8,
+      soorah: 'الأعراف',
+      aayat: 11,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA12',
+    n: 'فاضل احمد پدر',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 1,
+      soorah: 'البقرة',
+      aayat: 76,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA13',
+    n: 'محمد اذان',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 1,
+      soorah: 'البقرة',
+      aayat: 76,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA14',
+    n: 'آفاق نبی',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 0,
+      soorah: 'البقرة',
+      aayat: 46,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA15',
+    n: 'عمران نثار',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 5,
+      soorah: 'النساء',
+      aayat: 58,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA16',
+    n: 'میلاد جاوید',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 2,
+      soorah: 'البقرة',
+      aayat: 166,
+      daur_para: ''
+    }
+  }, {
+    id: 'HA17',
+    n: 'راقب گلزار',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 0,
+      soorah: '',
+      aayat: 0,
+      daur_para: '10'
+    }
+  }, {
+    id: 'HA18',
+    n: 'طارق احمد برگت',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T8',
+    status: 'active',
+    hifz: {
+      paras: 4,
+      soorah: 'آل عمران',
+      aayat: 115,
+      daur_para: ''
+    }
+  }, {
+    id: 'HZ01',
+    n: 'محسن احمد گنائی',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'completed',
+    hifz: {
+      paras: 30,
+      soorah: '',
+      aayat: 0,
+      daur_para: '15'
+    }
+  }, {
+    id: 'HZ02',
+    n: 'حاذق اعجاز',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'completed',
+    hifz: {
+      paras: 30,
+      soorah: '',
+      aayat: 0,
+      daur_para: '22'
+    }
+  }, {
+    id: 'HZ03',
+    n: 'میزان پرویز',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'الطارق',
+      aayat: 0,
+      daur_para: ''
+    }
+  }, {
+    id: 'HZ04',
+    n: 'شیزان طارق',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 5,
+      soorah: 'آل عمران',
+      aayat: 54,
+      daur_para: '3'
+    }
+  }, {
+    id: 'HZ05',
+    n: 'یاور فیاض',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 16,
+      soorah: 'البقرة',
+      aayat: 83,
+      daur_para: '1'
+    }
+  }, {
+    id: 'HZ06',
+    n: 'ابرق امتیاز',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'البقرة',
+      aayat: 15,
+      daur_para: '1'
+    }
+  }, {
+    id: 'HZ07',
+    n: 'ایان فیاض',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'الطارق',
+      aayat: 0,
+      daur_para: ''
+    }
+  }, {
+    id: 'HZ08',
+    n: 'اویس چوپان',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 8,
+      soorah: 'الأنعام',
+      aayat: 0,
+      daur_para: ''
+    }
+  }, {
+    id: 'HZ09',
+    n: 'فیضان منظور',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'الجن',
+      aayat: 0,
+      daur_para: '29'
+    }
+  }, {
+    id: 'HZ10',
+    n: 'راحل نثار',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'البقرة',
+      aayat: 69,
+      daur_para: '1'
+    }
+  }, {
+    id: 'HZ11',
+    n: 'عفید مدثر',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'الأعلى',
+      aayat: 0,
+      daur_para: ''
+    }
+  }, {
+    id: 'HZ12',
+    n: 'مصدق ریاض',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'الطارق',
+      aayat: 0,
+      daur_para: ''
+    }
+  }, {
+    id: 'HZ13',
+    n: 'برہان شیخ',
+    parent: '',
+    phone: '',
+    residence: '',
+    c: 'hifz',
+    qari: 'T9',
+    status: 'active',
+    hifz: {
+      paras: 30,
+      soorah: 'الفجر',
+      aayat: 0,
+      daur_para: ''
+    }
+  }]
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -313,7 +1122,7 @@ function calcTD(cfg) {
   let c = 0;
   for (let d = new Date(st); d <= now; d.setDate(d.getDate() + 1)) {
     const w = d.getDay();
-    if (w !== cfg.off_day && w !== cfg.revision_day && !(cfg.holidays || []).includes(d.toISOString().split('T')[0])) c++;
+    if (w !== cfg.off_day && w !== cfg.revision_day && !cfg.holidays && cfg.holidays.includes(d.toISOString().split('T')[0])) c++;
   }
   return Math.min(Math.max(c, 1), cfg.teaching_days);
 }
@@ -361,421 +1170,218 @@ function cSR(sc, ab, scoring) {
 }
 
 // Shared components
-const Card = ({
-  children,
-  style
-}) => /*#__PURE__*/React.createElement("div", {
-  style: {
-    background: '#fff',
-    borderRadius: 13,
-    padding: 14,
-    marginBottom: 8,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    lineHeight: 1.8,
-    ...style
-  }
-}, children);
-const Btn = ({
-  children,
-  onClick,
-  color = '#10b981',
-  full,
-  small,
-  disabled,
-  style
-}) => /*#__PURE__*/React.createElement("button", {
-  onClick: onClick,
-  disabled: disabled,
-  style: {
-    padding: small ? '6px 12px' : '12px 16px',
-    borderRadius: small ? 8 : 12,
-    border: 'none',
-    background: disabled ? '#ccc' : `linear-gradient(135deg,${color},${color}dd)`,
-    color: '#fff',
-    fontSize: small ? 11 : 14,
-    fontWeight: 700,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    fontFamily: ST.f,
-    width: full ? '100%' : undefined,
-    opacity: disabled ? 0.5 : 1,
-    ...style
-  }
-}, children);
-const Inp = ({
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-  style
-}) => /*#__PURE__*/React.createElement("input", {
-  type: type,
-  value: value,
-  onChange: e => onChange(e.target.value),
-  placeholder: placeholder,
-  style: {
-    width: '100%',
-    padding: 8,
-    borderRadius: 8,
-    border: '1px solid #d5d0c5',
-    fontSize: 12,
-    fontFamily: 'inherit',
-    direction: 'rtl',
-    outline: 'none',
-    background: '#faf8f3',
-    ...style
-  }
-});
-const Sel = ({
-  value,
-  onChange,
-  children,
-  style
-}) => /*#__PURE__*/React.createElement("select", {
-  value: value,
-  onChange: e => onChange(e.target.value),
-  style: {
-    width: '100%',
-    padding: 8,
-    borderRadius: 8,
-    border: '1px solid #d5d0c5',
-    fontSize: 12,
-    fontFamily: 'inherit',
-    direction: 'rtl',
-    outline: 'none',
-    background: '#faf8f3',
-    ...style
-  }
-}, children);
-const Bk = ({
-  onClick
-}) => /*#__PURE__*/React.createElement("button", {
-  onClick: onClick,
-  style: {
-    background: 'none',
-    border: 'none',
-    fontSize: 12,
-    color: ST.mt,
-    cursor: 'pointer',
-    fontFamily: 'inherit'
-  }
-}, "\u2190 \u0648\u0627\u067E\u0633");
-const Bdg = ({
-  text,
-  bg,
-  color
-}) => /*#__PURE__*/React.createElement("span", {
-  style: {
-    background: bg || '#f0ebe0',
-    color: color || '#6b7c6b',
-    padding: '3px 8px',
-    borderRadius: 5,
-    fontSize: 10,
-    fontWeight: 700,
-    lineHeight: 1.8
-  }
-}, text);
-const Ttl = ({
-  icon,
-  text
-}) => /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontSize: 16,
-    fontWeight: 800,
-    marginBottom: 10,
-    lineHeight: 2
-  }
-}, icon, " ", text);
-const Row = ({
-  label,
-  children
-}) => /*#__PURE__*/React.createElement("div", {
-  style: {
-    marginBottom: 8
-  }
-}, /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontSize: 9,
-    color: '#999',
-    marginBottom: 2
-  }
-}, label), children);
+const Card = _ref => {
+  let {
+    children,
+    style
+  } = _ref;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      borderRadius: 13,
+      padding: 14,
+      marginBottom: 8,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      lineHeight: 1.8,
+      ...style
+    }
+  }, children);
+};
+const Btn = _ref2 => {
+  let {
+    children,
+    onClick,
+    color = '#10b981',
+    full,
+    small,
+    disabled,
+    style
+  } = _ref2;
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    disabled: disabled,
+    style: {
+      padding: small ? '6px 12px' : '12px 16px',
+      borderRadius: small ? 8 : 12,
+      border: 'none',
+      background: disabled ? '#ccc' : `linear-gradient(135deg,${color},${color}dd)`,
+      color: '#fff',
+      fontSize: small ? 11 : 14,
+      fontWeight: 700,
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      fontFamily: ST.f,
+      width: full ? '100%' : undefined,
+      opacity: disabled ? 0.5 : 1,
+      ...style
+    }
+  }, children);
+};
+const Inp = _ref3 => {
+  let {
+    value,
+    onChange,
+    placeholder,
+    type = 'text',
+    style
+  } = _ref3;
+  return /*#__PURE__*/React.createElement("input", {
+    type: type,
+    value: value,
+    onChange: e => onChange(e.target.value),
+    placeholder: placeholder,
+    style: {
+      width: '100%',
+      padding: 8,
+      borderRadius: 8,
+      border: '1px solid #d5d0c5',
+      fontSize: 12,
+      fontFamily: 'inherit',
+      direction: 'rtl',
+      outline: 'none',
+      background: '#faf8f3',
+      ...style
+    }
+  });
+};
+const Sel = _ref4 => {
+  let {
+    value,
+    onChange,
+    children,
+    style
+  } = _ref4;
+  return /*#__PURE__*/React.createElement("select", {
+    value: value,
+    onChange: e => onChange(e.target.value),
+    style: {
+      width: '100%',
+      padding: 8,
+      borderRadius: 8,
+      border: '1px solid #d5d0c5',
+      fontSize: 12,
+      fontFamily: 'inherit',
+      direction: 'rtl',
+      outline: 'none',
+      background: '#faf8f3',
+      ...style
+    }
+  }, children);
+};
+const Bk = _ref5 => {
+  let {
+    onClick
+  } = _ref5;
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    style: {
+      background: 'none',
+      border: 'none',
+      fontSize: 12,
+      color: ST.mt,
+      cursor: 'pointer',
+      fontFamily: 'inherit'
+    }
+  }, "\u2190 \u0648\u0627\u067E\u0633");
+};
+const Bdg = _ref6 => {
+  let {
+    text,
+    bg,
+    color
+  } = _ref6;
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: bg || '#f0ebe0',
+      color: color || '#6b7c6b',
+      padding: '3px 8px',
+      borderRadius: 5,
+      fontSize: 10,
+      fontWeight: 700,
+      lineHeight: 1.8
+    }
+  }, text);
+};
+const Ttl = _ref7 => {
+  let {
+    icon,
+    text
+  } = _ref7;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 10,
+      lineHeight: 2
+    }
+  }, icon, " ", text);
+};
+const Row = _ref8 => {
+  let {
+    label,
+    children
+  } = _ref8;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: '#999',
+      marginBottom: 2
+    }
+  }, label), children);
+};
 
 // ═══════════════════════════════════════════════════════════
 // PERSISTENT STORAGE LAYER
 // ═══════════════════════════════════════════════════════════
-// Storage layer — works in Claude artifact sandbox (window.storage)
-// ═══════════════════════════════════════════════════════════
-// IRI DATABASE LAYER — sql.js + IndexedDB persistence
-// SQLite runs in-browser. DB serialized to IndexedDB on every
-// write (debounced 500ms). On startup, restored from IndexedDB.
-// Sync queue, config, reports, Thursday results all live here.
-// localStorage is used only for migration from older installs.
-// ═══════════════════════════════════════════════════════════
-
-const _IDB_NAME  = 'iri-sqlite-v1';
-const _IDB_STORE = 'db';
-const _IDB_KEY   = 'main';
-let _db = null;
-let _persistTimer = null;
-
-// ── IndexedDB helpers ─────────────────────────────────────
-function _idbOpen() {
-  return new Promise((res, rej) => {
-    const req = indexedDB.open(_IDB_NAME, 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_STORE);
-    req.onsuccess = e => res(e.target.result);
-    req.onerror = () => rej(req.error);
-  });
-}
-async function _idbGet() {
-  try {
-    const db = await _idbOpen();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(_IDB_STORE, 'readonly');
-      const r  = tx.objectStore(_IDB_STORE).get(_IDB_KEY);
-      r.onsuccess = () => res(r.result || null);
-      r.onerror   = () => rej(r.error);
-    });
-  } catch(e) { return null; }
-}
-async function _idbSet(data) {
-  try {
-    const db = await _idbOpen();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(_IDB_STORE, 'readwrite');
-      const r  = tx.objectStore(_IDB_STORE).put(data, _IDB_KEY);
-      r.onsuccess = () => res();
-      r.onerror   = () => rej(r.error);
-    });
-  } catch(e) {}
-}
-
-// ── Persist (debounced 500ms) ─────────────────────────────
-function _schedulePersist() {
-  clearTimeout(_persistTimer);
-  _persistTimer = setTimeout(async () => {
-    if (_db) { try { await _idbSet(_db.export()); } catch(e) {} }
-  }, 500);
-}
-
-// ── SQL helpers ───────────────────────────────────────────
-function _all(sql, p) {
-  try {
-    const r = _db.exec(sql, p);
-    if (!r[0]) return [];
-    return r[0].values.map(row => {
-      const o = {};
-      r[0].columns.forEach((c, i) => o[c] = row[i]);
-      return o;
-    });
-  } catch(e) { return []; }
-}
-function _get(sql, p)  { return _all(sql, p)[0] || null; }
-function _run(sql, p)  { try { _db.run(sql, p); } catch(e) { console.warn('[DB]', e.message); } }
-function _runp(sql, p) { _run(sql, p); _schedulePersist(); }
-
-// ── Schema ────────────────────────────────────────────────
-function _createSchema() {
-  _db.run(`
-    CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT);
-
-    CREATE TABLE IF NOT EXISTS classes (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL,
-      color TEXT, accent TEXT, sort INTEGER DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS teachers (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL,
-      role TEXT DEFAULT 'teacher', examiner INTEGER DEFAULT 0,
-      email TEXT DEFAULT '', pin TEXT DEFAULT '1234', sort INTEGER DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS subjects (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL,
-      class_id TEXT DEFAULT '', start_page INTEGER DEFAULT 1,
-      end_page INTEGER DEFAULT 100, publisher TEXT DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS periods (
-      id INTEGER PRIMARY KEY, stime TEXT, etime TEXT,
-      type TEXT DEFAULT 'class', is_break INTEGER DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS assignments (
-      id TEXT PRIMARY KEY, teacher_id TEXT NOT NULL,
-      subject_id TEXT NOT NULL, period_id INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS daily_reports (
-      id TEXT PRIMARY KEY,
-      date TEXT NOT NULL, teacher_id TEXT NOT NULL,
-      subject_id TEXT DEFAULT '', class_id TEXT DEFAULT '',
-      target_page INTEGER DEFAULT 0, actual_page INTEGER DEFAULT 0,
-      complete TEXT DEFAULT '', reason_code TEXT DEFAULT '', reason_text TEXT DEFAULT '',
-      synced INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS thursday_results (
-      id TEXT PRIMARY KEY,
-      date TEXT DEFAULT '', week INTEGER DEFAULT 0,
-      examiner_id TEXT NOT NULL, class_id TEXT DEFAULT '',
-      subject_id TEXT DEFAULT '', subject_name TEXT DEFAULT '',
-      period INTEGER DEFAULT 0, student_name TEXT DEFAULT '',
-      result TEXT DEFAULT '', synced INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS sync_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL, payload TEXT NOT NULL,
-      attempts INTEGER DEFAULT 0, last_error TEXT DEFAULT '',
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_rep_td   ON daily_reports(teacher_id, date);
-    CREATE INDEX IF NOT EXISTS idx_rep_sync ON daily_reports(synced);
-    CREATE INDEX IF NOT EXISTS idx_thu_sync ON thursday_results(synced);
-    CREATE INDEX IF NOT EXISTS idx_thu_wk   ON thursday_results(week, examiner_id);
-  `);
-}
-
-// ── Migrate from localStorage (one-time) ─────────────────
-async function _migrate() {
-  try {
-    const cnt = _get('SELECT COUNT(*) as c FROM teachers');
-    if (cnt && cnt.c > 0) return; // already seeded
-    const raw = localStorage.getItem('iri-config');
-    if (!raw) return;
-    const old = JSON.parse(raw);
-    (old.classes||[]).forEach((c,i) => _run('INSERT OR IGNORE INTO classes VALUES(?,?,?,?,?)',[c.id,c.n,c.c,c.a,i]));
-    (old.teachers||[]).forEach((t,i) => {
-      const pin = old.pins?(old.pins[t.id]||'1234'):'1234';
-      _run('INSERT OR IGNORE INTO teachers VALUES(?,?,?,?,?,?,?)',[t.id,t.n,t.role||'teacher',t.exam?1:0,t.email||'',pin,i]);
-    });
-    (old.subjects||[]).forEach(s => _run('INSERT OR IGNORE INTO subjects VALUES(?,?,?,?,?,?)',[s.id,s.n,s.c||'',s.s||1,s.e||100,s.pub||'']));
-    (old.periods||[]).forEach(p => _run('INSERT OR IGNORE INTO periods VALUES(?,?,?,?,?)',[p.id,p.s,p.e,p.type||'class',p.brk?1:0]));
-    (old.assignments||[]).forEach((a,i) => _run('INSERT OR IGNORE INTO assignments VALUES(?,?,?,?)',[`${a.t}_${a.sub}_${a.p}_${i}`,a.t,a.sub,a.p]));
-    ['institution','scoring','dashboard','pin_changed','script_url','holidays'].forEach(k => {
-      if (old[k]!==undefined) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',[k,JSON.stringify(old[k])]);
-    });
-    if (old.pins && old.pins.ADMIN) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',['admin_pin',JSON.stringify(old.pins.ADMIN)]);
-    // Migrate session data as-is
-    ['iri-reports','iri-syncq','iri-thu'].forEach(k => {
-      const v = localStorage.getItem(k);
-      if (v) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',[k,v]);
-    });
-    console.log('[IRI DB] Migrated from localStorage');
-    _schedulePersist();
-  } catch(e) { console.warn('[IRI DB] Migration:', e); }
-}
-
-// ── Init ──────────────────────────────────────────────────
-async function dbInit() {
-  if (_db) return;
-  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
-  const SQL  = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` });
-  const saved = await _idbGet();
-  _db = saved ? new SQL.Database(saved) : new SQL.Database();
-  _db.run('PRAGMA journal_mode=MEMORY');
-  _createSchema();
-  await _migrate();
-  _schedulePersist();
-}
-
-// ── Config API ────────────────────────────────────────────
 async function loadConfig() {
   try {
-    if (!_db) await dbInit();
-    const classes    = _all('SELECT id, name as n, color as c, accent as a FROM classes ORDER BY sort');
-    const rawT       = _all('SELECT id, name as n, role, examiner, email FROM teachers ORDER BY sort');
-    const subjects   = _all('SELECT id, name as n, class_id as c, start_page as s, end_page as e, publisher as pub FROM subjects');
-    const rawP       = _all('SELECT id, stime as s, etime as e, type, is_break FROM periods ORDER BY id');
-    const assignments= _all('SELECT teacher_id as t, subject_id as sub, period_id as p FROM assignments');
-    if (!classes.length && !rawT.length) return null;
-    const teachers = rawT.map(t => ({...t, exam: !!t.examiner}));
-    const periods  = rawP.map(p => { const o={...p}; if(o.is_break){o.brk=true;} delete o.is_break; return o; });
-    const kvRows   = _all('SELECT key, value FROM kv');
-    const kv = {};
-    kvRows.forEach(r => { try { kv[r.key]=JSON.parse(r.value); } catch(e) { kv[r.key]=r.value; } });
-    const pinRows = _all('SELECT id, pin FROM teachers');
-    const pins = { ADMIN: kv.admin_pin || '123456' };
-    pinRows.forEach(r => { pins[r.id] = r.pin; });
-    return {
-      institution: kv.institution || DEFAULTS.institution,
-      classes, teachers, subjects, periods, assignments, pins,
-      pin_changed:  kv.pin_changed  || false,
-      script_url:   kv.script_url   || DEFAULTS.script_url,
-      scoring:      kv.scoring      || DEFAULTS.scoring,
-      dashboard:    kv.dashboard    || DEFAULTS.dashboard,
-      holidays:     kv.holidays     || []
-    };
-  } catch(e) { return null; }
+    const r = await _stLoad("iri-config");
+    return r ? JSON.parse(r.value) : null;
+  } catch (e) {
+    return null;
+  }
 }
-
 async function saveConfig(cfg) {
   try {
-    if (!_db) await dbInit();
-    if (cfg.classes)     cfg.classes.forEach((c,i)  => _run('INSERT OR REPLACE INTO classes VALUES(?,?,?,?,?)',[c.id,c.n,c.c,c.a,i]));
-    if (cfg.teachers)    cfg.teachers.forEach((t,i)  => {
-      const pin = cfg.pins?(cfg.pins[t.id]||'1234'):'1234';
-      _run('INSERT OR REPLACE INTO teachers VALUES(?,?,?,?,?,?,?)',[t.id,t.n,t.role||'teacher',t.exam?1:0,t.email||'',pin,i]);
-    });
-    if (cfg.subjects)    cfg.subjects.forEach(s      => _run('INSERT OR REPLACE INTO subjects VALUES(?,?,?,?,?,?)',[s.id,s.n,s.c||'',s.s||1,s.e||100,s.pub||'']));
-    if (cfg.periods)     cfg.periods.forEach(p       => _run('INSERT OR REPLACE INTO periods VALUES(?,?,?,?,?)',[p.id,p.s,p.e,p.type||'class',p.brk?1:0]));
-    if (cfg.assignments) {
-      _run('DELETE FROM assignments');
-      cfg.assignments.forEach((a,i) => _run('INSERT INTO assignments VALUES(?,?,?,?)',[`${a.t}_${a.sub}_${a.p}_${i}`,a.t,a.sub,a.p]));
-    }
-    ['institution','scoring','dashboard','pin_changed','script_url','holidays'].forEach(k => {
-      if (cfg[k]!==undefined) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',[k,JSON.stringify(cfg[k])]);
-    });
-    if (cfg.pins && cfg.pins.ADMIN) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',['admin_pin',JSON.stringify(cfg.pins.ADMIN)]);
-    _schedulePersist();
-  } catch(e) { console.warn('[DB] saveConfig:', e); }
+    await _stSave("iri-config", JSON.stringify(cfg));
+  } catch (e) {
+    console.error('Save failed', e);
+  }
 }
-
-// ── Session data (reps, thu, syncQ) stored as JSON in kv ─
-// Same shape as before — React app doesn't change at all.
-async function loadReports()      { try { if(!_db) await dbInit(); const r=_get('SELECT value FROM kv WHERE key=?',['iri-reports']); return r?JSON.parse(r.value):{}; } catch(e){return{};} }
-async function saveReports(reps)  { if(!_db) await dbInit(); _runp('INSERT OR REPLACE INTO kv VALUES(?,?)',['iri-reports',JSON.stringify(reps)]); }
-async function loadSyncQ()        { try { if(!_db) await dbInit(); const r=_get('SELECT value FROM kv WHERE key=?',['iri-syncq']); return r?JSON.parse(r.value):[]; } catch(e){return[];} }
-async function saveSyncQ(q)       { if(!_db) await dbInit(); _runp('INSERT OR REPLACE INTO kv VALUES(?,?)',['iri-syncq',JSON.stringify(q)]); }
-async function loadThuResults()   { try { if(!_db) await dbInit(); const r=_get('SELECT value FROM kv WHERE key=?',['iri-thu']); return r?JSON.parse(r.value):{}; } catch(e){return{};} }
-async function saveThuResults(r)  { if(!_db) await dbInit(); _runp('INSERT OR REPLACE INTO kv VALUES(?,?)',['iri-thu',JSON.stringify(r)]); }
-
-// ── Historical records (written on submit, synced to Sheets) ─
-function dbSaveReport(entry) {
-  // entry: {id, date, teacher_id, subject_id, class_id, target_page, actual_page, complete, reason_code, reason_text}
-  _run(`INSERT OR REPLACE INTO daily_reports
-    (id,date,teacher_id,subject_id,class_id,target_page,actual_page,complete,reason_code,reason_text,synced,created_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?,0,datetime('now'))`,
-    [entry.id||`${entry.date}_${entry.teacher_id}_${entry.subject_id}`,
-     entry.date,entry.teacher_id,entry.subject_id||'',entry.class_id||'',
-     entry.target_page||0,entry.actual_page||0,entry.complete||'',entry.reason_code||'',entry.reason_text||'']);
-  _schedulePersist();
+async function loadReports() {
+  try {
+    const r = await _stLoad("iri-reports");
+    return r ? JSON.parse(r.value) : {};
+  } catch (e) {
+    return {};
+  }
 }
-function dbMarkReportSynced(date, teacherId) {
-  _run('UPDATE daily_reports SET synced=1 WHERE date=? AND teacher_id=?',[date,teacherId]);
-  _schedulePersist();
+async function saveReports(reps) {
+  try {
+    await _stSave("iri-reports", JSON.stringify(reps));
+  } catch (e) {}
 }
-function dbSaveThuResult(row) {
-  // row: {id, date, week, examiner_id, class_id, subject_id, subject_name, period, student_name, result}
-  _run(`INSERT OR REPLACE INTO thursday_results
-    (id,date,week,examiner_id,class_id,subject_id,subject_name,period,student_name,result,synced,created_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?,0,datetime('now'))`,
-    [row.id||`thu_${row.week}_${row.examiner_id}_${row.period}_${row.student_name}`,
-     row.date||'',row.week||0,row.examiner_id||'',row.class_id||'',
-     row.subject_id||'',row.subject_name||'',row.period||0,row.student_name||'',row.result||'']);
-  _schedulePersist();
+async function loadSyncQ() {
+  try {
+    const r = await _stLoad("iri-syncq");
+    return r ? JSON.parse(r.value) : [];
+  } catch (e) {
+    return [];
+  }
 }
-function dbMarkThuSynced(week, examinerId) {
-  _run('UPDATE thursday_results SET synced=1 WHERE week=? AND examiner_id=?',[week,examinerId]);
-  _schedulePersist();
+async function saveSyncQ(q) {
+  try {
+    await _stSave("iri-syncq", JSON.stringify(q));
+  } catch (e) {}
 }
-// ── Public query API (for future dashboard/analytics) ─────
-function dbQuery(sql, params) { return _all(sql, params); }
-function dbRun(sql, params)   { _runp(sql, params); }
 
 // ═══════════════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════════════
 function App() {
-
   const [loading, setLoading] = useState(true);
   const [cfg, setCfgRaw] = useState(null);
   const [reps, setRepsRaw] = useState({});
@@ -820,17 +1426,6 @@ function App() {
   const [urlInp, setUrlInp] = useState('');
   const [thB, setThB] = useState(0);
   const [thD, setThD] = useState([]);
-  const [thuResults, setThuResultsRaw] = useState({});
-  const [thuViewWk, setThuViewWk] = useState(1);
-  const [thuSubmitting, setThuSubmitting] = useState(false);
-  const [configSyncing, setConfigSyncing] = useState(false);
-  const [configSyncMsg, setConfigSyncMsg] = useState('');
-  const [newCls, setNewCls] = useState({n: '', c: '#e8daef', a: '#7c3aed'});
-  const [newSub, setNewSub] = useState({id: '', n: '', c: '', s: 1, e: 100, pub: ''});
-  const [editSubId, setEditSubId] = useState(null);
-  const [editSub, setEditSub] = useState({});
-  const [editPerId, setEditPerId] = useState(null);
-  const [editPerVal, setEditPerVal] = useState({s: '', e: '', type: 'class'});
   const saveTimer = useRef(null);
 
   // Wrapped setters that auto-persist
@@ -863,90 +1458,53 @@ function App() {
   // Load on mount
   useEffect(() => {
     (async () => {
-      await dbInit(); // initialise SQLite / IndexedDB first
-      var saved = null,
-        savedReps = {},
-        savedQ = [];
-      try {
-        var results = await Promise.all([loadConfig(), loadReports(), loadSyncQ()]);
-        saved = results[0];
-        savedReps = results[1] || {};
-        savedQ = results[2] || [];
-      } catch (e) {}
-      // Deep merge: spread each nested object individually
-      if (saved) {
-        var merged = {
-          ...DEFAULTS,
-          ...saved
-        };
-        merged.institution = {
-          ...DEFAULTS.institution,
-          ...(saved.institution || {})
-        };
-        merged.scoring = {
-          ...DEFAULTS.scoring,
-          ...(saved.scoring || {})
-        };
-        merged.dashboard = {
-          ...DEFAULTS.dashboard,
-          ...(saved.dashboard || {})
-        };
-        merged.pins = {
-          ...DEFAULTS.pins,
-          ...(saved.pins || {})
-        };
-        if (!Array.isArray(merged.classes) || !merged.classes.length) merged.classes = DEFAULTS.classes;
-        if (!Array.isArray(merged.subjects) || !merged.subjects.length) merged.subjects = DEFAULTS.subjects;
-        if (!Array.isArray(merged.teachers) || !merged.teachers.length) merged.teachers = DEFAULTS.teachers;
-        if (!Array.isArray(merged.periods) || !merged.periods.length) merged.periods = DEFAULTS.periods;
-        if (!Array.isArray(merged.assignments)) merged.assignments = DEFAULTS.assignments;
-        setCfgRaw(merged);
-      } else {
-        setCfgRaw({
-          ...DEFAULTS
-        });
-      }
-      setRepsRaw(savedReps);
-      setSyncQRaw(savedQ);
-      try { var tr = await loadThuResults(); setThuResultsRaw(tr||{}); } catch(e) {}
-      // Pull config from cloud if no local config exists (fresh device)
-      // Always try cloud on first load — if cloud has config, use it
-      if (!saved) {
-        const scriptUrl = DEFAULTS.script_url;
-        if (scriptUrl) {
-          try {
-            const remote = await pullConfig(scriptUrl);
-            if (remote) {
-              setCfgRaw(remote);
-              await saveConfig(remote);
-            }
-          } catch(e) {}
-        }
-      }
+      const [saved, savedReps, savedQ] = await Promise.all([loadConfig(), loadReports(), loadSyncQ()]);
+      setCfgRaw(saved ? {
+        ...DEFAULTS,
+        ...saved
+      } : {
+        ...DEFAULTS
+      });
+      setRepsRaw(savedReps || {});
+      setSyncQRaw(savedQ || []);
       setLoading(false);
     })();
   }, []);
 
-  // Font loaded externally — no DOM manipulation needed in sandbox
+  // Load Nastaliq font
+  useEffect(() => {
+    if (!document.querySelector('link[href*="Noto+Nastaliq+Urdu"]')) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap';
+      document.head.appendChild(l);
+    }
+    const s = document.createElement('style');
+    s.textContent = '*{line-height:1.8}input,select,textarea{line-height:1.4}table *{line-height:1.3}button{line-height:1.5}';
+    document.head.appendChild(s);
+    return () => {
+      try {
+        document.head.removeChild(s);
+      } catch (e) {}
+    };
+  }, []);
 
   // Init Thursday test grid when classes change
   useEffect(() => {
-    try {
-      if (cfg && Array.isArray(cfg.classes)) setThD(cfg.classes.map(() => ({
-        sid: '',
-        grid: Array.from({
-          length: 15
-        }, (_, i) => ({
-          num: i + 1,
-          nm: '',
-          sc: [null, null, null, null, null],
-          ab: false
-        })),
-        nt: '',
-        sg: ''
-      })));
-    } catch (e) {}
-  }, [cfg && cfg.classes ? cfg.classes.length : 0]);
+    if (cfg) setThD(cfg.classes.map(() => ({
+      sid: '',
+      grid: Array.from({
+        length: 15
+      }, (_, i) => ({
+        num: i + 1,
+        nm: '',
+        sc: [null, null, null, null, null],
+        ab: false
+      })),
+      nt: '',
+      sg: ''
+    })));
+  }, [cfg && cfg.classes && cfg.classes.length]);
   const flash = useCallback(m => {
     setToast(m);
     setTimeout(() => setToast(''), 2500);
@@ -1009,16 +1567,11 @@ function App() {
     }
   };
   useEffect(() => {
-    var iv = setInterval(function () {
-      try {
-        if (syncQ.length && cfg && cfg.script_url && typeof navigator !== 'undefined' && navigator.onLine) processQ();
-      } catch (e) {}
+    const iv = setInterval(() => {
+      if (syncQ.length && cfg && cfg.script_url && navigator.onLine) processQ();
     }, 300000);
-    return function () {
-      clearInterval(iv);
-    };
-  }, [syncQ, cfg && cfg.script_url ? cfg.script_url : ""]);
-
+    return () => clearInterval(iv);
+  }, [syncQ, cfg && cfg.script_url]);
   if (loading || !cfg) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: '100vh',
@@ -1037,33 +1590,24 @@ function App() {
   }, "\u062C\u0627\u0631\u06CC \u06C1\u06D2..."));
 
   // ── Derived ──
-  const inst = cfg.institution || DEFAULTS.institution;
-  const CL = cfg.classes || DEFAULTS.classes;
-  const subjects = cfg.subjects || DEFAULTS.subjects;
-  const teachers = cfg.teachers || DEFAULTS.teachers;
-  const assignments = cfg.assignments || DEFAULTS.assignments;
-  const periods = cfg.periods || DEFAULTS.periods;
-  const pins = cfg.pins || DEFAULTS.pins;
-  const scoring = cfg.scoring || DEFAULTS.scoring;
-  const dashCfg = cfg.dashboard || DEFAULTS.dashboard;
-  var tDay = 1;
-  try {
-    tDay = calcTD(inst);
-  } catch (e) {
-    tDay = 1;
-  }
+  const {
+    institution: inst,
+    classes: CL,
+    subjects,
+    teachers,
+    assignments,
+    periods,
+    pins,
+    scoring,
+    dashboard: dashCfg
+  } = cfg;
+  const tDay = calcTD(inst);
   const cT = (s, tot) => s + Math.round(tot / inst.teaching_days * tDay);
   const gS = id => subjects.find(s => s.id === id);
   const cPer = periods.filter(p => p.type !== 'break');
   const examiners = teachers.filter(t => t.exam).map(t => t.id);
-  var thuDates = [];
-  try {
-    thuDates = genThursdays(inst);
-  } catch (e) {}
-  var thuSch = [];
-  try {
-    thuSch = genThuSch(thuDates, examiners);
-  } catch (e) {}
+  const thuDates = genThursdays(inst);
+  const thuSch = genThuSch(thuDates, examiners);
   const tA = tid => assignments.filter(a => a.t === tid).length;
   const pA = pid => assignments.filter(a => a.p === pid).length;
   const unassigned = subjects.filter(s => !assignments.some(a => a.sub === s.id));
@@ -1289,245 +1833,8 @@ function App() {
     flash('✓');
   };
 
-  // ── Class CRUD ──
-  const addCls = () => {
-    const id = newCls.n.trim().toLowerCase().replace(/\s+/g, '_');
-    if (!id || !newCls.n.trim()) { flash('⚠️ نام درکار'); return; }
-    if (CL.find(c => c.id === id)) { flash('⚠️ موجود'); return; }
-    updCfg('classes', [...CL, {id, n: newCls.n.trim(), c: newCls.c, a: newCls.a}]);
-    setNewCls({n: '', c: '#e8daef', a: '#7c3aed'});
-    setShowForm(null);
-    flash('✓');
-  };
-  const rmCls = id => {
-    if (subjects.some(s => s.c === id)) { flash('⚠️ مضامین موجود'); setConfirmDel(null); return; }
-    updCfg('classes', CL.filter(c => c.id !== id));
-    setConfirmDel(null);
-    flash('✓');
-  };
+  // ── Sync ──
 
-  // ── Subject CRUD ──
-  const addSub = () => {
-    if (!newSub.id.trim() || !newSub.n.trim() || !newSub.c) { flash('⚠️ ادھورا'); return; }
-    if (subjects.find(s => s.id === newSub.id)) { flash('⚠️ ID موجود'); return; }
-    const s = parseInt(newSub.s) || 1;
-    const e = parseInt(newSub.e) || 100;
-    updCfg('subjects', [...subjects, {id: newSub.id.trim(), n: newSub.n.trim(), c: newSub.c, s, e, pub: newSub.pub.trim()}]);
-    setNewSub({id: '', n: '', c: '', s: 1, e: 100, pub: ''});
-    setShowForm(null);
-    flash('✓');
-  };
-  const rmSub = id => {
-    if (assignments.some(a => a.sub === id)) { flash('⚠️ تفویض موجود'); setConfirmDel(null); return; }
-    updCfg('subjects', subjects.filter(s => s.id !== id));
-    setConfirmDel(null);
-    flash('✓');
-  };
-  const startEditSub = s => { setEditSubId(s.id); setEditSub({n: s.n, c: s.c, s: s.s, e: s.e, pub: s.pub||''}); };
-  const saveEditSub = id => {
-    updCfg('subjects', subjects.map(s => s.id === id ? {...s, n: editSub.n, c: editSub.c, s: parseInt(editSub.s)||s.s, e: parseInt(editSub.e)||s.e, pub: editSub.pub||''} : s));
-    setEditSubId(null);
-    flash('✓');
-  };
-
-  // ── Period inline edit ──
-  const startEditPer = p => { setEditPerId(p.id); setEditPerVal({s: p.s, e: p.e, type: p.type||'class'}); };
-  const saveEditPer = id => {
-    if (!editPerVal.s || !editPerVal.e) { flash('⚠️'); return; }
-    updCfg('periods', periods.map(p => p.id === id ? {...p, s: editPerVal.s, e: editPerVal.e, type: editPerVal.type, brk: editPerVal.type==='break'} : p));
-    setEditPerId(null);
-    flash('✓');
-  };
-
-  // ── Thursday System ──
-  const setThuResults = (updater) => {
-    setThuResultsRaw(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      saveThuResults(next);
-      return next;
-    });
-  };
-
-  // For week N: get the single examiner assigned for that week
-  const getWeekExaminer = (weekNum) => {
-    const sch = thuSch.find(w => w.wk === weekNum);
-    return sch ? sch.ex : null;
-  };
-
-  // For a given period, get the assigned teacher (who must NOT examine that period)
-  const getPeriodTeacher = (subId) => {
-    const asg = assignments.find(a => a.sub === subId);
-    return asg ? asg.t : null;
-  };
-
-  // Get all 42 periods for Thursday:
-  // Each period: examiner = week's assigned examiner, UNLESS examiner owns that period
-  // If examiner owns the period, they still examine it (admin can override via class field)
-  // Actually: examiner covers ALL periods that are NOT their own
-  // Their own periods are covered by whoever is available (not tracked in app — just flagged)
-  const getThuPeriods = (weekNum) => {
-    const examId = getWeekExaminer(weekNum);
-    return assignments.map(asg => {
-      const sub = gS(asg.sub);
-      if (!sub) return null;
-      const cl = CL.find(c => c.id === sub.c) || {n:'',c:'#eee',a:'#999'};
-      const isOwnSubject = asg.t === examId;
-      return {
-        subId: asg.sub,
-        subName: sub.n,
-        classId: sub.c,
-        className: cl.n,
-        classColor: cl.c,
-        classAccent: cl.a,
-        period: asg.p,
-        ownTeacherId: asg.t,
-        ownTeacher: teachers.find(t => t.id === asg.t),
-        isOwnSubject,
-        examiner: isOwnSubject ? null : examId
-      };
-    }).filter(Boolean).sort((a,b) => a.period - b.period);
-  };
-
-  const getTodayThuWeek = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const idx = thuDates.indexOf(today);
-    return idx >= 0 ? idx + 1 : null;
-  };
-
-  const getLastThuWeek = () => {
-    const today = new Date().toISOString().split('T')[0];
-    let last = null;
-    thuDates.forEach((d, i) => { if (d <= today) last = i + 1; });
-    return last;
-  };
-
-  const getNextThuWeek = () => {
-    const today = new Date().toISOString().split('T')[0];
-    for (let i = 0; i < thuDates.length; i++) {
-      if (thuDates[i] > today) return {wk: i+1, dt: thuDates[i]};
-    }
-    return null;
-  };
-
-  const addThuStudent = (weekNum, subId) => {
-    setThuResults(prev => {
-      const wk = 'W' + weekNum;
-      const wkData = {...(prev[wk] || {})};
-      const subEntry = [...(wkData[subId] || [])];
-      subEntry.push({name:'', result:''});
-      wkData[subId] = subEntry;
-      return {...prev, [wk]: wkData};
-    });
-  };
-
-  const updThuStudent = (weekNum, subId, sIdx, field, val) => {
-    setThuResults(prev => {
-      const wk = 'W' + weekNum;
-      const wkData = {...(prev[wk] || {})};
-      const arr = [...(wkData[subId] || [])];
-      arr[sIdx] = {...arr[sIdx], [field]: val};
-      wkData[subId] = arr;
-      return {...prev, [wk]: wkData};
-    });
-  };
-
-  const rmThuStudent = (weekNum, subId, sIdx) => {
-    setThuResults(prev => {
-      const wk = 'W' + weekNum;
-      const wkData = {...(prev[wk] || {})};
-      wkData[subId] = (wkData[subId]||[]).filter((_,i)=>i!==sIdx);
-      return {...prev, [wk]: wkData};
-    });
-  };
-
-  const submitThuWeek = async (weekNum) => {
-    const wk = 'W' + weekNum;
-    const wkData = thuResults[wk] || {};
-    const periods = getThuPeriods(weekNum).filter(p => !p.isOwnSubject);
-    const examId = getWeekExaminer(weekNum);
-    const hasAny = Object.values(wkData).some(arr => arr.some(s => s.name.trim()));
-    if (!hasAny) { flash('⚠️ کوئی طالب علم درج نہیں'); return; }
-    setThuSubmitting(true);
-    const entries = periods.map(p => ({
-      subject_id: p.subId,
-      subject_name: p.subName,
-      class_id: p.classId,
-      period: p.period,
-      students: (wkData[p.subId]||[]).filter(s=>s.name.trim())
-    })).filter(e => e.students.length > 0);
-    const payload = {
-      week: weekNum,
-      date: thuDates[weekNum-1]||'',
-      examiner_id: examId,
-      entries
-    };
-    const r = await syncPost('thursday_test', payload);
-    flash(r.success ? '✓ ارسال' : '✓ محفوظ (قطار میں)');
-    setThuSubmitting(false);
-  };
-
-    // ── Config Sync ──
-  const pushConfig = async () => {
-    if (!cfg.script_url) { flash('⚠️ URL نہیں'); return; }
-    setConfigSyncing(true);
-    setConfigSyncMsg('');
-    try {
-      const payload = JSON.stringify({
-        type: 'save_config',
-        config: {
-          institution: cfg.institution,
-          classes: cfg.classes,
-          subjects: cfg.subjects,
-          teachers: cfg.teachers,
-          periods: cfg.periods,
-          assignments: cfg.assignments,
-          pins: cfg.pins,
-          scoring: cfg.scoring,
-          dashboard: cfg.dashboard,
-          pin_changed: cfg.pin_changed,
-          script_url: cfg.script_url,
-          holidays: cfg.holidays || []
-        }
-      });
-      const r = await (await fetch(cfg.script_url, {
-        method: 'POST',
-        headers: {'Content-Type': 'text/plain'},
-        body: payload
-      })).json();
-      setConfigSyncMsg(r.success ? '✓ کلاؤڈ میں محفوظ' : '⚠️ ' + (r.error||'خرابی'));
-    } catch(e) {
-      setConfigSyncMsg('⚠️ نیٹ ورک خرابی');
-    }
-    setConfigSyncing(false);
-  };
-
-  const pullConfig = async (scriptUrl) => {
-    const url = scriptUrl || cfg.script_url;
-    if (!url) return null;
-    try {
-      const r = await (await fetch(url + '?action=get_config')).json();
-      if (r.success && r.config) {
-        const remote = r.config;
-        const merged = {
-          ...DEFAULTS,
-          ...remote,
-          institution: {...DEFAULTS.institution, ...(remote.institution||{})},
-          scoring: {...DEFAULTS.scoring, ...(remote.scoring||{})},
-          dashboard: {...DEFAULTS.dashboard, ...(remote.dashboard||{})},
-          pins: {...DEFAULTS.pins, ...(remote.pins||{})},
-        };
-        if (Array.isArray(remote.classes) && remote.classes.length) merged.classes = remote.classes;
-        if (Array.isArray(remote.subjects) && remote.subjects.length) merged.subjects = remote.subjects;
-        if (Array.isArray(remote.teachers) && remote.teachers.length) merged.teachers = remote.teachers;
-        if (Array.isArray(remote.periods) && remote.periods.length) merged.periods = remote.periods;
-        if (Array.isArray(remote.assignments)) merged.assignments = remote.assignments;
-        return merged;
-      }
-    } catch(e) {}
-    return null;
-  };
-
-    // ── Sync ──
   const submitD = () => {
     const entries = myA.filter(a => r(a.sub.id).actual).map(a => {
       const rp = r(a.sub.id);
@@ -1549,15 +1856,11 @@ function App() {
       date: new Date().toISOString().split('T')[0],
       entries
     };
-    // Write to SQLite historical table (synced=0 until confirmed)
-    const repDate = pl.date;
-    entries.forEach(en => dbSaveReport({...en, date: repDate, teacher_id: user.id}));
-    if (cfg.script_url) {
-      syncPost('daily_report', pl).then(r => {
-        if (r && r.success) dbMarkReportSynced(repDate, user.id);
-      });
-    } else {
-      setSyncQ(p => [...p, { type: 'daily_report', payload: pl }]);
+    if (cfg.script_url) syncPost('daily_report', pl);else {
+      setSyncQ(p => [...p, {
+        type: 'daily_report',
+        payload: pl
+      }]);
       flash('✓ قطار');
     }
   };
@@ -1606,24 +1909,11 @@ function App() {
       date: w && w.dt || '',
       blocks
     };
-    // Write to SQLite historical table (synced=0 until confirmed)
-    const thuWeek = pl.week;
-    blocks.forEach((blk, pi) => {
-      (blk.students||[]).forEach((st, si) => {
-        dbSaveThuResult({
-          date: pl.date, week: thuWeek, examiner_id: user.id,
-          class_id: blk.class_id||'', subject_id: blk.subject_id||'',
-          subject_name: blk.subject_name||'', period: blk.period||pi,
-          student_name: st.name||'', result: st.result||''
-        });
-      });
-    });
-    if (cfg.script_url) {
-      syncPost('thursday_test', pl).then(r => {
-        if (r && r.success) dbMarkThuSynced(thuWeek, user.id);
-      });
-    } else {
-      setSyncQ(p => [...p, { type: 'thursday_test', payload: pl }]);
+    if (cfg.script_url) syncPost('thursday_test', pl);else {
+      setSyncQ(p => [...p, {
+        type: 'thursday_test',
+        payload: pl
+      }]);
       flash('✓ قطار');
     }
   };
@@ -1724,11 +2014,11 @@ function App() {
     setOtpSending(false);
   };
   const adminLogin = () => {
-    if (pin.length < 6) {
-      setErr('۶ ہندسے');
+    if (pin.length < 4) {
+      setErr('۴ ہندسے');
       return;
     }
-    if (pin !== (pins.ADMIN || '123456')) {
+    if (pin !== (pins.ADMIN || '9999')) {
       setErr('غلط پن');
       return;
     }
@@ -1738,47 +2028,11 @@ function App() {
       role: 'admin',
       exam: false
     });
-    if (!cfg.pin_changed) {
-      setScr('change_pin');
-    } else {
-      setScr('main');
-      setTab('home');
-    }
+    setScr('main');
+    setTab('home');
     setPin('');
   };
-  if (scr === 'change_pin') return /*#__PURE__*/React.createElement("div", {style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:`linear-gradient(170deg,${ST.dk},#132b20)`,fontFamily:ST.f,padding:20}},
-    /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:18,fontWeight:800,marginBottom:6}}, "🔐 پن تبدیل کریں"),
-    /*#__PURE__*/React.createElement("div", {style:{color:'#8fbc8f',fontSize:11,marginBottom:20,textAlign:'center'}}, "پہلی بار لاگ ان — نیا ۶ ہندسہ پن مقرر کریں"),
-    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:16,direction:'ltr'}},
-      [0,1,2,3,4,5].map(i=>/*#__PURE__*/React.createElement("div", {key:i, style:{width:36,height:44,borderRadius:9,border:pin.length>i?`2px solid ${ST.gd}`:'1px solid rgba(255,255,255,0.1)',background:pin.length>i?`${ST.gd}18`:'rgba(0,0,0,0.2)',display:'flex',alignItems:'center',justifyContent:'center'}},
-        pin.length > i && /*#__PURE__*/React.createElement("div", {style:{width:10,height:10,borderRadius:'50%',background:ST.gd}})
-      ))
-    ),
-    /*#__PURE__*/React.createElement("div", {style:{color:'#ef4444',fontSize:11,marginBottom:12,minHeight:16}}, err),
-    /*#__PURE__*/React.createElement("div", {style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,width:220,marginBottom:16}},
-      [1,2,3,4,5,6,7,8,9,'','0','⌫'].map((k,i)=>/*#__PURE__*/React.createElement("button", {key:i,
-        onClick:()=>{if(k==='⌫'){setPin(p=>p.slice(0,-1));setErr('');}else if(k!==''&&pin.length<6){setPin(p=>p+k);setErr('');}},
-        disabled:k==='',
-        style:{padding:'14px 0',borderRadius:12,border:'none',fontSize:20,fontWeight:700,cursor:k===''?'default':'pointer',background:k===''?'transparent':k==='⌫'?'rgba(255,255,255,0.05)':'rgba(255,255,255,0.08)',color:k===''?'transparent':ST.gd,fontFamily:'monospace'}
-      }, k))
-    ),
-    /*#__PURE__*/React.createElement(Btn, {full:true, color:ST.gd, style:{maxWidth:220,color:ST.dk,fontWeight:800},
-      onClick:()=>{
-        if(pin.length<6){setErr('۶ ہندسے درکار');return;}
-        if(pin==='123456'){setErr('پہلے والا پن نہ رکھیں');return;}
-        updCfg('pins',{...pins,ADMIN:pin});
-        updCfg('pin_changed',true);
-        setPin('');
-        setScr('main');
-        setTab('home');
-        flash('✓ پن محفوظ');
-      }
-    }, "محفوظ کریں ✓"),
-    /*#__PURE__*/React.createElement("button", {onClick:()=>{setScr('main');setTab('home');setPin('');},
-      style:{marginTop:12,background:'none',border:'none',color:'#8fbc8f',fontSize:11,cursor:'pointer',fontFamily:'inherit'}
-    }, "ابھی نہیں — بعد میں بدلیں")
-  );
-    if (scr === 'login') return /*#__PURE__*/React.createElement("div", {
+  if (scr === 'login') return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: '100vh',
       display: 'flex',
@@ -2021,12 +2275,12 @@ function App() {
       marginBottom: 12,
       direction: 'ltr'
     }
-  }, [0, 1, 2, 3, 4, 5].map(i => /*#__PURE__*/React.createElement("div", {
+  }, [0, 1, 2, 3].map(i => /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
-      width: 36,
-      height: 44,
-      borderRadius: 9,
+      width: 44,
+      height: 48,
+      borderRadius: 11,
       border: pin.length > i ? `2px solid ${ST.gd}` : '1px solid rgba(255,255,255,0.1)',
       background: pin.length > i ? `${ST.gd}18` : 'rgba(0,0,0,0.2)',
       display: 'flex',
@@ -2047,7 +2301,7 @@ function App() {
   }, [1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'].map((k, i) => /*#__PURE__*/React.createElement("button", {
     key: i,
     onClick: () => {
-      if (k === '⌫') setPin(p => p.slice(0, -1));else if (k !== '' && pin.length < (isAdminLogin ? 6 : 4)) setPin(p => p + k);
+      if (k === '⌫') setPin(p => p.slice(0, -1));else if (k !== '' && pin.length < 4) setPin(p => p + k);
       setErr('');
     },
     disabled: k === '',
@@ -2098,7 +2352,7 @@ function App() {
     id: 'report',
     ic: '📝',
     l: 'رپورٹ'
-  }, ...((isEx || isAd) ? [{
+  }, ...(isEx ? [{
     id: 'thu',
     ic: '📋',
     l: 'امتحان'
@@ -2116,65 +2370,15 @@ function App() {
     setAdmSub(null);
     setShowForm(null);
   };
-
-  // ═══ ADMIN MENU ITEMS ═══
-  const adminItems = [{
-    ic: '🏫',
-    l: 'ادارہ ترتیبات',
-    k: 'inst'
-  }, {
-    ic: '🚦',
-    l: 'ڈیش بورڈ',
-    k: 'dash'
-  }, {
-    ic: '📋',
-    l: 'تفویض',
-    k: 'assign'
-  }, {
-    ic: '📅',
-    l: 'جمعرات شیڈول',
-    k: 'thuSch'
-  }, {
-    ic: '👨‍🏫',
-    l: 'اساتذہ',
-    k: 'teachers'
-  }, {
-    ic: '🎨',
-    l: `جماعتیں (${CL.length})`,
-    k: 'classes'
-  }, {
-    ic: '📚',
-    l: `مضامین (${subjects.length})`,
-    k: 'subjects'
-  }, {
-    ic: '🕐',
-    l: 'اوقات',
-    k: 'periods'
-  }, {
-    ic: '📊',
-    l: 'درجہ بندی / حدود',
-    k: 'thresholds'
-  }, {
-    ic: '🔐',
-    l: 'پن',
-    k: 'pins'
-  }, {
-    ic: '🔄',
-    l: 'سنک',
-    k: 'sync'
-  }, {
-    ic: '🔁',
-    l: 'ری سیٹ',
-    k: 'reset'
-  }];
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      minHeight: '100vh',
-      fontFamily: ST.f,
-      direction: 'rtl',
-      background: '#f5f0e8'
-    }
-  }, confirmDel ? (function(){var _cd=confirmDel,type=_cd.type,id=_cd.id,name=_cd.name,deps=_cd.deps;return /*#__PURE__*/React.createElement("div", {
+  const CDM = () => {
+    if (!confirmDel) return null;
+    const {
+      type,
+      id,
+      name,
+      deps
+    } = confirmDel;
+    return /*#__PURE__*/React.createElement("div", {
       style: {
         position: 'fixed',
         inset: 0,
@@ -2252,12 +2456,65 @@ function App() {
       small: true,
       color: "#ef4444",
       onClick: () => {
-        if (type === 'teacher') rmT(id);
-              else if (type === 'period') rmPer(id);
-              else if (type === 'subject') rmSub(id);
-              else if (type === 'class') rmCls(id);
+        if (type === 'teacher') rmT(id);else if (type === 'period') rmPer(id);
       }
-    }, "\u062D\u0630\u0641"))));})() : null, toast && /*#__PURE__*/React.createElement("div", {
+    }, "\u062D\u0630\u0641"))));
+  };
+
+  // ═══ ADMIN MENU ITEMS ═══
+  const adminItems = [{
+    ic: '🏫',
+    l: 'ادارہ ترتیبات',
+    k: 'inst'
+  }, {
+    ic: '🚦',
+    l: 'ڈیش بورڈ',
+    k: 'dash'
+  }, {
+    ic: '📋',
+    l: 'تفویض',
+    k: 'assign'
+  }, {
+    ic: '📅',
+    l: 'جمعرات شیڈول',
+    k: 'thuSch'
+  }, {
+    ic: '👨‍🏫',
+    l: 'اساتذہ',
+    k: 'teachers'
+  }, {
+    ic: '📚',
+    l: `مضامین (${subjects.length})`,
+    k: 'subjects'
+  }, {
+    ic: '🕐',
+    l: 'اوقات',
+    k: 'periods'
+  }, {
+    ic: '📊',
+    l: 'درجہ بندی / حدود',
+    k: 'thresholds'
+  }, {
+    ic: '🔐',
+    l: 'پن',
+    k: 'pins'
+  }, {
+    ic: '🔄',
+    l: 'سنک',
+    k: 'sync'
+  }, {
+    ic: '🔁',
+    l: 'ری سیٹ',
+    k: 'reset'
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: '100vh',
+      fontFamily: ST.f,
+      direction: 'rtl',
+      background: '#f5f0e8'
+    }
+  }, /*#__PURE__*/React.createElement(CDM, null), toast && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
       top: 56,
@@ -2584,206 +2841,176 @@ function App() {
   }), /*#__PURE__*/React.createElement(Btn, {
     full: true,
     onClick: submitD
-  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), tab === 'thu' && (isEx || isAd) && /*#__PURE__*/React.createElement("div", null,
-  (function(){
-    const todayWk = getTodayThuWeek();
-    const lastWk = getLastThuWeek();
-    const nextWk = getNextThuWeek();
-    const isThursday = todayWk !== null;
-    const resultColor = r => r==='اعلیٰ'?'#065f46':r==='اچھا'?'#1e40af':r==='کمزور'?'#92400e':r==='ناکام'?'#991b1b':'#6b7c6b';
-    const resultBg = r => r==='اعلیٰ'?'#d1fae5':r==='اچھا'?'#dbeafe':r==='کمزور'?'#fef3c7':r==='ناکام'?'#fee2e2':'#f0f0f0';
-
-    // ── ADMIN VIEW ──
-    if (isAd) {
-      const periods = isAd && thuViewWk ? getThuPeriods(thuViewWk) : [];
-      const examId = getWeekExaminer(thuViewWk);
-      const examT = teachers.find(t=>t.id===examId);
-      const wkData = (thuResults['W'+thuViewWk])||{};
-      return /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
-          /*#__PURE__*/React.createElement(Ttl, {icon:"📋", text:"جمعرات امتحانات"}),
-          /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:3,flexWrap:'wrap',justifyContent:'flex-end'}},
-            thuDates.map((_,i)=>/*#__PURE__*/React.createElement("button", {key:i,onClick:()=>setThuViewWk(i+1),
-              style:{padding:'3px 7px',borderRadius:6,border:'none',fontSize:9,fontWeight:700,cursor:'pointer',
-                background:thuViewWk===i+1?ST.gd:'#f0ebe0',color:thuViewWk===i+1?ST.dk:'#6b7c6b'}
-            }, "W"+(i+1)))
-          )
-        ),
-        /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
-          /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:12,fontWeight:800}},
-            "ہفتہ "+thuViewWk+" — "+(thuDates[thuViewWk-1]||'—')
-          ),
-          /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
-            "ممتحن: "+(examT?examT.n:'غیر مقرر')+" • "+periods.filter(p=>!p.isOwnSubject).length+" پیریڈ"
-          )
-        ),
-        periods.map(p => {
-          const students = wkData[p.subId]||[];
-          const filled = students.filter(s=>s.name.trim());
-          return /*#__PURE__*/React.createElement(Card, {key:p.subId,
-            style:{borderRight:`3px solid ${p.isOwnSubject?'#ccc':p.classAccent}`,
-              background:p.isOwnSubject?'#f8f8f8':'#fff',marginBottom:4,padding:'8px 11px'}},
-            /*#__PURE__*/React.createElement("div", {style:{display:'flex',alignItems:'center',gap:8}},
-              /*#__PURE__*/React.createElement("div", {style:{fontSize:9,fontWeight:700,color:'#bbb',width:16}}, p.period),
-              /*#__PURE__*/React.createElement("div", {style:{flex:1}},
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700,color:p.isOwnSubject?'#bbb':'#333'}}, p.subName),
-                /*#__PURE__*/React.createElement(Bdg, {text:p.className, bg:p.classColor, color:p.classAccent})
-              ),
-              p.isOwnSubject ?
-                /*#__PURE__*/React.createElement(Bdg, {text:"اپنا مضمون", bg:'#f3f4f6', color:'#9ca3af'}) :
-                /*#__PURE__*/React.createElement(Bdg, {
-                  text: filled.length ? filled.length+" طلباء ✓" : "درج نہیں",
-                  bg: filled.length?'#d1fae5':'#fef3c7',
-                  color: filled.length?'#065f46':'#92400e'
-                })
-            ),
-            !p.isOwnSubject && filled.length > 0 && /*#__PURE__*/React.createElement("div", {style:{marginTop:4,paddingTop:4,borderTop:'1px solid #f0ebe0'}},
-              filled.map((s,si)=>/*#__PURE__*/React.createElement("div", {key:si,
-                style:{display:'flex',justifyContent:'space-between',fontSize:9,marginBottom:1}},
-                /*#__PURE__*/React.createElement("span", null, s.name),
-                s.result && /*#__PURE__*/React.createElement(Bdg, {text:s.result,bg:resultBg(s.result),color:resultColor(s.result)})
-              ))
-            )
-          );
-        })
-      );
+  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), tab === 'thu' && isEx && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
+    icon: "\uD83D\uDCCB",
+    text: "\u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646"
+  }), myThu.length === 0 ? /*#__PURE__*/React.createElement(Card, {
+    style: {
+      textAlign: 'center',
+      padding: 20
     }
-
-    // ── EXAMINER — TODAY IS THURSDAY ──
-    if (isThursday) {
-      const periods = getThuPeriods(todayWk);
-      const myPeriods = periods.filter(p => !p.isOwnSubject);
-      const myOwn = periods.filter(p => p.isOwnSubject);
-      const wkData = thuResults['W'+todayWk]||{};
-      const examId = getWeekExaminer(todayWk);
-      const isMyWeek = examId === (user?user.id:null);
-
-      if (!isMyWeek) return /*#__PURE__*/React.createElement(Card, {style:{textAlign:'center',padding:24}},
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:28,marginBottom:8}}, "📋"),
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:'#666'}}, "آج آپ ممتحن نہیں ہیں"),
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#999',marginTop:4}},
-          "آج کے ممتحن: "+(teachers.find(t=>t.id===examId)||{n:'—'}).n)
-      );
-
-      return /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
-          /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:13,fontWeight:800}},
-            "آج آپ ممتحن ہیں — ہفتہ "+todayWk
-          ),
-          /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
-            thuDates[todayWk-1]||'', " • ", myPeriods.length, " پیریڈ آپ کے — ", myOwn.length, " اپنے (چھوڑ دیں)"
-          )
-        ),
-        myOwn.length > 0 && /*#__PURE__*/React.createElement(Card, {style:{background:'#fef3c7',marginBottom:8,padding:'8px 12px'}},
-          /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700,color:'#92400e',marginBottom:4}},
-            "⚠️ یہ آپ کے اپنے مضامین ہیں — امتحان نہ لیں"
-          ),
-          myOwn.map(p=>/*#__PURE__*/React.createElement("div", {key:p.subId,
-            style:{fontSize:9,color:'#b45309',marginBottom:2}},
-            "پیریڈ "+p.period+" — "+p.subName+" ("+p.className+")"
-          ))
-        ),
-        myPeriods.map(p => {
-          const students = wkData[p.subId]||[];
-          return /*#__PURE__*/React.createElement(Card, {key:p.subId,
-            style:{borderRight:`4px solid ${p.classAccent}`,marginBottom:6}},
-            /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
-              /*#__PURE__*/React.createElement("div", null,
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#999',marginBottom:1}}, "پیریڈ "+p.period),
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:800}}, p.subName),
-                /*#__PURE__*/React.createElement(Bdg, {text:p.className, bg:p.classColor, color:p.classAccent}),
-                p.ownTeacher && /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999',marginTop:2}},
-                  "استاذ: "+p.ownTeacher.n)
-              ),
-              /*#__PURE__*/React.createElement(Btn, {small:true,color:ST.gd,
-                onClick:()=>addThuStudent(todayWk,p.subId)
-              }, "+ طالب علم")
-            ),
-            students.map((st,si)=>/*#__PURE__*/React.createElement("div", {key:si,
-              style:{display:'flex',gap:6,alignItems:'center',marginBottom:4,
-                paddingBottom:4,borderBottom:'1px solid #f0ebe0'}},
-              /*#__PURE__*/React.createElement("input", {
-                value:st.name, placeholder:"طالب علم کا نام",
-                onChange:e=>updThuStudent(todayWk,p.subId,si,'name',e.target.value),
-                style:{flex:2,padding:'5px 7px',borderRadius:7,border:'1px solid #d5d0c5',
-                  fontSize:11,fontFamily:'inherit',outline:'none',background:'#faf8f3'}
-              }),
-              /*#__PURE__*/React.createElement(Sel, {value:st.result,
-                onChange:v=>updThuStudent(todayWk,p.subId,si,'result',v),
-                style:{flex:1,fontSize:10}},
-                /*#__PURE__*/React.createElement("option",{value:''},"نتیجہ"),
-                ['اعلیٰ','اچھا','کمزور','ناکام','غائب'].map(r=>
-                  /*#__PURE__*/React.createElement("option",{key:r,value:r},r))
-              ),
-              /*#__PURE__*/React.createElement("button", {
-                onClick:()=>rmThuStudent(todayWk,p.subId,si),
-                style:{background:'#fef2f2',border:'none',borderRadius:5,
-                  padding:'4px 7px',cursor:'pointer',color:'#ef4444',fontSize:11}
-              }, "✗")
-            )),
-            students.length === 0 && /*#__PURE__*/React.createElement("div", {
-              style:{fontSize:9,color:'#bbb',textAlign:'center',padding:'4px 0'}
-            }, "➕ طالب علم شامل کریں")
-          );
-        }),
-        /*#__PURE__*/React.createElement(Btn, {full:true, color:ST.gd, disabled:thuSubmitting,
-          onClick:()=>submitThuWeek(todayWk)
-        }, thuSubmitting?'ارسال ہو رہا ہے...':'✓ جمع کریں')
-      );
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#999'
     }
-
-    // ── NOT THURSDAY: past results + upcoming ──
-    return /*#__PURE__*/React.createElement("div", null,
-      nextWk && /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
-        /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:12,fontWeight:800}}, "اگلا جمعرات"),
-        /*#__PURE__*/React.createElement("div", {style:{color:'#fff',fontSize:14,fontWeight:800,marginTop:2}}, nextWk.dt),
-        (function(){
-          const examId = getWeekExaminer(nextWk.wk);
-          const examT = teachers.find(t=>t.id===examId);
-          const periods = getThuPeriods(nextWk.wk);
-          const mine = periods.filter(p=>!p.isOwnSubject && examId===(user?user.id:null));
-          return /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
-            "ممتحن: "+(examT?examT.n:'—'),
-            examId===(user?user.id:null) ? " — آپ "+mine.length+" پیریڈ لیں گے" : ""
-          );
-        })()
-      ),
-      lastWk && /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:'#666',marginBottom:6}},
-          "گزشتہ امتحانات"
-        ),
-        [...Array(lastWk)].map((_,i)=>{
-          const wkN = lastWk - i;
-          const wkData = thuResults['W'+wkN]||{};
-          const examId = getWeekExaminer(wkN);
-          const examT = teachers.find(t=>t.id===examId);
-          const totalStudents = Object.values(wkData).reduce((sum,arr)=>sum+arr.filter(s=>s.name.trim()).length,0);
-          return /*#__PURE__*/React.createElement(Card, {key:wkN,style:{marginBottom:6}},
-            /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
-              /*#__PURE__*/React.createElement("div", null,
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:ST.dk}},
-                  "ہفتہ "+wkN+" — "+(thuDates[wkN-1]||'')
-                ),
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#999'}},
-                  "ممتحن: "+(examT?examT.n:'—')+" • "+totalStudents+" طلباء"
-                )
-              ),
-              /*#__PURE__*/React.createElement(Bdg, {
-                text: totalStudents>0?'✓ درج':'خالی',
-                bg: totalStudents>0?'#d1fae5':'#fef3c7',
-                color: totalStudents>0?'#065f46':'#92400e'
-              })
-            )
-          );
-        })
-      ),
-      !lastWk && !nextWk && /*#__PURE__*/React.createElement(Card, {style:{textAlign:'center',padding:20}},
-        /*#__PURE__*/React.createElement("div", {style:{color:'#999'}}, "ابھی کوئی جمعرات شیڈول نہیں")
-      )
-    );
-  })()
-),
-tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
+  }, "\u06A9\u0648\u0626\u06CC \u06C1\u0641\u062A\u06C1 \u0645\u0642\u0631\u0631 \u0646\u06C1\u06CC\u06BA")) : /*#__PURE__*/React.createElement(React.Fragment, null, CL.length > 0 && thD.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 3,
+      overflowX: 'auto',
+      marginBottom: 10
+    }
+  }, CL.map((cl, i) => /*#__PURE__*/React.createElement("button", {
+    key: cl.id,
+    onClick: () => setThB(i),
+    style: {
+      padding: '5px 10px',
+      borderRadius: 9,
+      border: 'none',
+      fontSize: 9,
+      fontWeight: 700,
+      fontFamily: 'inherit',
+      cursor: 'pointer',
+      whiteSpace: 'nowrap',
+      background: thB === i ? cl.a : cl.c,
+      color: thB === i ? '#fff' : cl.a
+    }
+  }, cl.n))), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      border: `2px solid ${CL[thB] && CL[thB].a}30`
+    }
+  }, /*#__PURE__*/React.createElement(Sel, {
+    value: thD[thB] && thD[thB].sid || '',
+    onChange: v => uTh(thB, 0, 'sid', v)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 \u0645\u0636\u0645\u0648\u0646 \u2014"), subjects.filter(s => s.c === (CL[thB] && CL[thB].id)).map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id
+  }, s.n))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      overflowX: 'auto',
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("table", {
+    style: {
+      width: '100%',
+      borderCollapse: 'collapse',
+      fontSize: 10,
+      direction: 'rtl',
+      minWidth: 380
+    }
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: CL[thB] && CL[thB].a,
+      color: '#fff'
+    }
+  }, /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: 5,
+      width: 20
+    }
+  }, "#"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: 5,
+      textAlign: 'right',
+      minWidth: 65
+    }
+  }, "\u0646\u0627\u0645"), [1, 2, 3, 4, 5].map(q => /*#__PURE__*/React.createElement("th", {
+    key: q,
+    style: {
+      padding: 5,
+      width: 30
+    }
+  }, "\u0633", q)), /*#__PURE__*/React.createElement("th", {
+    style: {
+      width: 30
+    }
+  }, "\u06A9\u0644"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      width: 26
+    }
+  }, "%"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      width: 16
+    }
+  }, "\u063A"))), /*#__PURE__*/React.createElement("tbody", null, (thD[thB] && thD[thB].grid || []).map((st, si) => {
+    var _rs$t;
+    const rs = cSR(st.sc, st.ab, scoring);
+    return /*#__PURE__*/React.createElement("tr", {
+      key: si,
+      style: {
+        background: st.ab ? '#f0f0f0' : si % 2 ? '#fff' : '#faf8f3'
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        textAlign: 'center',
+        color: '#999',
+        fontSize: 9
+      }
+    }, st.num), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
+      value: st.nm,
+      onChange: e => uTh(thB, si, 'nm', e.target.value),
+      style: {
+        width: '100%',
+        border: 'none',
+        background: 'transparent',
+        fontSize: 10,
+        fontFamily: 'inherit',
+        outline: 'none',
+        direction: 'rtl',
+        padding: 2
+      }
+    })), [0, 1, 2, 3, 4].map(q => {
+      var _st$sc$q;
+      return /*#__PURE__*/React.createElement("td", {
+        key: q
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "number",
+        min: "0",
+        max: "10",
+        value: (_st$sc$q = st.sc[q]) !== null && _st$sc$q !== void 0 ? _st$sc$q : '',
+        disabled: st.ab,
+        onChange: e => uTh(thB, si, `q${q}`, e.target.value),
+        style: {
+          width: 26,
+          padding: 2,
+          borderRadius: 4,
+          border: '1px solid #e5e0d5',
+          fontSize: 10,
+          textAlign: 'center',
+          fontFamily: 'inherit',
+          outline: 'none',
+          background: st.ab ? '#eee' : '#fff'
+        }
+      }));
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        textAlign: 'center',
+        fontWeight: 800,
+        fontSize: 11,
+        color: rs.c ? catC[rs.c] : '#ccc'
+      }
+    }, (_rs$t = rs.t) !== null && _rs$t !== void 0 ? _rs$t : '—'), /*#__PURE__*/React.createElement("td", {
+      style: {
+        textAlign: 'center',
+        fontSize: 9,
+        color: rs.c ? catC[rs.c] : '#ccc'
+      }
+    }, rs.p != null ? rs.p + '%' : '—'), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: st.ab,
+      onChange: e => uTh(thB, si, 'ab', e.target.checked),
+      style: {
+        width: 12,
+        height: 12
+      }
+    })));
+  }))))), /*#__PURE__*/React.createElement(Btn, {
+    full: true,
+    color: CL[thB] && CL[thB].a,
+    onClick: submitTh
+  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")))), tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
     icon: "\uD83D\uDD50",
     text: "\u0646\u0638\u0627\u0645 \u0627\u0644\u0627\u0648\u0642\u0627\u062A"
   }), periods.map(p => {
@@ -3348,96 +3575,56 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
       background: '#fef2f2',
       color: '#ef4444'
     }
-  }, "\u2717"))))), admSub === 'subjects' && /*#__PURE__*/React.createElement("div", null,
-  /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
-    /*#__PURE__*/React.createElement(Bk, {onClick: goHome}),
-    /*#__PURE__*/React.createElement(Ttl, {icon:"\uD83D\uDCDA", text:`مضامین (${subjects.length})`}),
-    /*#__PURE__*/React.createElement(Btn, {small:true, color:ST.gd, onClick:()=>setShowForm(showForm==='sub'?null:'sub')}, showForm==='sub'?'✗':'+ نیا')
-  ),
-  showForm==='sub' && /*#__PURE__*/React.createElement(Card, {style:{border:`2px solid ${ST.gd}40`,marginBottom:8}},
-    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:6}},
-      /*#__PURE__*/React.createElement(Inp, {value:newSub.id, onChange:v=>setNewSub(p=>({...p,id:v})), placeholder:"ID (S43)", style:{flex:1,direction:'ltr'}}),
-      /*#__PURE__*/React.createElement(Inp, {value:newSub.n, onChange:v=>setNewSub(p=>({...p,n:v})), placeholder:"نام", style:{flex:2}})
-    ),
-    /*#__PURE__*/React.createElement(Sel, {value:newSub.c, onChange:v=>setNewSub(p=>({...p,c:v})), style:{marginBottom:6}},
-      /*#__PURE__*/React.createElement("option", {value:''},"-- جماعت --"),
-      CL.map(cl=>/*#__PURE__*/React.createElement("option", {key:cl.id, value:cl.id}, cl.n))
-    ),
-    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:6}},
-      /*#__PURE__*/React.createElement(Row, {label:"شروع صفحہ"}, /*#__PURE__*/React.createElement(Inp, {type:"number", value:newSub.s, onChange:v=>setNewSub(p=>({...p,s:v})), style:{direction:'ltr'}})),
-      /*#__PURE__*/React.createElement(Row, {label:"آخر صفحہ"}, /*#__PURE__*/React.createElement(Inp, {type:"number", value:newSub.e, onChange:v=>setNewSub(p=>({...p,e:v})), style:{direction:'ltr'}}))
-    ),
-    /*#__PURE__*/React.createElement(Inp, {value:newSub.pub, onChange:v=>setNewSub(p=>({...p,pub:v})), placeholder:"ناشر", style:{marginBottom:8}}),
-    /*#__PURE__*/React.createElement(Btn, {full:true, color:"#10b981", onClick:addSub}, "شامل ✓")
-  ),
-  CL.map(cl => {
+  }, "\u2717"))))), admSub === 'subjects' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement(Bk, {
+    onClick: goHome
+  }), /*#__PURE__*/React.createElement(Ttl, {
+    icon: "\uD83D\uDCDA",
+    text: `مضامین (${subjects.length})`
+  }), /*#__PURE__*/React.createElement("div", null)), CL.map(cl => {
     const cs = subjects.filter(s => s.c === cl.id);
     if (!cs.length) return null;
-    return /*#__PURE__*/React.createElement("div", {key:cl.id, style:{marginBottom:8}},
-      /*#__PURE__*/React.createElement(Bdg, {text:`${cl.n} (${cs.length})`, bg:cl.c, color:cl.a}),
-      cs.map(s => {
-        const asgT = assignments.filter(a=>a.sub===s.id).map(a=>teachers.find(t=>t.id===a.t)).filter(Boolean);
-        const isEditing = editSubId === s.id;
-        return /*#__PURE__*/React.createElement(Card, {key:s.id, style:{marginTop:3, borderRight:`3px solid ${cl.a}`, padding:'8px 11px'}},
-          isEditing ? /*#__PURE__*/React.createElement("div", null,
-            /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:4}},
-              /*#__PURE__*/React.createElement(Inp, {value:editSub.n, onChange:v=>setEditSub(p=>({...p,n:v})), placeholder:"نام", style:{flex:2}}),
-              /*#__PURE__*/React.createElement(Sel, {value:editSub.c, onChange:v=>setEditSub(p=>({...p,c:v})), style:{flex:1}},
-                CL.map(cl2=>/*#__PURE__*/React.createElement("option", {key:cl2.id,value:cl2.id},cl2.n))
-              )
-            ),
-            /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:4}},
-              /*#__PURE__*/React.createElement(Row, {label:"شروع"}, /*#__PURE__*/React.createElement(Inp, {type:"number",value:editSub.s,onChange:v=>setEditSub(p=>({...p,s:v})),style:{direction:'ltr'}})),
-              /*#__PURE__*/React.createElement(Row, {label:"آخر"}, /*#__PURE__*/React.createElement(Inp, {type:"number",value:editSub.e,onChange:v=>setEditSub(p=>({...p,e:v})),style:{direction:'ltr'}}))
-            ),
-            /*#__PURE__*/React.createElement(Inp, {value:editSub.pub||'', onChange:v=>setEditSub(p=>({...p,pub:v})), placeholder:"ناشر", style:{marginBottom:6}}),
-            /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6}},
-              /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#10b981",onClick:()=>saveEditSub(s.id)}, "✓ محفوظ"),
-              /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#9ca3af",onClick:()=>setEditSubId(null)}, "واپس")
-            )
-          ) : /*#__PURE__*/React.createElement("div", {style:{display:'flex',alignItems:'center',gap:8}},
-            /*#__PURE__*/React.createElement("div", {style:{flex:1}},
-              /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700}}, s.n),
-              /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999'}}, "ص", s.s, "–", s.e, " (", s.e-s.s, ")", s.pub ? ` • ${s.pub}` : ''),
-              asgT.length > 0 && /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:cl.a,fontWeight:700}}, asgT.map(t=>t.n).join('، '))
-            ),
-            /*#__PURE__*/React.createElement("button", {onClick:()=>startEditSub(s), style:{background:'#e0f2fe',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#0369a1'}}, "✏️"),
-            /*#__PURE__*/React.createElement("button", {onClick:()=>setConfirmDel({type:'subject',id:s.id,name:s.n,deps:assignments.filter(a=>a.sub===s.id).length}), style:{background:'#fef2f2',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#ef4444'}}, "✗")
-          )
-        );
-      })
-    );
-  })),
-  admSub === 'classes' && /*#__PURE__*/React.createElement("div", null,
-  /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
-    /*#__PURE__*/React.createElement(Bk, {onClick:goHome}),
-    /*#__PURE__*/React.createElement(Ttl, {icon:"\uD83C\uDFA8", text:`جماعتیں (${CL.length})`}),
-    /*#__PURE__*/React.createElement(Btn, {small:true,color:ST.gd,onClick:()=>setShowForm(showForm==='cls'?null:'cls')}, showForm==='cls'?'✗':'+ نیا')
-  ),
-  showForm==='cls' && /*#__PURE__*/React.createElement(Card, {style:{border:`2px solid ${ST.gd}40`,marginBottom:8}},
-    /*#__PURE__*/React.createElement(Inp, {value:newCls.n, onChange:v=>setNewCls(p=>({...p,n:v})), placeholder:"جماعت کا نام", style:{marginBottom:6}}),
-    /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:8,marginBottom:8,alignItems:'center'}},
-      /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#999'}}, "پس منظر رنگ:"),
-      /*#__PURE__*/React.createElement("input", {type:"color", value:newCls.c, onChange:e=>setNewCls(p=>({...p,c:e.target.value})), style:{width:36,height:28,border:'none',borderRadius:6,cursor:'pointer',padding:2}}),
-      /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#999',marginRight:8}}, "بیج رنگ:"),
-      /*#__PURE__*/React.createElement("input", {type:"color", value:newCls.a, onChange:e=>setNewCls(p=>({...p,a:e.target.value})), style:{width:36,height:28,border:'none',borderRadius:6,cursor:'pointer',padding:2}})
-    ),
-    /*#__PURE__*/React.createElement(Btn, {full:true,color:"#10b981",onClick:addCls}, "شامل ✓")
-  ),
-  CL.map(cl => /*#__PURE__*/React.createElement(Card, {key:cl.id, style:{display:'flex',alignItems:'center',gap:10,padding:'10px 13px',borderRight:`4px solid ${cl.a}`}},
-    /*#__PURE__*/React.createElement("div", {style:{width:32,height:32,borderRadius:8,background:cl.c,border:`2px solid ${cl.a}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:cl.a}},
-      subjects.filter(s=>s.c===cl.id).length
-    ),
-    /*#__PURE__*/React.createElement("div", {style:{flex:1}},
-      /*#__PURE__*/React.createElement("div", {style:{fontSize:13,fontWeight:700}}, cl.n),
-      /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#999',fontFamily:'monospace'}}, cl.id)
-    ),
-    /*#__PURE__*/React.createElement("button", {
-      onClick:()=>setConfirmDel({type:'class',id:cl.id,name:cl.n,deps:subjects.filter(s=>s.c===cl.id).length}),
-      style:{background:'#fef2f2',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#ef4444'}
-    }, "✗")
-  ))
-), admSub === 'periods' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement("div", {
+      key: cl.id,
+      style: {
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement(Bdg, {
+      text: `${cl.n} (${cs.length})`,
+      bg: cl.c,
+      color: cl.a
+    }), cs.map(s => /*#__PURE__*/React.createElement(Card, {
+      key: s.id,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 11px',
+        borderRight: `3px solid ${cl.a}`,
+        marginTop: 3
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700
+      }
+    }, s.n), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: '#999'
+      }
+    }, "\u0635", s.s, "\u2013", s.e, " (", s.e - s.s, ")")))));
+  })), admSub === 'periods' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -3543,37 +3730,51 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
     onClick: addPer
   }, "\u0634\u0627\u0645\u0644 \u2713")), periods.map(p => {
     const isB = p.brk || p.type === 'break';
-    const isEditingP = editPerId === p.id;
     return /*#__PURE__*/React.createElement(Card, {
       key: p.id,
       style: {
-        padding: '8px 11px',
-        background: isB && !isEditingP ? `linear-gradient(135deg,${ST.dk},${ST.gn})` : '#fff'
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 13px',
+        background: isB ? `linear-gradient(135deg,${ST.dk},${ST.gn})` : '#fff'
       }
-    }, isEditingP ? /*#__PURE__*/React.createElement("div", null,
-      /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:4}},
-        /*#__PURE__*/React.createElement("div", {style:{flex:1}},
-          /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999',marginBottom:2}}, "شروع"),
-          /*#__PURE__*/React.createElement("input", {type:"time",value:editPerVal.s,onChange:e=>setEditPerVal(p=>({...p,s:e.target.value})),style:{width:'100%',padding:6,borderRadius:7,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}})
-        ),
-        /*#__PURE__*/React.createElement("div", {style:{flex:1}},
-          /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999',marginBottom:2}}, "آخر"),
-          /*#__PURE__*/React.createElement("input", {type:"time",value:editPerVal.e,onChange:e=>setEditPerVal(p=>({...p,e:e.target.value})),style:{width:'100%',padding:6,borderRadius:7,border:'1px solid #d5d0c5',fontSize:12,outline:'none',background:'#faf8f3'}})
-        )
-      ),
-      /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6,marginBottom:6}},
-        ['class','break'].map(tp=>/*#__PURE__*/React.createElement("button", {key:tp,onClick:()=>setEditPerVal(p=>({...p,type:tp})),style:{flex:1,padding:5,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:editPerVal.type===tp?tp==='class'?'#10b981':'#f59e0b':'#f0ebe0',color:editPerVal.type===tp?'#fff':'#6b7c6b'}}, tp==='class'?'کلاس':'وقفہ'))
-      ),
-      /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6}},
-        /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#10b981",onClick:()=>saveEditPer(p.id)}, "✓ محفوظ"),
-        /*#__PURE__*/React.createElement(Btn, {full:true,small:true,color:"#9ca3af",onClick:()=>setEditPerId(null)}, "واپس")
-      )
-    ) : /*#__PURE__*/React.createElement("div", {style:{display:'flex',alignItems:'center',gap:10}},
-      /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:700,color:isB?ST.gd:'#333',fontFamily:'monospace',direction:'ltr',width:90,textAlign:'center'}}, p.s, "\u2013", p.e),
-      /*#__PURE__*/React.createElement("div", {style:{flex:1}}, /*#__PURE__*/React.createElement(Bdg, {text:isB?'وقفہ':'کلاس',bg:isB?'rgba(255,255,255,0.1)':'#f0ebe0',color:isB?ST.gd:'#6b7c6b'})),
-      /*#__PURE__*/React.createElement("button", {onClick:()=>startEditPer(p),style:{background:isB?'rgba(255,255,255,0.1)':'#e0f2fe',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:isB?ST.gd:'#0369a1',marginLeft:4}}, "✏️"),
-      /*#__PURE__*/React.createElement("button", {onClick:()=>setConfirmDel({type:'period',id:p.id,name:`${p.s}–${p.e}`,deps:pA(p.id)}),style:{background:isB?'rgba(239,68,68,0.2)':'#fef2f2',border:'none',borderRadius:5,padding:'3px 7px',fontSize:9,cursor:'pointer',color:'#ef4444'}}, "\u2717")
-    ));
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: isB ? ST.gd : '#333',
+        fontFamily: 'monospace',
+        direction: 'ltr',
+        width: 90,
+        textAlign: 'center'
+      }
+    }, p.s, "\u2013", p.e), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement(Bdg, {
+      text: isB ? 'وقفہ' : 'کلاس',
+      bg: isB ? 'rgba(255,255,255,0.1)' : '#f0ebe0',
+      color: isB ? ST.gd : '#6b7c6b'
+    })), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setConfirmDel({
+        type: 'period',
+        id: p.id,
+        name: `${p.s}–${p.e}`,
+        deps: pA(p.id)
+      }),
+      style: {
+        width: 22,
+        height: 22,
+        borderRadius: 5,
+        border: 'none',
+        fontSize: 9,
+        cursor: 'pointer',
+        background: isB ? 'rgba(239,68,68,0.2)' : '#fef2f2',
+        color: '#ef4444'
+      }
+    }, "\u2717"));
   })), admSub === 'assign' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -3814,7 +4015,7 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
     small: true,
     color: ST.gd,
     onClick: () => {
-      if (pinEdit.tid === 'ADMIN' && pinEdit.val.length === 6) {
+      if (pinEdit.tid === 'ADMIN' && pinEdit.val.length === 4) {
         updCfg('pins', {
           ...pins,
           ADMIN: pinEdit.val
@@ -3993,41 +4194,7 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
       marginTop: 10
     },
     onClick: processQ
-  }, "ابھی ارسال")))
-
-,
-/*#__PURE__*/React.createElement(Card, {style:{marginTop:8}},
-  /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:ST.dk,marginBottom:8}},
-    "☁️ کلاؤڈ کنفیگ"
-  ),
-  /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#666',marginBottom:8}},
-    "تمام ترتیبات (مضامین، اساتذہ، پیریڈ، تفویض، پن) کلاؤڈ پر محفوظ کریں تاکہ دوسرے آلات خودبخود اپڈیٹ ہوں"
-  ),
-  /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6}},
-    /*#__PURE__*/React.createElement(Btn, {full:true, small:true, color:"#10b981",
-      disabled: configSyncing || !cfg.script_url,
-      onClick: async()=>{await pushConfig(); }
-    }, configSyncing?'محفوظ ہو رہا ہے...':'⬆️ کلاؤڈ پر محفوظ'),
-    /*#__PURE__*/React.createElement(Btn, {full:true, small:true, color:"#3b82f6",
-      disabled: configSyncing || !cfg.script_url,
-      onClick: async()=>{
-        setConfigSyncing(true);
-        setConfigSyncMsg('');
-        const remote = await pullConfig(cfg.script_url);
-        if (remote) {
-          setCfg(remote);
-          setConfigSyncMsg('✓ کلاؤڈ سے لوڈ');
-        } else {
-          setConfigSyncMsg('⚠️ کلاؤڈ میں کچھ نہیں');
-        }
-        setConfigSyncing(false);
-      }
-    }, '⬇️ کلاؤڈ سے لوڈ')
-  ),
-  configSyncMsg && /*#__PURE__*/React.createElement("div", {
-    style:{fontSize:10, marginTop:6, color: configSyncMsg.startsWith('✓')?'#065f46':'#ef4444', fontWeight:700}
-  }, configSyncMsg)
-), admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "\u0627\u0628\u06BE\u06CC \u0627\u0631\u0633\u0627\u0644"))), admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -4066,12 +4233,9 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
     color: "#ef4444",
     onClick: async () => {
       try {
-        // Wipe SQLite DB and reinitialise fresh
-        try { await _idbSet(new Uint8Array(0)); } catch(e) {}
-        _db = null;
-        await dbInit();
-        // Also clear any legacy localStorage keys
-        ['iri-config','iri-reports','iri-syncq','iri-thu'].forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+        await _stDel("iri-config");
+        await _stDel("iri-reports");
+        await _stDel("iri-syncq");
       } catch (e) {}
       setCfgRaw({
         ...DEFAULTS
@@ -4133,26 +4297,11 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
     }
   })))));
 }
-class ErrB extends React.Component {
-  constructor(p){super(p);this.state={err:null,info:null};}
-  static getDerivedStateFromError(e){return {err:e};}
-  componentDidCatch(e,i){this.setState({err:e,info:i});}
-  render(){
-    if(this.state.err){
-      var msg=this.state.err.message||String(this.state.err);
-      var stk=this.state.info&&this.state.info.componentStack?this.state.info.componentStack:'';
-      return React.createElement('div',{style:{padding:16,fontFamily:'monospace',direction:'ltr',background:'#fff2f2',border:'2px solid red',margin:10,borderRadius:8,fontSize:11}},
-        React.createElement('div',{style:{color:'red',fontWeight:'bold',marginBottom:8}},'RENDER ERROR (share this with Claude):'),
-        React.createElement('div',{style:{color:'#333',marginBottom:8}},msg),
-        React.createElement('pre',{style:{color:'#666',fontSize:10,overflow:'auto',maxHeight:200}},stk)
-      );
-    }
-    return this.props.children;
-  }
-}
-(function(){
-  var el=document.getElementById('root');
-  if(el) ReactDOM.createRoot(el).render(React.createElement(ErrB,null,React.createElement(App)));
+
+// Render
+(function () {
+  var el = document.getElementById('root');
+  if (el) ReactDOM.createRoot(el).render(React.createElement(App));
 })();
 </script>
 </body>
