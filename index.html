@@ -1111,34 +1111,52 @@ function App() {
     });
   };
 
-  // Generate deterministic shuffle for week N
-  // Rule: no teacher examines their own subject
-  const genThuWeekShuffle = (weekNum) => {
-    const examinerIds = teachers.filter(t => t.exam).map(t => t.id);
-    if (!examinerIds.length) return {};
-    // For each subject find which examiners CAN cover it
-    const sorted = [...subjects].sort((a,b) => a.id.localeCompare(b.id));
-    const result = {};
-    examinerIds.forEach(e => result[e] = []);
-    sorted.forEach((sub, idx) => {
-      const teacherId = assignments.find(a => a.sub === sub.id);
-      const eligible = examinerIds.filter(e => !teacherId || e !== teacherId.t);
-      if (!eligible.length) return;
-      // Deterministic rotation by weekNum and subject index
-      const pick = eligible[(idx + weekNum - 1) % eligible.length];
-      result[pick].push(sub.id);
-    });
-    return result;
+  // For week N: get the single examiner assigned for that week
+  const getWeekExaminer = (weekNum) => {
+    const sch = thuSch.find(w => w.wk === weekNum);
+    return sch ? sch.ex : null;
   };
 
-  // Get current Thursday week (1-9) or null if not a Thursday
+  // For a given period, get the assigned teacher (who must NOT examine that period)
+  const getPeriodTeacher = (subId) => {
+    const asg = assignments.find(a => a.sub === subId);
+    return asg ? asg.t : null;
+  };
+
+  // Get all 42 periods for Thursday:
+  // Each period: examiner = week's assigned examiner, UNLESS examiner owns that period
+  // If examiner owns the period, they still examine it (admin can override via class field)
+  // Actually: examiner covers ALL periods that are NOT their own
+  // Their own periods are covered by whoever is available (not tracked in app — just flagged)
+  const getThuPeriods = (weekNum) => {
+    const examId = getWeekExaminer(weekNum);
+    return assignments.map(asg => {
+      const sub = gS(asg.sub);
+      if (!sub) return null;
+      const cl = CL.find(c => c.id === sub.c) || {n:'',c:'#eee',a:'#999'};
+      const isOwnSubject = asg.t === examId;
+      return {
+        subId: asg.sub,
+        subName: sub.n,
+        classId: sub.c,
+        className: cl.n,
+        classColor: cl.c,
+        classAccent: cl.a,
+        period: asg.p,
+        ownTeacherId: asg.t,
+        ownTeacher: teachers.find(t => t.id === asg.t),
+        isOwnSubject,
+        examiner: isOwnSubject ? null : examId
+      };
+    }).filter(Boolean).sort((a,b) => a.period - b.period);
+  };
+
   const getTodayThuWeek = () => {
     const today = new Date().toISOString().split('T')[0];
     const idx = thuDates.indexOf(today);
     return idx >= 0 ? idx + 1 : null;
   };
 
-  // Get last completed Thursday week
   const getLastThuWeek = () => {
     const today = new Date().toISOString().split('T')[0];
     let last = null;
@@ -1146,7 +1164,6 @@ function App() {
     return last;
   };
 
-  // Get next upcoming Thursday
   const getNextThuWeek = () => {
     const today = new Date().toISOString().split('T')[0];
     for (let i = 0; i < thuDates.length; i++) {
@@ -1155,75 +1172,60 @@ function App() {
     return null;
   };
 
-  // Add a student to a subject in current week results
-  const addThuStudent = (weekNum, examId, subId) => {
+  const addThuStudent = (weekNum, subId) => {
     setThuResults(prev => {
       const wk = 'W' + weekNum;
-      const wkData = prev[wk] || {};
-      const examData = wkData[examId] || [];
-      const subEntry = examData.find(e => e.subId === subId);
-      if (subEntry) {
-        subEntry.students = [...subEntry.students, {name:'', result:''}];
-        return {...prev, [wk]: {...wkData, [examId]: [...examData]}};
-      }
-      return {...prev, [wk]: {...wkData, [examId]: [...examData, {subId, students:[{name:'',result:''}]}]}};
-    });
-  };
-
-  const updThuStudent = (weekNum, examId, subId, sIdx, field, val) => {
-    setThuResults(prev => {
-      const wk = 'W' + weekNum;
-      const wkData = {...(prev[wk]||{})};
-      const examData = [...(wkData[examId]||[])];
-      const subIdx = examData.findIndex(e => e.subId === subId);
-      if (subIdx === -1) return prev;
-      const entry = {...examData[subIdx]};
-      const students = [...entry.students];
-      students[sIdx] = {...students[sIdx], [field]: val};
-      entry.students = students;
-      examData[subIdx] = entry;
-      wkData[examId] = examData;
+      const wkData = {...(prev[wk] || {})};
+      const subEntry = [...(wkData[subId] || [])];
+      subEntry.push({name:'', result:''});
+      wkData[subId] = subEntry;
       return {...prev, [wk]: wkData};
     });
   };
 
-  const rmThuStudent = (weekNum, examId, subId, sIdx) => {
+  const updThuStudent = (weekNum, subId, sIdx, field, val) => {
     setThuResults(prev => {
       const wk = 'W' + weekNum;
-      const wkData = {...(prev[wk]||{})};
-      const examData = [...(wkData[examId]||[])];
-      const subIdx = examData.findIndex(e => e.subId === subId);
-      if (subIdx === -1) return prev;
-      const entry = {...examData[subIdx]};
-      entry.students = entry.students.filter((_,i)=>i!==sIdx);
-      examData[subIdx] = entry;
-      wkData[examId] = examData;
+      const wkData = {...(prev[wk] || {})};
+      const arr = [...(wkData[subId] || [])];
+      arr[sIdx] = {...arr[sIdx], [field]: val};
+      wkData[subId] = arr;
       return {...prev, [wk]: wkData};
     });
   };
 
-  const submitThuWeek = async (weekNum, examId) => {
+  const rmThuStudent = (weekNum, subId, sIdx) => {
+    setThuResults(prev => {
+      const wk = 'W' + weekNum;
+      const wkData = {...(prev[wk] || {})};
+      wkData[subId] = (wkData[subId]||[]).filter((_,i)=>i!==sIdx);
+      return {...prev, [wk]: wkData};
+    });
+  };
+
+  const submitThuWeek = async (weekNum) => {
     const wk = 'W' + weekNum;
-    const data = ((thuResults[wk]||{})[examId]||[]);
-    if (!data.length) { flash('⚠️ کوئی اندراج نہیں'); return; }
-    const hasStudents = data.some(e => e.students.some(s => s.name.trim()));
-    if (!hasStudents) { flash('⚠️ طلباء کے نام درج کریں'); return; }
-    if (!cfg.script_url) { flash('✓ محفوظ (آف لائن)'); return; }
+    const wkData = thuResults[wk] || {};
+    const periods = getThuPeriods(weekNum).filter(p => !p.isOwnSubject);
+    const examId = getWeekExaminer(weekNum);
+    const hasAny = Object.values(wkData).some(arr => arr.some(s => s.name.trim()));
+    if (!hasAny) { flash('⚠️ کوئی طالب علم درج نہیں'); return; }
     setThuSubmitting(true);
+    const entries = periods.map(p => ({
+      subject_id: p.subId,
+      subject_name: p.subName,
+      class_id: p.classId,
+      period: p.period,
+      students: (wkData[p.subId]||[]).filter(s=>s.name.trim())
+    })).filter(e => e.students.length > 0);
     const payload = {
       week: weekNum,
       date: thuDates[weekNum-1]||'',
       examiner_id: examId,
-      entries: data.map(e => ({
-        subject_id: e.subId,
-        subject_name: (gS(e.subId)||{}).n||'',
-        class_id: (gS(e.subId)||{}).c||'',
-        students: e.students.filter(s=>s.name.trim())
-      }))
+      entries
     };
     const r = await syncPost('thursday_test', payload);
-    if (r.success) flash('✓ ارسال');
-    else flash('✓ محفوظ (قطار میں)');
+    flash(r.success ? '✓ ارسال' : '✓ محفوظ (قطار میں)');
     setThuSubmitting(false);
   };
 
@@ -2273,151 +2275,190 @@ function App() {
     const lastWk = getLastThuWeek();
     const nextWk = getNextThuWeek();
     const isThursday = todayWk !== null;
-    const activeWk = isAd ? thuViewWk : (isThursday ? todayWk : null);
-    const examId = isAd ? null : (user ? user.id : null);
     const resultColor = r => r==='اعلیٰ'?'#065f46':r==='اچھا'?'#1e40af':r==='کمزور'?'#92400e':r==='ناکام'?'#991b1b':'#6b7c6b';
-    const resultBg = r => r==='اعلیٰ'?'#d1fae5':r==='اچھا'?'#dbeafe':r==='کمزور'?'#fef3c7':r==='ناکام'?'#fee2e2':'#f3f4f6';
+    const resultBg = r => r==='اعلیٰ'?'#d1fae5':r==='اچھا'?'#dbeafe':r==='کمزور'?'#fef3c7':r==='ناکام'?'#fee2e2':'#f0f0f0';
 
-    // ADMIN VIEW
-    if (isAd) return /*#__PURE__*/React.createElement("div", null,
-      /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
-        /*#__PURE__*/React.createElement(Ttl, {icon:"📋", text:"جمعرات امتحانات"}),
-        /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:4}},
-          thuDates.map((_,i)=>/*#__PURE__*/React.createElement("button", {key:i,onClick:()=>setThuViewWk(i+1),
-            style:{padding:'4px 8px',borderRadius:6,border:'none',fontSize:10,fontWeight:700,cursor:'pointer',
-              background:thuViewWk===i+1?ST.gd:'#f0ebe0',color:thuViewWk===i+1?ST.dk:'#6b7c6b'}
-          }, "W"+(i+1)))
-        )
-      ),
-      /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
-        /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:11,fontWeight:700}},
-          "ہفتہ "+thuViewWk+" — "+(thuDates[thuViewWk-1]||'')
-        ),
-        /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:9,marginTop:2}},
-          "شفل خودکار — کوئی استاذ اپنے مضمون کا ممتحن نہیں"
-        )
-      ),
-      teachers.filter(t=>t.exam).map(examT => {
-        const shuffle = genThuWeekShuffle(thuViewWk);
-        const mySubs = (shuffle[examT.id]||[]).map(sid=>gS(sid)).filter(Boolean);
-        const wk = 'W'+thuViewWk;
-        const submitted = ((thuResults[wk]||{})[examT.id]||[]);
-        return /*#__PURE__*/React.createElement(Card, {key:examT.id, style:{marginBottom:6}},
-          /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:800,color:ST.dk,marginBottom:6}},
-            examT.n, " — ", mySubs.length, " مضامین"
-          ),
-          mySubs.map(sub => {
-            const cl = (CL.find(c=>c.id===sub.c))||{n:'',c:'#eee',a:'#999'};
-            const entry = submitted.find(e=>e.subId===sub.id);
-            return /*#__PURE__*/React.createElement("div", {key:sub.id, style:{
-              borderRight:`3px solid ${cl.a}`,paddingRight:8,marginBottom:8,paddingBottom:4
-            }},
-              /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700}}, sub.n),
-              /*#__PURE__*/React.createElement(Bdg, {text:cl.n, bg:cl.c, color:cl.a}),
-              entry && entry.students.filter(s=>s.name.trim()).map((s,i)=>
-                /*#__PURE__*/React.createElement("div", {key:i, style:{display:'flex',gap:6,alignItems:'center',marginTop:3}},
-                  /*#__PURE__*/React.createElement("div", {style:{flex:1,fontSize:9}}, s.name),
-                  s.result && /*#__PURE__*/React.createElement(Bdg, {text:s.result, bg:resultBg(s.result), color:resultColor(s.result)})
-                )
-              ),
-              (!entry||!entry.students.filter(s=>s.name).length) && /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#bbb',marginTop:3}}, "ابھی درج نہیں")
-            );
-          })
-        );
-      })
-    );
-
-    // EXAMINER — TODAY IS THURSDAY
-    if (isThursday && examId) {
-      const shuffle = genThuWeekShuffle(todayWk);
-      const mySubs = (shuffle[examId]||[]).map(sid=>gS(sid)).filter(Boolean);
-      const wk = 'W'+todayWk;
-      const myEntries = ((thuResults[wk]||{})[examId]||[]);
+    // ── ADMIN VIEW ──
+    if (isAd) {
+      const periods = isAd && thuViewWk ? getThuPeriods(thuViewWk) : [];
+      const examId = getWeekExaminer(thuViewWk);
+      const examT = teachers.find(t=>t.id===examId);
+      const wkData = (thuResults['W'+thuViewWk])||{};
       return /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
-          /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:13,fontWeight:800}}, "جمعرات امتحان — ہفتہ "+todayWk),
-          /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
-            thuDates[todayWk-1]||'', " • ", mySubs.length, " مضامین"
+        /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+          /*#__PURE__*/React.createElement(Ttl, {icon:"📋", text:"جمعرات امتحانات"}),
+          /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:3,flexWrap:'wrap',justifyContent:'flex-end'}},
+            thuDates.map((_,i)=>/*#__PURE__*/React.createElement("button", {key:i,onClick:()=>setThuViewWk(i+1),
+              style:{padding:'3px 7px',borderRadius:6,border:'none',fontSize:9,fontWeight:700,cursor:'pointer',
+                background:thuViewWk===i+1?ST.gd:'#f0ebe0',color:thuViewWk===i+1?ST.dk:'#6b7c6b'}
+            }, "W"+(i+1)))
           )
         ),
-        mySubs.map(sub => {
-          const cl = (CL.find(c=>c.id===sub.c))||{n:'',c:'#eee',a:'#999'};
-          const entry = myEntries.find(e=>e.subId===sub.id)||{subId:sub.id,students:[]};
-          return /*#__PURE__*/React.createElement(Card, {key:sub.id, style:{borderRight:`4px solid ${cl.a}`,marginBottom:8}},
+        /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
+          /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:12,fontWeight:800}},
+            "ہفتہ "+thuViewWk+" — "+(thuDates[thuViewWk-1]||'—')
+          ),
+          /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
+            "ممتحن: "+(examT?examT.n:'غیر مقرر')+" • "+periods.filter(p=>!p.isOwnSubject).length+" پیریڈ"
+          )
+        ),
+        periods.map(p => {
+          const students = wkData[p.subId]||[];
+          const filled = students.filter(s=>s.name.trim());
+          return /*#__PURE__*/React.createElement(Card, {key:p.subId,
+            style:{borderRight:`3px solid ${p.isOwnSubject?'#ccc':p.classAccent}`,
+              background:p.isOwnSubject?'#f8f8f8':'#fff',marginBottom:4,padding:'8px 11px'}},
+            /*#__PURE__*/React.createElement("div", {style:{display:'flex',alignItems:'center',gap:8}},
+              /*#__PURE__*/React.createElement("div", {style:{fontSize:9,fontWeight:700,color:'#bbb',width:16}}, p.period),
+              /*#__PURE__*/React.createElement("div", {style:{flex:1}},
+                /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700,color:p.isOwnSubject?'#bbb':'#333'}}, p.subName),
+                /*#__PURE__*/React.createElement(Bdg, {text:p.className, bg:p.classColor, color:p.classAccent})
+              ),
+              p.isOwnSubject ?
+                /*#__PURE__*/React.createElement(Bdg, {text:"اپنا مضمون", bg:'#f3f4f6', color:'#9ca3af'}) :
+                /*#__PURE__*/React.createElement(Bdg, {
+                  text: filled.length ? filled.length+" طلباء ✓" : "درج نہیں",
+                  bg: filled.length?'#d1fae5':'#fef3c7',
+                  color: filled.length?'#065f46':'#92400e'
+                })
+            ),
+            !p.isOwnSubject && filled.length > 0 && /*#__PURE__*/React.createElement("div", {style:{marginTop:4,paddingTop:4,borderTop:'1px solid #f0ebe0'}},
+              filled.map((s,si)=>/*#__PURE__*/React.createElement("div", {key:si,
+                style:{display:'flex',justifyContent:'space-between',fontSize:9,marginBottom:1}},
+                /*#__PURE__*/React.createElement("span", null, s.name),
+                s.result && /*#__PURE__*/React.createElement(Bdg, {text:s.result,bg:resultBg(s.result),color:resultColor(s.result)})
+              ))
+            )
+          );
+        })
+      );
+    }
+
+    // ── EXAMINER — TODAY IS THURSDAY ──
+    if (isThursday) {
+      const periods = getThuPeriods(todayWk);
+      const myPeriods = periods.filter(p => !p.isOwnSubject);
+      const myOwn = periods.filter(p => p.isOwnSubject);
+      const wkData = thuResults['W'+todayWk]||{};
+      const examId = getWeekExaminer(todayWk);
+      const isMyWeek = examId === (user?user.id:null);
+
+      if (!isMyWeek) return /*#__PURE__*/React.createElement(Card, {style:{textAlign:'center',padding:24}},
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:28,marginBottom:8}}, "📋"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:'#666'}}, "آج آپ ممتحن نہیں ہیں"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#999',marginTop:4}},
+          "آج کے ممتحن: "+(teachers.find(t=>t.id===examId)||{n:'—'}).n)
+      );
+
+      return /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
+          /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:13,fontWeight:800}},
+            "آج آپ ممتحن ہیں — ہفتہ "+todayWk
+          ),
+          /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
+            thuDates[todayWk-1]||'', " • ", myPeriods.length, " پیریڈ آپ کے — ", myOwn.length, " اپنے (چھوڑ دیں)"
+          )
+        ),
+        myOwn.length > 0 && /*#__PURE__*/React.createElement(Card, {style:{background:'#fef3c7',marginBottom:8,padding:'8px 12px'}},
+          /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700,color:'#92400e',marginBottom:4}},
+            "⚠️ یہ آپ کے اپنے مضامین ہیں — امتحان نہ لیں"
+          ),
+          myOwn.map(p=>/*#__PURE__*/React.createElement("div", {key:p.subId,
+            style:{fontSize:9,color:'#b45309',marginBottom:2}},
+            "پیریڈ "+p.period+" — "+p.subName+" ("+p.className+")"
+          ))
+        ),
+        myPeriods.map(p => {
+          const students = wkData[p.subId]||[];
+          return /*#__PURE__*/React.createElement(Card, {key:p.subId,
+            style:{borderRight:`4px solid ${p.classAccent}`,marginBottom:6}},
             /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
               /*#__PURE__*/React.createElement("div", null,
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:800}}, sub.n),
-                /*#__PURE__*/React.createElement(Bdg, {text:cl.n, bg:cl.c, color:cl.a})
+                /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#999',marginBottom:1}}, "پیریڈ "+p.period),
+                /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:800}}, p.subName),
+                /*#__PURE__*/React.createElement(Bdg, {text:p.className, bg:p.classColor, color:p.classAccent}),
+                p.ownTeacher && /*#__PURE__*/React.createElement("div", {style:{fontSize:8,color:'#999',marginTop:2}},
+                  "استاذ: "+p.ownTeacher.n)
               ),
               /*#__PURE__*/React.createElement(Btn, {small:true,color:ST.gd,
-                onClick:()=>addThuStudent(todayWk,examId,sub.id)
+                onClick:()=>addThuStudent(todayWk,p.subId)
               }, "+ طالب علم")
             ),
-            entry.students.map((st,si)=>/*#__PURE__*/React.createElement("div", {key:si,
-              style:{display:'flex',gap:6,alignItems:'center',marginBottom:4,paddingBottom:4,borderBottom:'1px solid #f0ebe0'}},
+            students.map((st,si)=>/*#__PURE__*/React.createElement("div", {key:si,
+              style:{display:'flex',gap:6,alignItems:'center',marginBottom:4,
+                paddingBottom:4,borderBottom:'1px solid #f0ebe0'}},
               /*#__PURE__*/React.createElement("input", {
-                value:st.name, placeholder:"نام",
-                onChange:e=>updThuStudent(todayWk,examId,sub.id,si,'name',e.target.value),
-                style:{flex:2,padding:'5px 7px',borderRadius:7,border:'1px solid #d5d0c5',fontSize:11,fontFamily:'inherit',outline:'none',background:'#faf8f3'}
+                value:st.name, placeholder:"طالب علم کا نام",
+                onChange:e=>updThuStudent(todayWk,p.subId,si,'name',e.target.value),
+                style:{flex:2,padding:'5px 7px',borderRadius:7,border:'1px solid #d5d0c5',
+                  fontSize:11,fontFamily:'inherit',outline:'none',background:'#faf8f3'}
               }),
               /*#__PURE__*/React.createElement(Sel, {value:st.result,
-                onChange:v=>updThuStudent(todayWk,examId,sub.id,si,'result',v),
-                style:{flex:1,fontSize:10}
-              },
+                onChange:v=>updThuStudent(todayWk,p.subId,si,'result',v),
+                style:{flex:1,fontSize:10}},
                 /*#__PURE__*/React.createElement("option",{value:''},"نتیجہ"),
                 ['اعلیٰ','اچھا','کمزور','ناکام','غائب'].map(r=>
                   /*#__PURE__*/React.createElement("option",{key:r,value:r},r))
               ),
               /*#__PURE__*/React.createElement("button", {
-                onClick:()=>rmThuStudent(todayWk,examId,sub.id,si),
-                style:{background:'#fef2f2',border:'none',borderRadius:5,padding:'4px 7px',cursor:'pointer',color:'#ef4444',fontSize:11}
+                onClick:()=>rmThuStudent(todayWk,p.subId,si),
+                style:{background:'#fef2f2',border:'none',borderRadius:5,
+                  padding:'4px 7px',cursor:'pointer',color:'#ef4444',fontSize:11}
               }, "✗")
-            ))
+            )),
+            students.length === 0 && /*#__PURE__*/React.createElement("div", {
+              style:{fontSize:9,color:'#bbb',textAlign:'center',padding:'4px 0'}
+            }, "➕ طالب علم شامل کریں")
           );
         }),
-        /*#__PURE__*/React.createElement(Btn, {full:true,color:ST.gd,
-          disabled:thuSubmitting,
-          onClick:()=>submitThuWeek(todayWk,examId)
+        /*#__PURE__*/React.createElement(Btn, {full:true, color:ST.gd, disabled:thuSubmitting,
+          onClick:()=>submitThuWeek(todayWk)
         }, thuSubmitting?'ارسال ہو رہا ہے...':'✓ جمع کریں')
       );
     }
 
-    // EXAMINER — NOT THURSDAY: show past results + upcoming
+    // ── NOT THURSDAY: past results + upcoming ──
     return /*#__PURE__*/React.createElement("div", null,
       nextWk && /*#__PURE__*/React.createElement(Card, {style:{background:`linear-gradient(135deg,${ST.dk},${ST.gn})`,marginBottom:10}},
         /*#__PURE__*/React.createElement("div", {style:{color:ST.gd,fontSize:12,fontWeight:800}}, "اگلا جمعرات"),
         /*#__PURE__*/React.createElement("div", {style:{color:'#fff',fontSize:14,fontWeight:800,marginTop:2}}, nextWk.dt),
-        /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
-          "ہفتہ "+nextWk.wk+" — آپ کے مضامین: "+(genThuWeekShuffle(nextWk.wk)[examId||'']||[]).length
-        )
+        (function(){
+          const examId = getWeekExaminer(nextWk.wk);
+          const examT = teachers.find(t=>t.id===examId);
+          const periods = getThuPeriods(nextWk.wk);
+          const mine = periods.filter(p=>!p.isOwnSubject && examId===(user?user.id:null));
+          return /*#__PURE__*/React.createElement("div", {style:{color:ST.sg,fontSize:10,marginTop:2}},
+            "ممتحن: "+(examT?examT.n:'—'),
+            examId===(user?user.id:null) ? " — آپ "+mine.length+" پیریڈ لیں گے" : ""
+          );
+        })()
       ),
       lastWk && /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:'#666',marginBottom:6}}, "گزشتہ امتحانات"),
-        [...Array(lastWk)].map((_,i) => {
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:'#666',marginBottom:6}},
+          "گزشتہ امتحانات"
+        ),
+        [...Array(lastWk)].map((_,i)=>{
           const wkN = lastWk - i;
-          const wk = 'W'+wkN;
-          const entries = ((thuResults[wk]||{})[examId||'']||[]);
-          return /*#__PURE__*/React.createElement(Card, {key:wkN, style:{marginBottom:6}},
-            /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:ST.dk,marginBottom:4}},
-              "ہفتہ "+wkN+" — "+(thuDates[wkN-1]||'')
-            ),
-            entries.length === 0 ?
-              /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#bbb'}}, "درج نہیں") :
-              entries.map(entry => {
-                const sub = gS(entry.subId);
-                if (!sub) return null;
-                const cl = (CL.find(c=>c.id===sub.c))||{n:'',c:'#eee',a:'#999'};
-                const filled = entry.students.filter(s=>s.name.trim());
-                return /*#__PURE__*/React.createElement("div", {key:entry.subId,
-                  style:{borderRight:`3px solid ${cl.a}`,paddingRight:6,marginBottom:4}},
-                  /*#__PURE__*/React.createElement("div", {style:{fontSize:10,fontWeight:700}}, sub.n, " • ", filled.length, " طلباء"),
-                  filled.map((s,si)=>/*#__PURE__*/React.createElement("div", {key:si,
-                    style:{display:'flex',justifyContent:'space-between',fontSize:9,marginTop:2}},
-                    /*#__PURE__*/React.createElement("span", null, s.name),
-                    s.result && /*#__PURE__*/React.createElement(Bdg, {text:s.result,bg:resultBg(s.result),color:resultColor(s.result)})
-                  ))
-                );
+          const wkData = thuResults['W'+wkN]||{};
+          const examId = getWeekExaminer(wkN);
+          const examT = teachers.find(t=>t.id===examId);
+          const totalStudents = Object.values(wkData).reduce((sum,arr)=>sum+arr.filter(s=>s.name.trim()).length,0);
+          return /*#__PURE__*/React.createElement(Card, {key:wkN,style:{marginBottom:6}},
+            /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+              /*#__PURE__*/React.createElement("div", null,
+                /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:ST.dk}},
+                  "ہفتہ "+wkN+" — "+(thuDates[wkN-1]||'')
+                ),
+                /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#999'}},
+                  "ممتحن: "+(examT?examT.n:'—')+" • "+totalStudents+" طلباء"
+                )
+              ),
+              /*#__PURE__*/React.createElement(Bdg, {
+                text: totalStudents>0?'✓ درج':'خالی',
+                bg: totalStudents>0?'#d1fae5':'#fef3c7',
+                color: totalStudents>0?'#065f46':'#92400e'
               })
+            )
           );
         })
       ),
