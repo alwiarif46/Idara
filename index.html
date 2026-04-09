@@ -267,7 +267,7 @@ const DEFAULTS = {
     T7: '1234'
   },
   pin_changed: false,
-  script_url: 'https://script.google.com/macros/s/AKfycbw2HcV62ZHMn2IYD3mSh23EwuCPIEHWqwuPeCHxcTACGFs0UIv5BOgkf1TrVC8NvvJNfA/exec',
+  script_url: 'https://script.google.com/macros/s/AKfycbwpTl_IoeJFZ_scJibde-Ivl6kPCup2JCKZ_tNdzB2lntX66e53CPTU4-eZZ01wO-vvog/exec',
   scoring: {
     excellent: 80,
     good: 60,
@@ -603,6 +603,8 @@ function App() {
   const [thuResults, setThuResultsRaw] = useState({});
   const [thuViewWk, setThuViewWk] = useState(1);
   const [thuSubmitting, setThuSubmitting] = useState(false);
+  const [configSyncing, setConfigSyncing] = useState(false);
+  const [configSyncMsg, setConfigSyncMsg] = useState('');
   const [newCls, setNewCls] = useState({n: '', c: '#e8daef', a: '#7c3aed'});
   const [newSub, setNewSub] = useState({id: '', n: '', c: '', s: 1, e: 100, pub: ''});
   const [editSubId, setEditSubId] = useState(null);
@@ -686,6 +688,20 @@ function App() {
       setRepsRaw(savedReps);
       setSyncQRaw(savedQ);
       try { var tr = await loadThuResults(); setThuResultsRaw(tr||{}); } catch(e) {}
+      // Pull config from cloud if no local config exists (fresh device)
+      // Always try cloud on first load — if cloud has config, use it
+      if (!saved) {
+        const scriptUrl = DEFAULTS.script_url;
+        if (scriptUrl) {
+          try {
+            const remote = await pullConfig(scriptUrl);
+            if (remote) {
+              setCfgRaw(remote);
+              await saveConfig(remote);
+            }
+          } catch(e) {}
+        }
+      }
       setLoading(false);
     })();
   }, []);
@@ -1227,6 +1243,67 @@ function App() {
     const r = await syncPost('thursday_test', payload);
     flash(r.success ? '✓ ارسال' : '✓ محفوظ (قطار میں)');
     setThuSubmitting(false);
+  };
+
+    // ── Config Sync ──
+  const pushConfig = async () => {
+    if (!cfg.script_url) { flash('⚠️ URL نہیں'); return; }
+    setConfigSyncing(true);
+    setConfigSyncMsg('');
+    try {
+      const payload = JSON.stringify({
+        type: 'save_config',
+        config: {
+          institution: cfg.institution,
+          classes: cfg.classes,
+          subjects: cfg.subjects,
+          teachers: cfg.teachers,
+          periods: cfg.periods,
+          assignments: cfg.assignments,
+          pins: cfg.pins,
+          scoring: cfg.scoring,
+          dashboard: cfg.dashboard,
+          pin_changed: cfg.pin_changed,
+          script_url: cfg.script_url,
+          holidays: cfg.holidays || []
+        }
+      });
+      const r = await (await fetch(cfg.script_url, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain'},
+        body: payload
+      })).json();
+      setConfigSyncMsg(r.success ? '✓ کلاؤڈ میں محفوظ' : '⚠️ ' + (r.error||'خرابی'));
+    } catch(e) {
+      setConfigSyncMsg('⚠️ نیٹ ورک خرابی');
+    }
+    setConfigSyncing(false);
+  };
+
+  const pullConfig = async (scriptUrl) => {
+    const url = scriptUrl || cfg.script_url;
+    if (!url) return null;
+    try {
+      const r = await (await fetch(url + '?action=get_config')).json();
+      if (r.success && r.config) {
+        const remote = r.config;
+        const merged = {
+          ...DEFAULTS,
+          ...remote,
+          institution: {...DEFAULTS.institution, ...(remote.institution||{})},
+          scoring: {...DEFAULTS.scoring, ...(remote.scoring||{})},
+          dashboard: {...DEFAULTS.dashboard, ...(remote.dashboard||{})},
+          pins: {...DEFAULTS.pins, ...(remote.pins||{})},
+        };
+        if (Array.isArray(remote.classes) && remote.classes.length) merged.classes = remote.classes;
+        if (Array.isArray(remote.subjects) && remote.subjects.length) merged.subjects = remote.subjects;
+        if (Array.isArray(remote.teachers) && remote.teachers.length) merged.teachers = remote.teachers;
+        if (Array.isArray(remote.periods) && remote.periods.length) merged.periods = remote.periods;
+        if (Array.isArray(remote.assignments)) merged.assignments = remote.assignments;
+        return merged;
+      }
+    } catch(e) {}
+    return null;
   };
 
     // ── Sync ──
@@ -3678,7 +3755,41 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
       marginTop: 10
     },
     onClick: processQ
-  }, "\u0627\u0628\u06BE\u06CC \u0627\u0631\u0633\u0627\u0644"))), admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "ابھی ارسال")))
+
+,
+/*#__PURE__*/React.createElement(Card, {style:{marginTop:8}},
+  /*#__PURE__*/React.createElement("div", {style:{fontSize:11,fontWeight:700,color:ST.dk,marginBottom:8}},
+    "☁️ کلاؤڈ کنفیگ"
+  ),
+  /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#666',marginBottom:8}},
+    "تمام ترتیبات (مضامین، اساتذہ، پیریڈ، تفویض، پن) کلاؤڈ پر محفوظ کریں تاکہ دوسرے آلات خودبخود اپڈیٹ ہوں"
+  ),
+  /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:6}},
+    /*#__PURE__*/React.createElement(Btn, {full:true, small:true, color:"#10b981",
+      disabled: configSyncing || !cfg.script_url,
+      onClick: async()=>{await pushConfig(); }
+    }, configSyncing?'محفوظ ہو رہا ہے...':'⬆️ کلاؤڈ پر محفوظ'),
+    /*#__PURE__*/React.createElement(Btn, {full:true, small:true, color:"#3b82f6",
+      disabled: configSyncing || !cfg.script_url,
+      onClick: async()=>{
+        setConfigSyncing(true);
+        setConfigSyncMsg('');
+        const remote = await pullConfig(cfg.script_url);
+        if (remote) {
+          setCfg(remote);
+          setConfigSyncMsg('✓ کلاؤڈ سے لوڈ');
+        } else {
+          setConfigSyncMsg('⚠️ کلاؤڈ میں کچھ نہیں');
+        }
+        setConfigSyncing(false);
+      }
+    }, '⬇️ کلاؤڈ سے لوڈ')
+  ),
+  configSyncMsg && /*#__PURE__*/React.createElement("div", {
+    style:{fontSize:10, marginTop:6, color: configSyncMsg.startsWith('✓')?'#065f46':'#ef4444', fontWeight:700}
+  }, configSyncMsg)
+), admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
