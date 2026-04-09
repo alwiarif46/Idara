@@ -24,6 +24,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <body>
 <div class="offline-bar" id="offlineBar">📵 آف لائن — ڈیٹا مقامی طور پر محفوظ ہوگا</div>
 <div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
@@ -31,9 +32,6 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 window.addEventListener('online',function(){document.getElementById('offlineBar').classList.remove('show')});
 window.addEventListener('offline',function(){document.getElementById('offlineBar').classList.add('show')});
 if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
-function _stLoad(k){try{var v=localStorage.getItem(k);return v?{value:v}:null;}catch(e){return null;}}
-function _stSave(k,v){try{localStorage.setItem(k,v);}catch(e){}}
-function _stDel(k){try{localStorage.removeItem(k);}catch(e){}}
 </script>
 <script>
 // Destructure hooks from React UMD global (CDN build doesn't auto-export them)
@@ -506,50 +504,272 @@ const Row = ({
 // PERSISTENT STORAGE LAYER
 // ═══════════════════════════════════════════════════════════
 // Storage layer — works in Claude artifact sandbox (window.storage)
-// AND in real browsers / GitHub Pages (localStorage).
-// Tries window.storage first; falls back to localStorage.
-async function _sGet(k) {
-  if (typeof window !== 'undefined' && window.storage) {
-    try { var r = await window.storage.get(k); if (r && r.value) return r.value; } catch(e) {}
-  }
-  try { return localStorage.getItem(k); } catch(e) { return null; }
+// ═══════════════════════════════════════════════════════════
+// IRI DATABASE LAYER — sql.js + IndexedDB persistence
+// SQLite runs in-browser. DB serialized to IndexedDB on every
+// write (debounced 500ms). On startup, restored from IndexedDB.
+// Sync queue, config, reports, Thursday results all live here.
+// localStorage is used only for migration from older installs.
+// ═══════════════════════════════════════════════════════════
+
+const _IDB_NAME  = 'iri-sqlite-v1';
+const _IDB_STORE = 'db';
+const _IDB_KEY   = 'main';
+let _db = null;
+let _persistTimer = null;
+
+// ── IndexedDB helpers ─────────────────────────────────────
+function _idbOpen() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(_IDB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = () => rej(req.error);
+  });
 }
-async function _sSet(k, v) {
-  if (typeof window !== 'undefined' && window.storage) {
-    try { await window.storage.set(k, v); return; } catch(e) {}
-  }
-  try { localStorage.setItem(k, v); } catch(e) {}
+async function _idbGet() {
+  try {
+    const db = await _idbOpen();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(_IDB_STORE, 'readonly');
+      const r  = tx.objectStore(_IDB_STORE).get(_IDB_KEY);
+      r.onsuccess = () => res(r.result || null);
+      r.onerror   = () => rej(r.error);
+    });
+  } catch(e) { return null; }
 }
-async function _sDel(k) {
-  if (typeof window !== 'undefined' && window.storage) {
-    try { await window.storage.delete(k); return; } catch(e) {}
-  }
-  try { localStorage.removeItem(k); } catch(e) {}
+async function _idbSet(data) {
+  try {
+    const db = await _idbOpen();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(_IDB_STORE, 'readwrite');
+      const r  = tx.objectStore(_IDB_STORE).put(data, _IDB_KEY);
+      r.onsuccess = () => res();
+      r.onerror   = () => rej(r.error);
+    });
+  } catch(e) {}
 }
+
+// ── Persist (debounced 500ms) ─────────────────────────────
+function _schedulePersist() {
+  clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(async () => {
+    if (_db) { try { await _idbSet(_db.export()); } catch(e) {} }
+  }, 500);
+}
+
+// ── SQL helpers ───────────────────────────────────────────
+function _all(sql, p) {
+  try {
+    const r = _db.exec(sql, p);
+    if (!r[0]) return [];
+    return r[0].values.map(row => {
+      const o = {};
+      r[0].columns.forEach((c, i) => o[c] = row[i]);
+      return o;
+    });
+  } catch(e) { return []; }
+}
+function _get(sql, p)  { return _all(sql, p)[0] || null; }
+function _run(sql, p)  { try { _db.run(sql, p); } catch(e) { console.warn('[DB]', e.message); } }
+function _runp(sql, p) { _run(sql, p); _schedulePersist(); }
+
+// ── Schema ────────────────────────────────────────────────
+function _createSchema() {
+  _db.run(`
+    CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT);
+
+    CREATE TABLE IF NOT EXISTS classes (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL,
+      color TEXT, accent TEXT, sort INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS teachers (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL,
+      role TEXT DEFAULT 'teacher', examiner INTEGER DEFAULT 0,
+      email TEXT DEFAULT '', pin TEXT DEFAULT '1234', sort INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS subjects (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL,
+      class_id TEXT DEFAULT '', start_page INTEGER DEFAULT 1,
+      end_page INTEGER DEFAULT 100, publisher TEXT DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS periods (
+      id INTEGER PRIMARY KEY, stime TEXT, etime TEXT,
+      type TEXT DEFAULT 'class', is_break INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS assignments (
+      id TEXT PRIMARY KEY, teacher_id TEXT NOT NULL,
+      subject_id TEXT NOT NULL, period_id INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS daily_reports (
+      id TEXT PRIMARY KEY,
+      date TEXT NOT NULL, teacher_id TEXT NOT NULL,
+      subject_id TEXT DEFAULT '', class_id TEXT DEFAULT '',
+      target_page INTEGER DEFAULT 0, actual_page INTEGER DEFAULT 0,
+      complete TEXT DEFAULT '', reason_code TEXT DEFAULT '', reason_text TEXT DEFAULT '',
+      synced INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS thursday_results (
+      id TEXT PRIMARY KEY,
+      date TEXT DEFAULT '', week INTEGER DEFAULT 0,
+      examiner_id TEXT NOT NULL, class_id TEXT DEFAULT '',
+      subject_id TEXT DEFAULT '', subject_name TEXT DEFAULT '',
+      period INTEGER DEFAULT 0, student_name TEXT DEFAULT '',
+      result TEXT DEFAULT '', synced INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL, payload TEXT NOT NULL,
+      attempts INTEGER DEFAULT 0, last_error TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_rep_td   ON daily_reports(teacher_id, date);
+    CREATE INDEX IF NOT EXISTS idx_rep_sync ON daily_reports(synced);
+    CREATE INDEX IF NOT EXISTS idx_thu_sync ON thursday_results(synced);
+    CREATE INDEX IF NOT EXISTS idx_thu_wk   ON thursday_results(week, examiner_id);
+  `);
+}
+
+// ── Migrate from localStorage (one-time) ─────────────────
+async function _migrate() {
+  try {
+    const cnt = _get('SELECT COUNT(*) as c FROM teachers');
+    if (cnt && cnt.c > 0) return; // already seeded
+    const raw = localStorage.getItem('iri-config');
+    if (!raw) return;
+    const old = JSON.parse(raw);
+    (old.classes||[]).forEach((c,i) => _run('INSERT OR IGNORE INTO classes VALUES(?,?,?,?,?)',[c.id,c.n,c.c,c.a,i]));
+    (old.teachers||[]).forEach((t,i) => {
+      const pin = old.pins?(old.pins[t.id]||'1234'):'1234';
+      _run('INSERT OR IGNORE INTO teachers VALUES(?,?,?,?,?,?,?)',[t.id,t.n,t.role||'teacher',t.exam?1:0,t.email||'',pin,i]);
+    });
+    (old.subjects||[]).forEach(s => _run('INSERT OR IGNORE INTO subjects VALUES(?,?,?,?,?,?)',[s.id,s.n,s.c||'',s.s||1,s.e||100,s.pub||'']));
+    (old.periods||[]).forEach(p => _run('INSERT OR IGNORE INTO periods VALUES(?,?,?,?,?)',[p.id,p.s,p.e,p.type||'class',p.brk?1:0]));
+    (old.assignments||[]).forEach((a,i) => _run('INSERT OR IGNORE INTO assignments VALUES(?,?,?,?)',[`${a.t}_${a.sub}_${a.p}_${i}`,a.t,a.sub,a.p]));
+    ['institution','scoring','dashboard','pin_changed','script_url','holidays'].forEach(k => {
+      if (old[k]!==undefined) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',[k,JSON.stringify(old[k])]);
+    });
+    if (old.pins && old.pins.ADMIN) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',['admin_pin',JSON.stringify(old.pins.ADMIN)]);
+    // Migrate session data as-is
+    ['iri-reports','iri-syncq','iri-thu'].forEach(k => {
+      const v = localStorage.getItem(k);
+      if (v) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',[k,v]);
+    });
+    console.log('[IRI DB] Migrated from localStorage');
+    _schedulePersist();
+  } catch(e) { console.warn('[IRI DB] Migration:', e); }
+}
+
+// ── Init ──────────────────────────────────────────────────
+async function dbInit() {
+  if (_db) return;
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  const SQL  = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` });
+  const saved = await _idbGet();
+  _db = saved ? new SQL.Database(saved) : new SQL.Database();
+  _db.run('PRAGMA journal_mode=MEMORY');
+  _createSchema();
+  await _migrate();
+  _schedulePersist();
+}
+
+// ── Config API ────────────────────────────────────────────
 async function loadConfig() {
-  try { var v = await _sGet('iri-config'); return v ? JSON.parse(v) : null; } catch(e) { return null; }
+  try {
+    if (!_db) await dbInit();
+    const classes    = _all('SELECT id, name as n, color as c, accent as a FROM classes ORDER BY sort');
+    const rawT       = _all('SELECT id, name as n, role, examiner, email FROM teachers ORDER BY sort');
+    const subjects   = _all('SELECT id, name as n, class_id as c, start_page as s, end_page as e, publisher as pub FROM subjects');
+    const rawP       = _all('SELECT id, stime as s, etime as e, type, is_break FROM periods ORDER BY id');
+    const assignments= _all('SELECT teacher_id as t, subject_id as sub, period_id as p FROM assignments');
+    if (!classes.length && !rawT.length) return null;
+    const teachers = rawT.map(t => ({...t, exam: !!t.examiner}));
+    const periods  = rawP.map(p => { const o={...p}; if(o.is_break){o.brk=true;} delete o.is_break; return o; });
+    const kvRows   = _all('SELECT key, value FROM kv');
+    const kv = {};
+    kvRows.forEach(r => { try { kv[r.key]=JSON.parse(r.value); } catch(e) { kv[r.key]=r.value; } });
+    const pinRows = _all('SELECT id, pin FROM teachers');
+    const pins = { ADMIN: kv.admin_pin || '123456' };
+    pinRows.forEach(r => { pins[r.id] = r.pin; });
+    return {
+      institution: kv.institution || DEFAULTS.institution,
+      classes, teachers, subjects, periods, assignments, pins,
+      pin_changed:  kv.pin_changed  || false,
+      script_url:   kv.script_url   || DEFAULTS.script_url,
+      scoring:      kv.scoring      || DEFAULTS.scoring,
+      dashboard:    kv.dashboard    || DEFAULTS.dashboard,
+      holidays:     kv.holidays     || []
+    };
+  } catch(e) { return null; }
 }
+
 async function saveConfig(cfg) {
-  try { await _sSet('iri-config', JSON.stringify(cfg)); } catch(e) {}
+  try {
+    if (!_db) await dbInit();
+    if (cfg.classes)     cfg.classes.forEach((c,i)  => _run('INSERT OR REPLACE INTO classes VALUES(?,?,?,?,?)',[c.id,c.n,c.c,c.a,i]));
+    if (cfg.teachers)    cfg.teachers.forEach((t,i)  => {
+      const pin = cfg.pins?(cfg.pins[t.id]||'1234'):'1234';
+      _run('INSERT OR REPLACE INTO teachers VALUES(?,?,?,?,?,?,?)',[t.id,t.n,t.role||'teacher',t.exam?1:0,t.email||'',pin,i]);
+    });
+    if (cfg.subjects)    cfg.subjects.forEach(s      => _run('INSERT OR REPLACE INTO subjects VALUES(?,?,?,?,?,?)',[s.id,s.n,s.c||'',s.s||1,s.e||100,s.pub||'']));
+    if (cfg.periods)     cfg.periods.forEach(p       => _run('INSERT OR REPLACE INTO periods VALUES(?,?,?,?,?)',[p.id,p.s,p.e,p.type||'class',p.brk?1:0]));
+    if (cfg.assignments) {
+      _run('DELETE FROM assignments');
+      cfg.assignments.forEach((a,i) => _run('INSERT INTO assignments VALUES(?,?,?,?)',[`${a.t}_${a.sub}_${a.p}_${i}`,a.t,a.sub,a.p]));
+    }
+    ['institution','scoring','dashboard','pin_changed','script_url','holidays'].forEach(k => {
+      if (cfg[k]!==undefined) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',[k,JSON.stringify(cfg[k])]);
+    });
+    if (cfg.pins && cfg.pins.ADMIN) _run('INSERT OR REPLACE INTO kv VALUES(?,?)',['admin_pin',JSON.stringify(cfg.pins.ADMIN)]);
+    _schedulePersist();
+  } catch(e) { console.warn('[DB] saveConfig:', e); }
 }
-async function loadReports() {
-  try { var v = await _sGet('iri-reports'); return v ? JSON.parse(v) : {}; } catch(e) { return {}; }
+
+// ── Session data (reps, thu, syncQ) stored as JSON in kv ─
+// Same shape as before — React app doesn't change at all.
+async function loadReports()      { try { if(!_db) await dbInit(); const r=_get('SELECT value FROM kv WHERE key=?',['iri-reports']); return r?JSON.parse(r.value):{}; } catch(e){return{};} }
+async function saveReports(reps)  { if(!_db) await dbInit(); _runp('INSERT OR REPLACE INTO kv VALUES(?,?)',['iri-reports',JSON.stringify(reps)]); }
+async function loadSyncQ()        { try { if(!_db) await dbInit(); const r=_get('SELECT value FROM kv WHERE key=?',['iri-syncq']); return r?JSON.parse(r.value):[]; } catch(e){return[];} }
+async function saveSyncQ(q)       { if(!_db) await dbInit(); _runp('INSERT OR REPLACE INTO kv VALUES(?,?)',['iri-syncq',JSON.stringify(q)]); }
+async function loadThuResults()   { try { if(!_db) await dbInit(); const r=_get('SELECT value FROM kv WHERE key=?',['iri-thu']); return r?JSON.parse(r.value):{}; } catch(e){return{};} }
+async function saveThuResults(r)  { if(!_db) await dbInit(); _runp('INSERT OR REPLACE INTO kv VALUES(?,?)',['iri-thu',JSON.stringify(r)]); }
+
+// ── Historical records (written on submit, synced to Sheets) ─
+function dbSaveReport(entry) {
+  // entry: {id, date, teacher_id, subject_id, class_id, target_page, actual_page, complete, reason_code, reason_text}
+  _run(`INSERT OR REPLACE INTO daily_reports
+    (id,date,teacher_id,subject_id,class_id,target_page,actual_page,complete,reason_code,reason_text,synced,created_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,0,datetime('now'))`,
+    [entry.id||`${entry.date}_${entry.teacher_id}_${entry.subject_id}`,
+     entry.date,entry.teacher_id,entry.subject_id||'',entry.class_id||'',
+     entry.target_page||0,entry.actual_page||0,entry.complete||'',entry.reason_code||'',entry.reason_text||'']);
+  _schedulePersist();
 }
-async function saveReports(reps) {
-  try { await _sSet('iri-reports', JSON.stringify(reps)); } catch(e) {}
+function dbMarkReportSynced(date, teacherId) {
+  _run('UPDATE daily_reports SET synced=1 WHERE date=? AND teacher_id=?',[date,teacherId]);
+  _schedulePersist();
 }
-async function loadSyncQ() {
-  try { var v = await _sGet('iri-syncq'); return v ? JSON.parse(v) : []; } catch(e) { return []; }
+function dbSaveThuResult(row) {
+  // row: {id, date, week, examiner_id, class_id, subject_id, subject_name, period, student_name, result}
+  _run(`INSERT OR REPLACE INTO thursday_results
+    (id,date,week,examiner_id,class_id,subject_id,subject_name,period,student_name,result,synced,created_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,0,datetime('now'))`,
+    [row.id||`thu_${row.week}_${row.examiner_id}_${row.period}_${row.student_name}`,
+     row.date||'',row.week||0,row.examiner_id||'',row.class_id||'',
+     row.subject_id||'',row.subject_name||'',row.period||0,row.student_name||'',row.result||'']);
+  _schedulePersist();
 }
-async function saveSyncQ(q) {
-  try { await _sSet('iri-syncq', JSON.stringify(q)); } catch(e) {}
+function dbMarkThuSynced(week, examinerId) {
+  _run('UPDATE thursday_results SET synced=1 WHERE week=? AND examiner_id=?',[week,examinerId]);
+  _schedulePersist();
 }
-async function loadThuResults() {
-  try { var v = await _sGet('iri-thu'); return v ? JSON.parse(v) : {}; } catch(e) { return {}; }
-}
-async function saveThuResults(r) {
-  try { await _sSet('iri-thu', JSON.stringify(r)); } catch(e) {}
-}
+// ── Public query API (for future dashboard/analytics) ─────
+function dbQuery(sql, params) { return _all(sql, params); }
+function dbRun(sql, params)   { _runp(sql, params); }
 
 // ═══════════════════════════════════════════════════════════
 // APP
@@ -643,6 +863,7 @@ function App() {
   // Load on mount
   useEffect(() => {
     (async () => {
+      await dbInit(); // initialise SQLite / IndexedDB first
       var saved = null,
         savedReps = {},
         savedQ = [];
@@ -1328,11 +1549,15 @@ function App() {
       date: new Date().toISOString().split('T')[0],
       entries
     };
-    if (cfg.script_url) syncPost('daily_report', pl);else {
-      setSyncQ(p => [...p, {
-        type: 'daily_report',
-        payload: pl
-      }]);
+    // Write to SQLite historical table (synced=0 until confirmed)
+    const repDate = pl.date;
+    entries.forEach(en => dbSaveReport({...en, date: repDate, teacher_id: user.id}));
+    if (cfg.script_url) {
+      syncPost('daily_report', pl).then(r => {
+        if (r && r.success) dbMarkReportSynced(repDate, user.id);
+      });
+    } else {
+      setSyncQ(p => [...p, { type: 'daily_report', payload: pl }]);
       flash('✓ قطار');
     }
   };
@@ -1381,11 +1606,24 @@ function App() {
       date: w && w.dt || '',
       blocks
     };
-    if (cfg.script_url) syncPost('thursday_test', pl);else {
-      setSyncQ(p => [...p, {
-        type: 'thursday_test',
-        payload: pl
-      }]);
+    // Write to SQLite historical table (synced=0 until confirmed)
+    const thuWeek = pl.week;
+    blocks.forEach((blk, pi) => {
+      (blk.students||[]).forEach((st, si) => {
+        dbSaveThuResult({
+          date: pl.date, week: thuWeek, examiner_id: user.id,
+          class_id: blk.class_id||'', subject_id: blk.subject_id||'',
+          subject_name: blk.subject_name||'', period: blk.period||pi,
+          student_name: st.name||'', result: st.result||''
+        });
+      });
+    });
+    if (cfg.script_url) {
+      syncPost('thursday_test', pl).then(r => {
+        if (r && r.success) dbMarkThuSynced(thuWeek, user.id);
+      });
+    } else {
+      setSyncQ(p => [...p, { type: 'thursday_test', payload: pl }]);
       flash('✓ قطار');
     }
   };
@@ -3828,9 +4066,12 @@ tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React
     color: "#ef4444",
     onClick: async () => {
       try {
-        await _sDel('iri-config');
-        await _sDel('iri-reports');
-        await _sDel('iri-syncq');
+        // Wipe SQLite DB and reinitialise fresh
+        try { await _idbSet(new Uint8Array(0)); } catch(e) {}
+        _db = null;
+        await dbInit();
+        // Also clear any legacy localStorage keys
+        ['iri-config','iri-reports','iri-syncq','iri-thu'].forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
       } catch (e) {}
       setCfgRaw({
         ...DEFAULTS
