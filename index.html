@@ -408,147 +408,14 @@ const DEFAULTS = {
     exam: false,
     email: ''
   }],
-  assignments: [{
-    t: 'T2',
-    sub: 'S13',
-    p: 3
-  }, {
-    t: 'T2',
-    sub: 'S08',
-    p: 4
-  }, {
-    t: 'T2',
-    sub: 'S23',
-    p: 5
-  }, {
-    t: 'T2',
-    sub: 'S26',
-    p: 8
-  }, {
-    t: 'T2',
-    sub: 'S12',
-    p: 9
-  }, {
-    t: 'T2',
-    sub: 'S31',
-    p: 2
-  }, {
-    t: 'T3',
-    sub: 'S24',
-    p: 1
-  }, {
-    t: 'T3',
-    sub: 'S07',
-    p: 2
-  }, {
-    t: 'T3',
-    sub: 'S41',
-    p: 3
-  }, {
-    t: 'T3',
-    sub: 'S19',
-    p: 4
-  }, {
-    t: 'T3',
-    sub: 'S39',
-    p: 5
-  }, {
-    t: 'T3',
-    sub: 'S25',
-    p: 7
-  }, {
-    t: 'T3',
-    sub: 'S32',
-    p: 9
-  }, {
-    t: 'T4',
-    sub: 'S36',
-    p: 1
-  }, {
-    t: 'T4',
-    sub: 'S03',
-    p: 2
-  }, {
-    t: 'T4',
-    sub: 'S33',
-    p: 3
-  }, {
-    t: 'T4',
-    sub: 'S40',
-    p: 4
-  }, {
-    t: 'T4',
-    sub: 'S21',
-    p: 5
-  }, {
-    t: 'T4',
-    sub: 'S35',
-    p: 7
-  }, {
-    t: 'T4',
-    sub: 'S37',
-    p: 8
-  }, {
-    t: 'T4',
-    sub: 'S29',
-    p: 9
-  }, {
-    t: 'T5',
-    sub: 'S30',
-    p: 1
-  }, {
-    t: 'T5',
-    sub: 'S22',
-    p: 2
-  }, {
-    t: 'T5',
-    sub: 'S18',
-    p: 3
-  }, {
-    t: 'T5',
-    sub: 'S34',
-    p: 4
-  }, {
-    t: 'T5',
-    sub: 'S14',
-    p: 5
-  }, {
-    t: 'T5',
-    sub: 'S17',
-    p: 7
-  }, {
-    t: 'T5',
-    sub: 'S38',
-    p: 9
-  }, {
-    t: 'T6',
-    sub: 'S20',
-    p: 2
-  }, {
-    t: 'T6',
-    sub: 'S04',
-    p: 3
-  }, {
-    t: 'T6',
-    sub: 'S28',
-    p: 4
-  }, {
-    t: 'T6',
-    sub: 'S05',
-    p: 5
-  }, {
-    t: 'T6',
-    sub: 'S42',
-    p: 7
-  }, {
-    t: 'T6',
-    sub: 'S10',
-    p: 8
-  }, {
-    t: 'T6',
-    sub: 'S01',
-    p: 9
-  }],
+  assignments: [
+    {t:'T1',sub:'S37',p:2},{t:'T1',sub:'S01',p:4},{t:'T1',sub:'S38',p:7},
+    {t:'T2',sub:'S15',p:1},{t:'T2',sub:'S31',p:2},{t:'T2',sub:'S13',p:3},{t:'T2',sub:'S08',p:4},{t:'T2',sub:'S23',p:7},{t:'T2',sub:'S12',p:8},
+    {t:'T3',sub:'S24',p:1},{t:'T3',sub:'S07',p:2},{t:'T3',sub:'S41',p:3},{t:'T3',sub:'S19',p:4},{t:'T3',sub:'S32',p:5},{t:'T3',sub:'S16',p:7},{t:'T3',sub:'S25',p:8},{t:'T3',sub:'S26',p:9},
+    {t:'T4',sub:'S36',p:1},{t:'T4',sub:'S03',p:2},{t:'T4',sub:'S33',p:3},{t:'T4',sub:'S40',p:4},{t:'T4',sub:'S29',p:5},{t:'T4',sub:'S35',p:7},{t:'T4',sub:'S21',p:8},{t:'T4',sub:'S02',p:9},
+    {t:'T5',sub:'S30',p:1},{t:'T5',sub:'S22',p:2},{t:'T5',sub:'S18',p:3},{t:'T5',sub:'S34',p:4},{t:'T5',sub:'S17',p:5},{t:'T5',sub:'S14',p:7},{t:'T5',sub:'S28',p:8},{t:'T5',sub:'S39',p:9},
+    {t:'T6',sub:'S20',p:2},{t:'T6',sub:'S04',p:3},{t:'T6',sub:'S27',p:4},{t:'T6',sub:'S10',p:5},{t:'T6',sub:'S05',p:7},{t:'T6',sub:'S42',p:8}
+  ],
   periods: [{
     id: 1,
     s: '10:00',
@@ -4424,8 +4291,7 @@ function App() {
   }), /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(Row, {
     label: "Apps Script URL"
   }, /*#__PURE__*/React.createElement(Inp, {
-    value: urlInp,
-    onFocus: () => { if (!urlInp) setUrlInp(cfg.script_url || ''); },
+    value: urlInp || cfg.script_url,
     onChange: v => setUrlInp(v),
     placeholder: "https://script.google.com/macros/s/.../exec",
     style: {
@@ -4444,32 +4310,23 @@ function App() {
     onClick: () => {
       const u = (urlInp || '').trim();
       if (!u) {
-        flash('⚠️ URL خالی');
+        flash('⚠️');
         return;
       }
       updCfg('script_url', u);
-      flash('✓ محفوظ');
+      setUrlInp('');
+      flash('✓');
     }
   }, "\u0645\u062D\u0641\u0648\u0638"), /*#__PURE__*/React.createElement(Btn, {
     full: true,
     small: true,
-    color: "#ef4444",
-    onClick: () => {
-      setUrlInp('');
-      updCfg('script_url', '');
-      flash('✓ صاف');
-    }
-  }, "\u0635\u0627\u0641"), /*#__PURE__*/React.createElement(Btn, {
-    full: true,
-    small: true,
     color: "#3b82f6",
-    disabled: !(urlInp || cfg.script_url),
+    disabled: !cfg.script_url,
     onClick: async () => {
       try {
-        const testUrl = (urlInp || cfg.script_url);
-        const r = await fetch(testUrl + '?action=ping');
+        const r = await fetch(cfg.script_url + '?action=ping');
         const d = await r.json();
-        flash(d.success ? '✓ کامیاب' : '⚠️ ناکام');
+        flash(d.success ? '✓ کامیاب' : '⚠️');
       } catch (e) {
         flash('⚠️ ناکام');
       }
