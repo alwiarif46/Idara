@@ -356,7 +356,7 @@ const DEFAULTS = {
   teachers: [{
     id: 'T1',
     n: 'م۔ ارشاد حیدری',
-    role: 'principal',
+    role: 'teacher',
     exam: false,
     email: ''
   }, {
@@ -3992,7 +3992,7 @@ function App() {
     }
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u2014 \u0627\u0633\u062A\u0627\u062F \u2014"), teachers.filter(t => t.role !== 'principal').map(t => /*#__PURE__*/React.createElement("option", {
+  }, "\u2014 \u0627\u0633\u062A\u0627\u062F \u2014"), teachers.filter(t => t.role !== 'qari').map(t => /*#__PURE__*/React.createElement("option", {
     key: t.id,
     value: t.id
   }, t.n, " (", tA(t.id), ")"))), /*#__PURE__*/React.createElement(Sel, {
@@ -4064,7 +4064,7 @@ function App() {
       fontFamily: 'monospace',
       fontSize: 8
     }
-  }, p.s, /*#__PURE__*/React.createElement("br", null), p.e)))), /*#__PURE__*/React.createElement("tbody", null, teachers.filter(t => t.role !== 'principal').map(t => /*#__PURE__*/React.createElement("tr", {
+  }, p.s, /*#__PURE__*/React.createElement("br", null), p.e)))), /*#__PURE__*/React.createElement("tbody", null, teachers.filter(t => t.role !== 'qari').map(t => /*#__PURE__*/React.createElement("tr", {
     key: t.id,
     style: {
       borderBottom: '1px solid #e5e0d5'
