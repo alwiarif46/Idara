@@ -2660,7 +2660,11 @@ function App() {
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}},
                   React.createElement('span',{style:{fontSize:10,color:'#888'}},pCt+'\u062D '+aCt+'\u063A '+lCt+'\u0631'),
                   React.createElement(Btn, {small:true, color:'#1a3a5c', onClick:()=>syncAttendance(a.sub.c, a.sub.id)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC')
-                )
+                ),
+                React.createElement('div',{
+                  onClick:()=>{const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const px=pm[a.sub.c]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud({id:px+String(mx+1).padStart(2,'0'),n:'',parent:'',phone:'',residence:'',c:a.sub.c,qari:'T8',status:'active'});setShowStudForm(true);},
+                  style:{textAlign:'center',padding:8,marginTop:6,border:'1.5px dashed #bbb',borderRadius:8,fontSize:10,color:'#888',cursor:'pointer'}
+                },'+ \u0637\u0627\u0644\u0628 \u0639\u0644\u0645 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA')
               )
         )
       )
