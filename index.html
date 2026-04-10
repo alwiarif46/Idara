@@ -2248,7 +2248,7 @@ function App() {
     ...(!isQari?[{id:'report',ic:'������',l:'رپورٹ'}]:[]),
     ...(isEx?[{id:'thu',ic:'������',l:'امتحان'}]:[]),
     ...(!isQari?[{id:'tt',ic:'������',l:'اوقات'}]:[]),
-    ...((isAd||isQari)?[{id:'students',ic:'������',l:'طلبا'}]:[]),
+    ...([{id:'students',ic:'������',l:'طلبا'}]),
     ...(isAd?[{id:'adm',ic:'⚙️',l:'ایڈمن'}]:[])
   ];
   const goHome = () => { setTab('home'); setAdmSub(null); setShowForm(null); };
@@ -2932,6 +2932,15 @@ tab === 'thu' && isEx && React.createElement('div', null,
       )
     ),
 
+    React.createElement('div', {style:{display:'flex',gap:4,overflowX:'auto',marginBottom:8,paddingBottom:4}},
+      React.createElement('button',{onClick:()=>setTtClass(''),
+        style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+          background:!ttClass?ST.dk:'#e5e0d5',color:!ttClass?ST.gd:'#555'}},'\u0633\u0628'),
+      (isAd ? CL : CL.filter(cl => { const myClasses = new Set(myA.map(a=>a.sub.c)); return myClasses.has(cl.id) || cl.id==='hifz'; }))
+        .map(cl=>React.createElement('button',{key:cl.id,onClick:()=>setTtClass(ttClass===cl.id?'':cl.id),
+          style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+            background:ttClass===cl.id?cl.a:'#e5e0d5',color:ttClass===cl.id?'#fff':cl.a}},cl.n))
+    ),
     /*#__PURE__*/React.createElement("input", {
       placeholder: "نام سے تلاش...",
       value: studSearch,
@@ -2940,7 +2949,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
         direction:'rtl',fontFamily:ST.f,marginBottom:10,boxSizing:'border-box'}
     }),
 
-    isAd && /*#__PURE__*/React.createElement("button", {
+    (isAd || (!isQari && user)) && /*#__PURE__*/React.createElement("button", {
       onClick: () => setShowStudForm(true),
       style:{width:'100%',padding:'9px',borderRadius:10,border:'2px dashed #aaa',background:'none',
         cursor:'pointer',fontSize:12,color:'#555',marginBottom:10,fontFamily:ST.f}
@@ -2954,7 +2963,8 @@ tab === 'thu' && isEx && React.createElement('div', null,
         return true;
       })
       .filter(s => !studSearch || s.n.includes(studSearch) || (s.parent||'').includes(studSearch))
-      .filter(s => isQari ? s.qari===user.id : true)
+      .filter(s => !ttClass || s.c === ttClass)
+      .filter(s => { if (isQari) return s.qari===user.id; if (isAd) return true; const myClasses = new Set(myA.map(a=>a.sub.c)); return myClasses.has(s.c); })
       .map((s, i) => {
         const qariT = teachers.find(t => t.id===s.qari);
         const logEntries = Object.entries(hifzLogs).filter(([k]) => k.startsWith(s.id+'_')).sort((a,b)=>b[0].localeCompare(a[0]));
@@ -3088,7 +3098,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     ),
 
     /* Add Student Form Modal */
-    showStudForm && isAd && /*#__PURE__*/React.createElement("div", {
+    showStudForm && (isAd || (!isQari && user)) && /*#__PURE__*/React.createElement("div", {
       style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center'},
       onClick:()=>setShowStudForm(false)
     },
@@ -3115,7 +3125,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
               onChange:e=>setNewStud(p=>({...p,c:e.target.value})),
               style:{width:'100%',padding:'8px',borderRadius:8,border:'1px solid #ddd',fontSize:12,fontFamily:ST.f}
             },
-              CL.map(cl=>/*#__PURE__*/React.createElement("option",{key:cl.id,value:cl.id},cl.n))
+              (isAd ? CL : CL.filter(cl=>{ const mc=new Set(myA.map(a=>a.sub.c)); return mc.has(cl.id); })).map(cl=>/*#__PURE__*/React.createElement("option",{key:cl.id,value:cl.id},cl.n))
             )
           ),
           /*#__PURE__*/React.createElement("div", null,
