@@ -4424,7 +4424,8 @@ function App() {
   }), /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(Row, {
     label: "Apps Script URL"
   }, /*#__PURE__*/React.createElement(Inp, {
-    value: urlInp || cfg.script_url,
+    value: urlInp,
+    onFocus: () => { if (!urlInp) setUrlInp(cfg.script_url || ''); },
     onChange: v => setUrlInp(v),
     placeholder: "https://script.google.com/macros/s/.../exec",
     style: {
@@ -4443,23 +4444,32 @@ function App() {
     onClick: () => {
       const u = (urlInp || '').trim();
       if (!u) {
-        flash('⚠️');
+        flash('⚠️ URL خالی');
         return;
       }
       updCfg('script_url', u);
-      setUrlInp('');
-      flash('✓');
+      flash('✓ محفوظ');
     }
   }, "\u0645\u062D\u0641\u0648\u0638"), /*#__PURE__*/React.createElement(Btn, {
     full: true,
     small: true,
+    color: "#ef4444",
+    onClick: () => {
+      setUrlInp('');
+      updCfg('script_url', '');
+      flash('✓ صاف');
+    }
+  }, "\u0635\u0627\u0641"), /*#__PURE__*/React.createElement(Btn, {
+    full: true,
+    small: true,
     color: "#3b82f6",
-    disabled: !cfg.script_url,
+    disabled: !(urlInp || cfg.script_url),
     onClick: async () => {
       try {
-        const r = await fetch(cfg.script_url + '?action=ping');
+        const testUrl = (urlInp || cfg.script_url);
+        const r = await fetch(testUrl + '?action=ping');
         const d = await r.json();
-        flash(d.success ? '✓ کامیاب' : '⚠️');
+        flash(d.success ? '✓ کامیاب' : '⚠️ ناکام');
       } catch (e) {
         flash('⚠️ ناکام');
       }
