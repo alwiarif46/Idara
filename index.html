@@ -55,6 +55,7 @@ const {
 // ═══════════════════════════════════════════════════════════
 const LOGO = 'data:image/webp;base64,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';
 const DEFAULTS = {
+  _version: 11,
   institution: {
     name_ur: 'ادارہ تحقیقات اسلامی',
     name_en: 'Imam Azam College — My Idara',
@@ -1266,18 +1267,7 @@ async function loadConfig() {
     return null;
   }
 }
-async function loadStudents() {
-  try { const r = await _stLoad('iri-students-v7'); return r ? JSON.parse(r.value) : null; } catch(e){ return null; }
-}
-async function saveStudents(d) {
-  try { await _stSave('iri-students-v7', JSON.stringify(d)); } catch(e){}
-}
-async function loadHifzLogs() {
-  try { const r = await _stLoad('iri-hifz-v7'); return r ? JSON.parse(r.value) : null; } catch(e){ return null; }
-}
-async function saveHifzLogs(d) {
-  try { await _stSave('iri-hifz-v7', JSON.stringify(d)); } catch(e){}
-}
+// [removed duplicate definitions]
 async function saveConfig(cfg) {
   try {
     await _stSave("iri-config-v7", JSON.stringify(cfg));
@@ -1430,12 +1420,34 @@ function App() {
     (async () => {
       const [saved, savedReps, savedQ, savedStudents, savedHifz] = await Promise.all([loadConfig(), loadReports(), loadSyncQ(), loadStudents(), loadHifzLogs()]);
       if (saved) {
-        // Deep merge: DEFAULTS wins for pins and script_url if saved values look wrong
-        const merged = { ...DEFAULTS, ...saved };
-        // Ensure all DEFAULTS pin keys exist (new teachers added to DEFAULTS get their PINs)
-        merged.pins = { ...DEFAULTS.pins, ...(saved.pins || {}) };
-        // Always preserve DEFAULTS script_url if saved one is empty
-        if (!merged.script_url) merged.script_url = DEFAULTS.script_url;
+        const sv = saved._version || 0;
+        const dv = DEFAULTS._version || 0;
+        let merged;
+        if (sv < dv) {
+          // New version: take DEFAULTS structure, preserve user data
+          merged = { ...DEFAULTS };
+          // Preserve user-edited fields
+          if (saved.pins) merged.pins = { ...DEFAULTS.pins, ...saved.pins };
+          if (saved.assignments && saved.assignments.length > 0) merged.assignments = saved.assignments;
+          if (saved.script_url) merged.script_url = saved.script_url;
+          if (saved.admin_creds) merged.admin_creds = saved.admin_creds;
+          if (saved.scoring) merged.scoring = { ...DEFAULTS.scoring, ...saved.scoring };
+          if (saved.dashboard) merged.dashboard = { ...DEFAULTS.dashboard, ...saved.dashboard };
+          if (saved.holidays) merged.holidays = saved.holidays;
+          if (saved.institution) {
+            // Preserve user-changed institution settings but take new defaults for unchanged fields
+            merged.institution = { ...DEFAULTS.institution, ...saved.institution };
+          }
+          // Subjects, teachers, periods, classes always come from DEFAULTS on version bump
+          // This ensures page range fixes and new subjects take effect
+          console.log('Config upgraded: v' + sv + ' → v' + dv);
+        } else {
+          // Same version: use saved config entirely
+          merged = { ...DEFAULTS, ...saved };
+          merged.pins = { ...DEFAULTS.pins, ...(saved.pins || {}) };
+          if (!merged.script_url) merged.script_url = DEFAULTS.script_url;
+        }
+        merged._version = dv;
         setCfgRaw(merged);
       } else {
         setCfgRaw({ ...DEFAULTS });
@@ -2204,10 +2216,6 @@ function App() {
     l: `طلبا (${students.length})`,
     k: 'students'
   }, {
-    ic: '👥',
-    l: `طلبا (${students.length})`,
-    k: 'students'
-  }, {
     ic: '🕐',
     l: 'اوقات',
     k: 'periods'
@@ -2452,8 +2460,8 @@ function App() {
   }, r(a.sub.id).actual ? '✓' : ''))), isAd && adminItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     onClick: () => {
-      setTab('adm');
-      setAdmSub(it.k);
+      if (it.k === 'students') { setTab('students'); setAdmSub(null); }
+      else { setTab('adm'); setAdmSub(it.k); }
     },
     style: {
       background: '#fff',
