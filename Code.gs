@@ -68,6 +68,8 @@ function _route(data) {
       return _handleTeacherAttendance(data);
     case 'student_attendance':
       return _handleStudentAttendance(data);
+    case 'daily_attendance':
+      return _handleDailyAttendance(data);
     case 'student_upsert':
       return _handleStudentUpsert(data);
     case 'save_config':
@@ -105,7 +107,7 @@ function _appendRow(sheet, row) {
 }
 
 function _ts() {
-  return new Date().toISOString();
+  return Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -125,7 +127,7 @@ function _handleDailyReport(data) {
   var entries = data.entries || [];
   var date = data.date || '';
   var teacherId = data.teacher_id || '';
-  var submittedAt = data.submitted_at || _ts();
+  var submittedAt = _ts();
 
   for (var i = 0; i < entries.length; i++) {
     var e = entries[i];
@@ -177,7 +179,7 @@ function _handleThursdayTest(data) {
   var date = data.date || '';
   var week = data.week || '';
   var teacherId = data.teacher_id || '';
-  var submittedAt = data.submitted_at || _ts();
+  var submittedAt = _ts();
 
   for (var i = 0; i < blocks.length; i++) {
     var b = blocks[i];
@@ -205,7 +207,7 @@ function _handleHifzProgress(data) {
   ];
   var sheet = _getOrCreateTab(ss, 'DB_Hifz_Progress', headers, '#4285f4');
 
-  var submittedAt = data.submitted_at || _ts();
+  var submittedAt = _ts();
   _appendRow(sheet, [
     data.date || '', data.student_id || '', data.student_name || '',
     data.paras || 0, data.soorah || '', data.aayat || 0,
@@ -228,7 +230,7 @@ function _handleTeacherAttendance(data) {
 
   var date = data.date || '';
   var att = data.attendance || {};
-  var submittedAt = data.submitted_at || _ts();
+  var submittedAt = _ts();
 
   _appendRow(sheet, [
     date,
@@ -257,7 +259,7 @@ function _handleStudentAttendance(data) {
   var subjectId = data.subject_id || '';
   var teacherId = data.teacher_id || '';
   var att = data.attendance || {};
-  var submittedAt = data.submitted_at || _ts();
+  var submittedAt = _ts();
 
   // Upsert: delete existing rows for this class+date, then insert new
   if (sheet.getLastRow() > 1) {
@@ -281,6 +283,52 @@ function _handleStudentAttendance(data) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// HANDLER: daily_attendance (assembly + 5 prayers, upsert per slot+date)
+// ═══════════════════════════════════════════════════════════
+
+function _handleDailyAttendance(data) {
+  var ss = SpreadsheetApp.openById(ADMIN_ID);
+  var headers = [
+    'Date', 'Slot', 'Student_ID', 'Class_ID', 'Status', 'Marked_By', 'Submitted_At'
+  ];
+  var sheet = _getOrCreateTab(ss, 'DB_Daily_Attendance', headers, '#4285f4');
+
+  var date = data.date || '';
+  var slot = data.slot || '';
+  var markedBy = data.marked_by || '';
+  var att = data.attendance || {};
+  var submittedAt = _ts();
+
+  // Upsert: delete existing rows for this slot+date
+  if (sheet.getLastRow() > 1) {
+    var allData = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+    for (var i = allData.length - 1; i >= 0; i--) {
+      if (allData[i][0] === date && allData[i][1] === slot) {
+        sheet.deleteRow(i + 2);
+      }
+    }
+  }
+
+  // Insert new rows — look up each student's class
+  var studentIds = Object.keys(att);
+  for (var j = 0; j < studentIds.length; j++) {
+    var sid = studentIds[j];
+    // Derive class from student ID prefix
+    var classId = '';
+    if (sid.startsWith('OL')) classId = 'oola';
+    else if (sid.startsWith('SA')) classId = 'sania';
+    else if (sid.startsWith('SL')) classId = 'salisa';
+    else if (sid.startsWith('RA')) classId = 'rabia';
+    else if (sid.startsWith('KH')) classId = 'khamisa';
+    else if (sid.startsWith('FA')) classId = 'fazilat';
+    else if (sid.startsWith('HA') || sid.startsWith('HZ') || sid.startsWith('HX')) classId = 'hifz';
+    _appendRow(sheet, [date, slot, sid, classId, att[sid], markedBy, submittedAt]);
+  }
+
+  return _json({ success: true, rows: studentIds.length });
+}
+
+// ═══════════════════════════════════════════════════════════
 // HANDLER: student_upsert
 // ═══════════════════════════════════════════════════════════
 
@@ -295,7 +343,7 @@ function _handleStudentUpsert(data) {
 
   var student = data.student || data;
   var sid = student.id || student.student_id || '';
-  var updatedAt = data.submitted_at || _ts();
+  var updatedAt = _ts();
 
   // Check if student already exists — update in place
   if (sid && sheet.getLastRow() > 1) {
@@ -538,6 +586,10 @@ function setupAllTabs() {
 
   _getOrCreateTab(ss, 'DB_Student_Attendance',
     ['Date', 'Teacher_ID', 'Class_ID', 'Subject_ID', 'Student_ID', 'Status', 'Submitted_At'],
+    '#4285f4');
+
+  _getOrCreateTab(ss, 'DB_Daily_Attendance',
+    ['Date', 'Slot', 'Student_ID', 'Class_ID', 'Status', 'Marked_By', 'Submitted_At'],
     '#4285f4');
 
   _getOrCreateTab(ss, 'ADMIN_Students',

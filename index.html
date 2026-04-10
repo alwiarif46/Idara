@@ -1329,6 +1329,10 @@ async function loadTAttend() {
   try { const r = await _stLoad("iri-tattend"); return r ? JSON.parse(r.value) : {}; } catch (e) { return {}; }
 }
 async function saveTAttend(d) { try { await _stSave("iri-tattend", JSON.stringify(d)); } catch (e) {} }
+async function loadDAttend() {
+  try { const r = await _stLoad("iri-dattend"); return r ? JSON.parse(r.value) : {}; } catch (e) { return {}; }
+}
+async function saveDAttend(d) { try { await _stSave("iri-dattend", JSON.stringify(d)); } catch (e) {} }
 
 // ═══════════════════════════════════════════════════════════
 // APP
@@ -1382,6 +1386,10 @@ function App() {
   const [ttOpen, setTtOpen] = useState(null);
   const [ttSubTab, setTtSubTab] = useState('progress');
   const [repOpen, setRepOpen] = useState(null);
+  const [dAttSlot, setDAttSlot] = useState('fajr');
+  const [dAttClass, setDAttClass] = useState('all');
+  const [dAttSearch, setDAttSearch] = useState('');
+  const [dAttend, setDAttendRaw] = useState({});
   const [covers, setCovers] = useState({});
   const [students, setStudentsRaw] = useState([]);
   const [hifzLogs, setHifzLogsRaw] = useState({});
@@ -1435,12 +1443,15 @@ function App() {
   const setTAttend = useCallback(updater => {
     setTAttendRaw(prev => { const next = typeof updater==='function'?updater(prev):updater; saveTAttend(next); return next; });
   }, []);
+  const setDAttend = useCallback(updater => {
+    setDAttendRaw(prev => { const next = typeof updater==='function'?updater(prev):updater; saveDAttend(next); return next; });
+  }, []);
 
 
   // Load on mount
   useEffect(() => {
     (async () => {
-      const [saved, savedReps, savedQ, savedStudents, savedHifz, savedSA, savedTA] = await Promise.all([loadConfig(), loadReports(), loadSyncQ(), loadStudents(), loadHifzLogs(), loadSAttend(), loadTAttend()]);
+      const [saved, savedReps, savedQ, savedStudents, savedHifz, savedSA, savedTA, savedDA] = await Promise.all([loadConfig(), loadReports(), loadSyncQ(), loadStudents(), loadHifzLogs(), loadSAttend(), loadTAttend(), loadDAttend()]);
       if (saved) {
         const sv = saved._version || 0;
         const dv = DEFAULTS._version || 0;
@@ -1480,6 +1491,7 @@ function App() {
       setHifzLogsRaw(savedHifz || {});
       setSAttendRaw(savedSA || {});
       setTAttendRaw(savedTA || {});
+      setDAttendRaw(savedDA || {});
       setLoading(false);
     })();
   }, []);
@@ -1600,6 +1612,23 @@ function App() {
         flash('❌ ' + err.message);
       }
     } else { setSyncQ(p => [...p, { type: 'student_attendance', payload: pl }]); flash('✓ قطار — URL سیٹ کریں'); }
+  };
+  const syncDailyAttendance = async (slot) => {
+    const todayDt = new Date().toISOString().split('T')[0];
+    const daKey = slot + '_' + todayDt;
+    const att = dAttend[daKey];
+    if (!att || !Object.keys(att).length) { flash('⚠️ خالی'); return; }
+    const pl = { marked_by: user ? user.id : '', slot: slot, date: todayDt, attendance: att };
+    console.log('[DATTEND] sending:', JSON.stringify(pl));
+    if (cfg.script_url) {
+      flash('⏳ بھیج رہے ہیں...');
+      try {
+        const res = await syncPost('daily_attendance', pl);
+        console.log('[DATTEND] response:', JSON.stringify(res));
+        if (res && res.success) flash('✅ حاضری محفوظ — ' + Object.keys(att).length + ' طلبا');
+        else flash('❌ ناکام: ' + (res && res.error ? res.error : JSON.stringify(res)));
+      } catch(err) { console.error('[DATTEND] error:', err); flash('❌ ' + err.message); }
+    } else { setSyncQ(p => [...p, { type: 'daily_attendance', payload: pl }]); flash('✓ قطار'); }
   };
   useEffect(() => {
     const iv = setInterval(() => {
@@ -2305,6 +2334,7 @@ function App() {
     ...(!isQari?[{id:'report',ic:'������',l:'رپورٹ'}]:[]),
     ...(isEx?[{id:'thu',ic:'������',l:'امتحان'}]:[]),
     ...(!isQari?[{id:'tt',ic:'������',l:'اوقات'}]:[]),
+    {id:'dattend',ic:'✅',l:'حاضری'},
     ...([{id:'students',ic:'������',l:'طلبا'}]),
     ...(isAd?[{id:'adm',ic:'⚙️',l:'ایڈمن'}]:[])
   ];
@@ -3067,6 +3097,99 @@ tab === 'thu' && isEx && React.createElement('div', null,
         );
       })()
     )
+  ),
+
+
+  /* ═══ DAILY ATTENDANCE TAB ═══ */
+  tab === 'dattend' && React.createElement('div', null,
+    React.createElement(Ttl, {icon:'✅', text:'حاضری'}),
+    // Slot tabs
+    (() => {
+      const slots = [
+        {id:'fajr',n:'فجر'},{id:'salam',n:'سلام'},{id:'zuhr',n:'ظہر'},
+        {id:'asr',n:'عصر'},{id:'maghrib',n:'مغرب'},{id:'isha',n:'عشاء'}
+      ];
+      const todayDt = new Date().toISOString().split('T')[0];
+      const daKey = dAttSlot + '_' + todayDt;
+      const daData = dAttend[daKey] || {};
+      const allStudents = students.filter(s => s.status !== 'left');
+      const filtered = allStudents
+        .filter(s => dAttClass === 'all' || s.c === dAttClass)
+        .filter(s => !dAttSearch || s.n.includes(dAttSearch) || s.id.includes(dAttSearch));
+      const pCt = filtered.filter(s => daData[s.id] === 'P').length;
+      const aCt = filtered.filter(s => daData[s.id] === 'A').length;
+      const lCt = filtered.filter(s => daData[s.id] === 'L').length;
+      const markAllDA = st => {
+        const nd = {};
+        filtered.forEach(s => { nd[s.id] = st; });
+        setDAttend(prev => ({...prev, [daKey]: {...(prev[daKey]||{}), ...nd}}));
+      };
+      return React.createElement('div', null,
+        // Slot tabs row
+        React.createElement('div', {style:{display:'flex',gap:4,marginBottom:10,overflowX:'auto',WebkitOverflowScrolling:'touch',flexWrap:'nowrap',paddingBottom:4}},
+          slots.map(sl => React.createElement('button', {key:sl.id,
+            onClick:()=>setDAttSlot(sl.id),
+            style:{padding:'8px 14px',borderRadius:20,border:'none',fontSize:12,fontWeight:800,fontFamily:'inherit',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,
+              background:dAttSlot===sl.id?ST.dk:'#e5e0d5',color:dAttSlot===sl.id?ST.gd:'#666'}
+          }, sl.n))
+        ),
+        // Class filter row
+        React.createElement('div', {style:{display:'flex',gap:3,marginBottom:8,overflowX:'auto',WebkitOverflowScrolling:'touch',flexWrap:'nowrap',paddingBottom:4}},
+          React.createElement('button', {onClick:()=>setDAttClass('all'),
+            style:{padding:'5px 10px',borderRadius:15,border:'none',fontSize:10,fontWeight:700,fontFamily:'inherit',cursor:'pointer',flexShrink:0,
+              background:dAttClass==='all'?ST.dk:'#f0ebe0',color:dAttClass==='all'?ST.gd:'#888'}}, 'سب'),
+          CL.map(cl => React.createElement('button', {key:cl.id, onClick:()=>setDAttClass(cl.id),
+            style:{padding:'5px 10px',borderRadius:15,border:'none',fontSize:10,fontWeight:700,fontFamily:'inherit',cursor:'pointer',flexShrink:0,
+              background:dAttClass===cl.id?cl.a:'#f0ebe0',color:dAttClass===cl.id?'#fff':'#888'}}, cl.n))
+        ),
+        // Search bar
+        React.createElement('input', {
+          value: dAttSearch, onChange: e => setDAttSearch(e.target.value),
+          placeholder: 'نام سے تلاش...',
+          style:{width:'100%',padding:'8px 12px',borderRadius:10,border:'1.5px solid #d5d0c5',fontSize:12,fontFamily:'inherit',direction:'rtl',marginBottom:10,outline:'none',background:'#faf8f3',boxSizing:'border-box'}
+        }),
+        // Bulk buttons
+        React.createElement('div', {style:{display:'flex',gap:4,marginBottom:10}},
+          React.createElement('button', {onClick:()=>markAllDA('P'),style:{flex:1,padding:6,borderRadius:8,border:'none',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#d1fae5',color:'#065f46'}}, 'سب حاضر'),
+          React.createElement('button', {onClick:()=>markAllDA('A'),style:{flex:1,padding:6,borderRadius:8,border:'none',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#fee2e2',color:'#991b1b'}}, 'سب غائب')
+        ),
+        // Student list
+        filtered.length === 0
+          ? React.createElement('div', {style:{textAlign:'center',padding:30,color:'#9ca3af',fontSize:12}}, 'کوئی طالب علم نہیں')
+          : React.createElement('div', null,
+              filtered.map(s => {
+                const st = daData[s.id] || '';
+                const cls = gC(CL, s.c);
+                return React.createElement('div', {key:s.id,
+                  style:{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',marginBottom:4,background:'#fff',borderRadius:10,
+                    boxShadow:'0 1px 4px rgba(0,0,0,0.05)',borderRight:'3px solid '+(st==='P'?'#10b981':st==='A'?'#ef4444':st==='L'?'#3b82f6':'#e5e0d5')}
+                },
+                  React.createElement('div', {style:{flex:1}},
+                    React.createElement('div', {style:{fontSize:13,fontWeight:700}}, s.n),
+                    React.createElement('div', {style:{fontSize:9,color:'#999',marginTop:1}}, cls.n+' \u2022 '+s.id)
+                  ),
+                  ['P','A','L'].map(v => React.createElement('button', {
+                    key:v, onClick:()=>setDAttend(prev=>({...prev,[daKey]:{...(prev[daKey]||{}),[s.id]:v}})),
+                    style:{width:32,height:28,borderRadius:7,border:'none',fontSize:11,fontWeight:800,fontFamily:'inherit',cursor:'pointer',
+                      background:st===v?(v==='P'?'#10b981':v==='A'?'#ef4444':'#3b82f6'):'#f0ebe0',
+                      color:st===v?'#fff':'#999'}
+                  }, v==='P'?'\u062D':v==='A'?'\u063A':'\u0631'))
+                );
+              })
+            ),
+        // Summary
+        React.createElement('div', {style:{fontSize:11,color:'#888',textAlign:'center',marginTop:10,padding:8,background:'#faf8f3',borderRadius:8}},
+          pCt+' \u062D\u0627\u0636\u0631 \u2022 '+aCt+' \u063A\u0627\u0626\u0628 \u2022 '+lCt+' \u0631\u062E\u0635\u062A \u2014 '+(pCt+aCt+lCt)+'/'+filtered.length+' \u0645\u06A9\u0645\u0644'
+        ),
+        // Submit button
+        React.createElement(Btn, {full:true, style:{marginTop:10}, onClick:()=>syncDailyAttendance(dAttSlot)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713'),
+        // Add student
+        React.createElement('div', {
+          onClick:()=>{const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const dc=dAttClass!=='all'?dAttClass:CL[0].id;const px=pm[dc]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud({id:px+String(mx+1).padStart(2,'0'),n:'',parent:'',phone:'',residence:'',c:dc,qari:'T8',status:'active'});setShowStudForm(true);},
+          style:{textAlign:'center',padding:8,marginTop:8,border:'1.5px dashed #bbb',borderRadius:8,fontSize:10,color:'#888',cursor:'pointer'}
+        }, '+ \u0637\u0627\u0644\u0628 \u0639\u0644\u0645 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA')
+      );
+    })()
   ),
 
   /* ═══ STUDENTS TAB ═══ */
@@ -4498,6 +4621,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
         await _stDel("iri-hifz-v7");
         await _stDel("iri-sattend");
         await _stDel("iri-tattend");
+        await _stDel("iri-dattend");
         await _stDel("iri-config-v7");
       } catch (e) {}
       setCfgRaw({
