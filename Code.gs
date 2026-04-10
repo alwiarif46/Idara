@@ -289,7 +289,7 @@ function _handleStudentAttendance(data) {
 function _handleDailyAttendance(data) {
   var ss = SpreadsheetApp.openById(ADMIN_ID);
   var headers = [
-    'Date', 'Slot', 'Student_ID', 'Class_ID', 'Status', 'Marked_By', 'Submitted_At'
+    'Date', 'Student_ID', 'Class_ID', 'Fajr', 'Salam', 'Zuhr', 'Asr', 'Maghrib', 'Isha', 'Marked_By', 'Submitted_At'
   ];
   var sheet = _getOrCreateTab(ss, 'DB_Daily_Attendance', headers, '#4285f4');
 
@@ -299,30 +299,48 @@ function _handleDailyAttendance(data) {
   var att = data.attendance || {};
   var submittedAt = _ts();
 
-  // Upsert: delete existing rows for this slot+date
+  // Map slot name to column index (1-based: D=4, E=5, F=6, G=7, H=8, I=9)
+  var slotCol = {fajr:4, salam:5, zuhr:6, asr:7, maghrib:8, isha:9};
+  var col = slotCol[slot];
+  if (!col) return _json({ success: false, error: 'INVALID_SLOT: ' + slot });
+
+  // Build lookup of existing rows: studentId → row number
+  var existingMap = {};
   if (sheet.getLastRow() > 1) {
     var allData = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
-    for (var i = allData.length - 1; i >= 0; i--) {
-      if (allData[i][0] === date && allData[i][1] === slot) {
-        sheet.deleteRow(i + 2);
+    for (var i = 0; i < allData.length; i++) {
+      if (allData[i][0] === date) {
+        existingMap[allData[i][1]] = i + 2; // row number
       }
     }
   }
 
-  // Insert new rows — look up each student's class
   var studentIds = Object.keys(att);
   for (var j = 0; j < studentIds.length; j++) {
     var sid = studentIds[j];
-    // Derive class from student ID prefix
-    var classId = '';
-    if (sid.startsWith('OL')) classId = 'oola';
-    else if (sid.startsWith('SA')) classId = 'sania';
-    else if (sid.startsWith('SL')) classId = 'salisa';
-    else if (sid.startsWith('RA')) classId = 'rabia';
-    else if (sid.startsWith('KH')) classId = 'khamisa';
-    else if (sid.startsWith('FA')) classId = 'fazilat';
-    else if (sid.startsWith('HA') || sid.startsWith('HZ') || sid.startsWith('HX')) classId = 'hifz';
-    _appendRow(sheet, [date, slot, sid, classId, att[sid], markedBy, submittedAt]);
+    var status = att[sid];
+
+    if (existingMap[sid]) {
+      // Update existing row — just the slot column + marked_by + submitted_at
+      var rowNum = existingMap[sid];
+      sheet.getRange(rowNum, col).setValue(status);
+      sheet.getRange(rowNum, 10).setValue(markedBy);
+      sheet.getRange(rowNum, 11).setValue(submittedAt);
+    } else {
+      // Insert new row
+      var classId = '';
+      if (sid.startsWith('OL')) classId = 'oola';
+      else if (sid.startsWith('SA')) classId = 'sania';
+      else if (sid.startsWith('SL')) classId = 'salisa';
+      else if (sid.startsWith('RA')) classId = 'rabia';
+      else if (sid.startsWith('KH')) classId = 'khamisa';
+      else if (sid.startsWith('FA')) classId = 'fazilat';
+      else if (sid.startsWith('HA') || sid.startsWith('HZ') || sid.startsWith('HX')) classId = 'hifz';
+      var newRow = [date, sid, classId, '', '', '', '', '', '', markedBy, submittedAt];
+      newRow[col - 1] = status; // col is 1-based, array is 0-based
+      _appendRow(sheet, newRow);
+      existingMap[sid] = sheet.getLastRow(); // track for subsequent slots
+    }
   }
 
   return _json({ success: true, rows: studentIds.length });
@@ -589,7 +607,7 @@ function setupAllTabs() {
     '#4285f4');
 
   _getOrCreateTab(ss, 'DB_Daily_Attendance',
-    ['Date', 'Slot', 'Student_ID', 'Class_ID', 'Status', 'Marked_By', 'Submitted_At'],
+    ['Date', 'Student_ID', 'Class_ID', 'Fajr', 'Salam', 'Zuhr', 'Asr', 'Maghrib', 'Isha', 'Marked_By', 'Submitted_At'],
     '#4285f4');
 
   _getOrCreateTab(ss, 'ADMIN_Students',
