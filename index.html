@@ -1349,6 +1349,7 @@ function App() {
 
   const [thB, setThB] = useState(0);
   const [thD, setThD] = useState([]);
+  const [thWk, setThWk] = useState(null);
   const saveTimer = useRef(null);
 
   // Wrapped setters that auto-persist
@@ -1426,22 +1427,27 @@ function App() {
     };
   }, []);
 
-  // Init Thursday test grid when classes change
+  // Init Thursday test grid when classes or assignments change
   useEffect(() => {
-    if (cfg) setThD(cfg.classes.map(() => ({
-      sid: '',
-      grid: Array.from({
-        length: 15
-      }, (_, i) => ({
-        num: i + 1,
-        nm: '',
-        sc: [null, null, null, null, null],
-        ab: false
-      })),
-      nt: '',
-      sg: ''
-    })));
-  }, [cfg && cfg.classes && cfg.classes.length]);
+    if (cfg) {
+      setThD(cfg.classes.map(cl => {
+        // Find subjects actually assigned (via timetable) for this class
+        const claSubs = [...new Set(cfg.assignments.filter(a => {
+          const sub = cfg.subjects.find(s => s.id === a.sub);
+          return sub && sub.c === cl.id;
+        }).map(a => a.sub))];
+        // Auto-select if exactly one subject assigned to this class
+        const autoSid = claSubs.length === 1 ? claSubs[0] : '';
+        return {
+          sid: autoSid,
+          ptn: '',
+          grid: Array.from({length: 15}, (_, i) => ({num: i+1, nm: '', sc: [null,null,null,null,null], ab: false})),
+          nt: '',
+          sg: ''
+        };
+      }));
+    }
+  }, [cfg && cfg.classes && cfg.classes.length, cfg && cfg.assignments && cfg.assignments.length]);
   const flash = useCallback(m => {
     setToast(m);
     setTimeout(() => setToast(''), 2500);
@@ -1580,7 +1586,7 @@ function App() {
     const bl = {
       ...nx[bi]
     };
-    if (f === 'sid') bl.sid = v;else if (f === 'nt') bl.nt = v;else if (f === 'sg') bl.sg = v;else {
+    if (f === 'sid') bl.sid = v;else if (f === 'ptn') bl.ptn = v;else if (f === 'nt') bl.nt = v;else if (f === 'sg') bl.sg = v;else {
       const gr = [...bl.grid];
       const st = {
         ...gr[si]
@@ -1830,6 +1836,7 @@ function App() {
       return {
         class_id: cl.id,
         subject_id: d.sid,
+        portion: d.ptn || '',
         ...ct,
         average: cn ? Math.round(tp / cn) : 0,
         notes: d.nt,
@@ -1840,7 +1847,9 @@ function App() {
       flash('⚠️');
       return;
     }
-    const w = myThu[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const autoWk = thuSch.find(w => w.dt >= todayStr) || thuSch[thuSch.length-1];
+    const w = thWk || (myThu.find(x => x.wk === (autoWk && autoWk.wk)) || myThu[0]);
     const pl = {
       examiner_id: user.id,
       week: w && w.wk || 0,
@@ -2595,7 +2604,45 @@ function App() {
     style: {
       color: '#999'
     }
-  }, "\u06A9\u0648\u0626\u06CC \u06C1\u0641\u062A\u06C1 \u0645\u0642\u0631\u0631 \u0646\u06C1\u06CC\u06BA")) : /*#__PURE__*/React.createElement(React.Fragment, null, CL.length > 0 && thD.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "\u06A9\u0648\u0626\u06CC \u06C1\u0641\u062A\u06C1 \u0645\u0642\u0631\u0631 \u0646\u06C1\u06CC\u06BA")) : /*#__PURE__*/React.createElement(React.Fragment, null,
+    (() => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const autoWk = thuSch.find(w => w.dt >= todayStr) || thuSch[thuSch.length-1];
+      const selW = thWk || (myThu.find(x => x.wk === (autoWk && autoWk.wk)) || myThu[0]);
+      const isCurrentWk = selW && autoWk && selW.wk === autoWk.wk;
+      return React.createElement('div', null,
+        // Week selector chips
+        React.createElement('div', {style:{display:'flex',gap:5,overflowX:'auto',marginBottom:10,paddingBottom:4}},
+          myThu.map(w => {
+            const active = selW && selW.wk === w.wk;
+            return React.createElement('button', {
+              key: w.wk,
+              onClick: () => setThWk(w),
+              style:{padding:'6px 13px',borderRadius:20,border:'none',cursor:'pointer',
+                fontSize:11,fontWeight:700,fontFamily:'inherit',whiteSpace:'nowrap',
+                background: active ? ST.dk : '#e5e0d5',
+                color: active ? ST.gd : '#555'}
+            }, '\u06C1\u0641\u062A\u06C1\xA0' + w.wk + '\xA0\u2014\xA0' + w.dt);
+          })
+        ),
+        // Examiner banner
+        selW && React.createElement('div', {style:{
+          background: isCurrentWk ? 'linear-gradient(135deg,#1a3a5c,#2a5298)' : '#e5e0d5',
+          color: isCurrentWk ? '#fff' : '#555',
+          borderRadius:12,padding:'10px 14px',marginBottom:12,
+          display:'flex',justifyContent:'space-between',alignItems:'center'
+        }},
+          React.createElement('div', null,
+            React.createElement('div', {style:{fontWeight:700,fontSize:13}},
+              '\uD83D\uDCC5\xA0' + selW.dt + '\xA0\u2014\xA0\u06C1\u0641\u062A\u06C1\xA0' + selW.wk),
+            React.createElement('div', {style:{fontSize:10,marginTop:2,opacity:0.85}},
+              isCurrentWk ? '\u2605\xA0\u0622\u067E \u0627\u0633 \u06C1\u0641\u062A\u06C1 \u06A9\u06D2 \u0645\u0645\u062A\u062D\u0646 \u06C1\u06CC\u06BA' : '\u06AF\u0632\u0634\u062A\u06C1 \u0627\u0645\u062A\u062D\u0627\u0646')
+          ),
+          React.createElement('div', {style:{fontSize:20}}, isCurrentWk ? '\u270F\uFE0F' : '\u2713')
+        )
+      );
+    })(),
+    CL.length > 0 && thD.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 3,
@@ -2626,10 +2673,25 @@ function App() {
     onChange: v => uTh(thB, 0, 'sid', v)
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u2014 \u0645\u0636\u0645\u0648\u0646 \u2014"), subjects.filter(s => s.c === (CL[thB] && CL[thB].id)).map(s => /*#__PURE__*/React.createElement("option", {
-    key: s.id,
-    value: s.id
-  }, s.n))), /*#__PURE__*/React.createElement("div", {
+  }, "\u2014 \u0645\u0636\u0645\u0648\u0646 \u2014"), (() => {
+    const clId = CL[thB] && CL[thB].id;
+    // Only show subjects that have a timetable assignment for this class
+    const assignedSubs = new Set(assignments.filter(a => {
+      const sub = subjects.find(s => s.id === a.sub);
+      return sub && sub.c === clId;
+    }).map(a => a.sub));
+    const filtered = subjects.filter(s => s.c === clId && assignedSubs.has(s.id));
+    // Fallback: if no assignments yet, show all class subjects
+    const list = filtered.length > 0 ? filtered : subjects.filter(s => s.c === clId);
+    return list.map(s => /*#__PURE__*/React.createElement("option", {key: s.id, value: s.id}, s.n));
+  })()), React.createElement('input', {
+    placeholder: '\u062D\u0635\u06C1 / \u0635\u0641\u062D\u0627\u062A \u2014 \u0645\u062B\u0644\u0627\u064B \u0635 \u06F1\u06F4\u06F0\u2013\u06F1\u06F6\u06F5',
+    value: thD[thB] && thD[thB].ptn || '',
+    onChange: e => uTh(thB, 0, 'ptn', e.target.value),
+    style:{width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid #ddd',
+      fontSize:11,fontFamily:'inherit',direction:'rtl',marginTop:7,
+      boxSizing:'border-box',outline:'none',background:'#fffdf8'}
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       overflowX: 'auto',
       marginTop: 8
