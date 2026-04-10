@@ -1096,9 +1096,11 @@ function cSR(sc, ab, scoring) {
 const Card = _ref => {
   let {
     children,
-    style
+    style,
+    onClick
   } = _ref;
   return /*#__PURE__*/React.createElement("div", {
+    onClick: onClick,
     style: {
       background: '#fff',
       borderRadius: 13,
