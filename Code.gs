@@ -66,6 +66,8 @@ function _route(data) {
       return _handleHifzProgress(data);
     case 'teacher_attendance':
       return _handleTeacherAttendance(data);
+    case 'student_attendance':
+      return _handleStudentAttendance(data);
     case 'student_upsert':
       return _handleStudentUpsert(data);
     case 'save_config':
@@ -237,6 +239,44 @@ function _handleTeacherAttendance(data) {
   ]);
 
   return _json({ success: true });
+}
+
+// ═══════════════════════════════════════════════════════════
+// HANDLER: student_attendance (upsert — per class per day)
+// ═══════════════════════════════════════════════════════════
+
+function _handleStudentAttendance(data) {
+  var ss = SpreadsheetApp.openById(ADMIN_ID);
+  var headers = [
+    'Date', 'Teacher_ID', 'Class_ID', 'Student_ID', 'Status', 'Submitted_At'
+  ];
+  var sheet = _getOrCreateTab(ss, 'DB_Student_Attendance', headers, '#4285f4');
+
+  var date = data.date || '';
+  var classId = data.class_id || '';
+  var teacherId = data.teacher_id || '';
+  var att = data.attendance || {};
+  var submittedAt = data.submitted_at || _ts();
+
+  // Upsert: delete existing rows for this class+date, then insert new
+  if (sheet.getLastRow() > 1) {
+    var allData = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
+    // Delete from bottom up to avoid index shifting
+    for (var i = allData.length - 1; i >= 0; i--) {
+      if (allData[i][0] === date && allData[i][2] === classId) {
+        sheet.deleteRow(i + 2);
+      }
+    }
+  }
+
+  // Insert new rows
+  var studentIds = Object.keys(att);
+  for (var j = 0; j < studentIds.length; j++) {
+    var sid = studentIds[j];
+    _appendRow(sheet, [date, teacherId, classId, sid, att[sid], submittedAt]);
+  }
+
+  return _json({ success: true, rows: studentIds.length });
 }
 
 // ═══════════════════════════════════════════════════════════

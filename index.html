@@ -1381,6 +1381,7 @@ function App() {
   const [ttClass, setTtClass] = useState('');
   const [ttOpen, setTtOpen] = useState(null);
   const [ttSubTab, setTtSubTab] = useState('progress');
+  const [repOpen, setRepOpen] = useState(null);
   const [covers, setCovers] = useState({});
   const [students, setStudentsRaw] = useState([]);
   const [hifzLogs, setHifzLogsRaw] = useState({});
@@ -1579,6 +1580,15 @@ function App() {
       setSyncQ(p => p.slice(1));
       flash('✓');
     }
+  };
+  const syncAttendance = (classId) => {
+    const todayDt = new Date().toISOString().split('T')[0];
+    const aKey = classId + '_' + todayDt;
+    const att = sAttend[aKey];
+    if (!att || !Object.keys(att).length) { flash('⚠️ خالی'); return; }
+    const pl = { teacher_id: user ? user.id : '', class_id: classId, date: todayDt, attendance: att };
+    if (cfg.script_url) { syncPost('student_attendance', pl); }
+    else { setSyncQ(p => [...p, { type: 'student_attendance', payload: pl }]); flash('✓ قطار'); }
   };
   useEffect(() => {
     const iv = setInterval(() => {
@@ -2460,7 +2470,10 @@ function App() {
         );
       }),
       students.filter(s=>s.qari===user.id&&s.status!=='left').length===0&&
-        /*#__PURE__*/React.createElement("div",{style:{textAlign:'center',color:'#9ca3af',padding:30,fontSize:12}},"کوئی طالب علم نہیں")
+        /*#__PURE__*/React.createElement("div",{style:{textAlign:'center',color:'#9ca3af',padding:30,fontSize:12}},"کوئی طالب علم نہیں"),
+      students.filter(s=>s.qari===user.id&&s.status!=='left').length>0&&
+        React.createElement(Btn, {full:true, small:true, color:'#1a3a5c', style:{marginTop:10},
+          onClick:()=>syncAttendance('hifz')}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
     ), !isAd && !isQari && myA.map((a, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     onClick: () => setTab('report'),
@@ -2545,187 +2558,107 @@ function App() {
     text: "\u06CC\u0648\u0645\u06CC\u06C1 \u0631\u067E\u0648\u0631\u0679"
   }), myA.map((a, i) => {
     const rp = r(a.sub.id);
-    const part = rp.complete === 'جزوی' || rp.complete === 'نہیں';
-    return /*#__PURE__*/React.createElement(Card, {
-      key: i,
-      style: {
-        border: `1px solid ${rp.complete === 'ہاں' ? '#10b981' : '#e5e0d5'}`
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 8
-      }
-    }, /*#__PURE__*/React.createElement(Bdg, {
-      text: a.cls.n,
-      bg: a.cls.c,
-      color: a.cls.a
-    }), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 13,
-        fontWeight: 800
-      }
-    }, a.sub.n)), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 7,
-        marginBottom: 8
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        color: '#999'
-      }
-    }, "\u06C1\u062F\u0641"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        padding: 7,
-        borderRadius: 7,
-        background: '#f0ebe0',
-        fontSize: 14,
-        fontWeight: 800,
-        color: a.cls.a,
-        textAlign: 'center'
-      }
-    }, "\u0635", a.target)), /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        color: '#999'
-      }
-    }, "\u062D\u0642\u06CC\u0642\u06CC"), /*#__PURE__*/React.createElement("input", {
-      type: "number",
-      value: rp.actual || '',
-      onChange: e => upd(a.sub.id, 'actual', e.target.value),
-      placeholder: "\u2014",
-      style: {
-        width: '100%',
-        padding: 7,
-        borderRadius: 7,
-        border: '1.5px solid #d5d0c5',
-        fontSize: 14,
-        fontWeight: 800,
-        textAlign: 'center',
-        fontFamily: 'inherit',
-        outline: 'none',
-        background: '#faf8f3'
-      }
-    }))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 4
-      }
-    }, ['ہاں', 'جزوی', 'نہیں'].map(o => /*#__PURE__*/React.createElement("button", {
-      key: o,
-      onClick: () => upd(a.sub.id, 'complete', o),
-      style: {
-        flex: 1,
-        padding: 6,
-        borderRadius: 7,
-        border: 'none',
-        fontSize: 10,
-        fontWeight: 700,
-        fontFamily: 'inherit',
-        cursor: 'pointer',
-        background: rp.complete === o ? o === 'ہاں' ? '#10b981' : o === 'جزوی' ? '#f59e0b' : '#ef4444' : '#f0ebe0',
-        color: rp.complete === o ? '#fff' : '#6b7c6b'
-      }
-    }, o))), part && /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 3,
-        marginTop: 5
-      }
-    }, ['غیر حاضری', 'وقت', 'مراجعہ', 'تاخیر', 'دیگر'].map(rv => /*#__PURE__*/React.createElement("button", {
-      key: rv,
-      onClick: () => upd(a.sub.id, 'reason', rv),
-      style: {
-        padding: '3px 7px',
-        borderRadius: 5,
-        border: 'none',
-        fontSize: 8,
-        fontWeight: 600,
-        fontFamily: 'inherit',
-        cursor: 'pointer',
-        background: rp.reason === rv ? ST.dk : '#f0ebe0',
-        color: rp.reason === rv ? ST.gd : '#6b7c6b'
-      }
-    }, rv))));
-  }),
-  /* ── Student Attendance Section ── */
-  (() => {
+    const isROpen = repOpen === i;
+    const part = rp.complete === '\u06C1\u0627\u06BA' ? false : (rp.complete === '\u062C\u0632\u0648\u06CC' || rp.complete === '\u0646\u06C1\u06CC\u06BA');
     const todayDt = new Date().toISOString().split('T')[0];
-    const myClasses = [...new Set(myA.map(a => a.sub.c))];
-    if (!myClasses.length) return null;
-    return React.createElement('div', {style:{marginTop:16}},
-      React.createElement('div', {style:{fontSize:13,fontWeight:800,color:ST.dk,marginBottom:8,display:'flex',alignItems:'center',gap:6}},
-        '\uD83D\uDCCB', ' \u062D\u0627\u0636\u0631\u06CC'),
-      myClasses.map(cId => {
-        const cls = gC(CL, cId);
-        const clsStudents = students.filter(s => s.c === cId && s.status === 'active');
-        const aKey = cId + '_' + todayDt;
-        const aData = sAttend[aKey] || {};
-        const expanded = attExpand[cId];
-        const pCount = clsStudents.filter(s => aData[s.id] === 'P').length;
-        const aCount = clsStudents.filter(s => aData[s.id] === 'A').length;
-        const lCount = clsStudents.filter(s => aData[s.id] === 'L').length;
-        const markAll = st => {
-          const nd = {};
-          clsStudents.forEach(s => { nd[s.id] = st; });
-          setSAttend(prev => ({...prev, [aKey]: {...(prev[aKey]||{}), ...nd}}));
-        };
-        return React.createElement(Card, {key: cId, style:{borderRight:'4px solid '+cls.a}},
-          React.createElement('div', {
-            onClick: () => setAttExpand(p => ({...p, [cId]: !p[cId]})),
-            style:{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}
-          },
-            React.createElement(Bdg, {text: cls.n, bg: cls.c, color: cls.a}),
-            React.createElement('span', {style:{flex:1,fontSize:11,color:'#888'}},
-              clsStudents.length ? (pCount+'\u062D '+aCount+'\u063A '+lCount+'\u0631') : '\u067E\u06C1\u0644\u06D2 \u0637\u0644\u0628\u0627 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA'),
-            React.createElement('span', {style:{fontSize:14,color:'#999'}}, expanded ? '\u25B2' : '\u25BC')
-          ),
-          expanded && React.createElement('div', {style:{marginTop:10}},
-            clsStudents.length === 0
-              ? React.createElement('div', {
-                  onClick: () => { setTab('students'); setStudFilter(cId); },
-                  style:{textAlign:'center',padding:12,color:ST.dk,fontSize:11,cursor:'pointer',textDecoration:'underline'}
-                }, '\u0637\u0644\u0628\u0627 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA \u2190')
-              : React.createElement('div', null,
-                  React.createElement('div', {style:{display:'flex',gap:4,marginBottom:8}},
-                    React.createElement('button', {onClick:()=>markAll('P'),style:{flex:1,padding:4,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#d1fae5',color:'#065f46'}}, '\u0633\u0628 \u062D\u0627\u0636\u0631'),
-                    React.createElement('button', {onClick:()=>markAll('A'),style:{flex:1,padding:4,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#fee2e2',color:'#991b1b'}}, '\u0633\u0628 \u063A\u0627\u0626\u0628')
-                  ),
-                  clsStudents.map(s => {
-                    const st = aData[s.id] || '';
-                    return React.createElement('div', {key:s.id, style:{display:'flex',alignItems:'center',gap:6,padding:'5px 0',borderBottom:'1px solid #f0ebe0'}},
-                      React.createElement('span', {style:{flex:1,fontSize:12,fontWeight:600}}, s.n),
-                      ['P','A','L'].map(v => React.createElement('button', {
-                        key:v, onClick: () => setSAttend(prev => ({...prev, [aKey]: {...(prev[aKey]||{}), [s.id]: v}})),
-                        style:{width:30,height:26,borderRadius:6,border:'none',fontSize:10,fontWeight:800,fontFamily:'inherit',cursor:'pointer',
-                          background: st===v ? (v==='P'?'#10b981':v==='A'?'#ef4444':'#3b82f6') : '#f0ebe0',
-                          color: st===v ? '#fff' : '#999'}
-                      }, v==='P'?'\u062D':v==='A'?'\u063A':'\u0631'))
-                    );
-                  })
+    const aKey = a.sub.c + '_' + todayDt;
+    const aData = sAttend[aKey] || {};
+    const clsStudents = students.filter(s => s.c === a.sub.c && s.status === 'active');
+    const pCt = clsStudents.filter(s => aData[s.id] === 'P').length;
+    const aCt = clsStudents.filter(s => aData[s.id] === 'A').length;
+    const lCt = clsStudents.filter(s => aData[s.id] === 'L').length;
+    const markAllR = st => { const nd = {}; clsStudents.forEach(s => { nd[s.id] = st; }); setSAttend(prev => ({...prev, [aKey]: {...(prev[aKey]||{}), ...nd}})); };
+    return React.createElement('div', {key: i, style:{marginBottom: isROpen ? 12 : 6}},
+      // Collapsed header
+      React.createElement('div', {
+        onClick: () => setRepOpen(isROpen ? null : i),
+        style:{background:'#fff',borderRadius: isROpen ? '13px 13px 0 0' : 13, padding:'12px 14px',
+          boxShadow:'0 2px 8px rgba(0,0,0,0.06)', cursor:'pointer',
+          borderRight:'4px solid '+a.cls.a, display:'flex',alignItems:'center',gap:10}
+      },
+        React.createElement('div',{style:{width:38,height:38,borderRadius:10,background:a.cls.c,
+          display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:a.cls.a}},
+          rp.actual ? '\u2713' : 'P'+a.p),
+        React.createElement('div',{style:{flex:1}},
+          React.createElement('div',{style:{fontWeight:800,fontSize:14}},a.sub.n),
+          React.createElement('div',{style:{fontSize:10,color:'#888',marginTop:2}},
+            a.cls.n+' \u2022 \u0635'+a.target+(rp.actual ? ' \u2192 \u0635'+rp.actual : ''))
+        ),
+        React.createElement('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:2}},
+          rp.complete === '\u06C1\u0627\u06BA' ? React.createElement('div',{style:{width:22,height:22,borderRadius:6,background:'#10b981',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:10}},'\u2713')
+          : rp.complete === '\u062C\u0632\u0648\u06CC' ? React.createElement('div',{style:{width:22,height:22,borderRadius:6,background:'#f59e0b',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:10}},'\u25CB')
+          : rp.complete === '\u0646\u06C1\u06CC\u06BA' ? React.createElement('div',{style:{width:22,height:22,borderRadius:6,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:10}},'\u2717')
+          : null,
+          React.createElement('span',{style:{fontSize:13,color:'#bbb'}}, isROpen ? '\u25B2' : '\u25BC')
+        )
+      ),
+      // Expanded panel
+      isROpen && React.createElement('div',{style:{background:'#fff',borderRadius:'0 0 13px 13px',padding:'12px 15px',
+        boxShadow:'0 2px 8px rgba(0,0,0,0.06)',borderRight:'4px solid '+a.cls.a,marginTop:-1}},
+        // Progress
+        React.createElement('div',{style:{fontSize:11,fontWeight:700,color:ST.dk,marginBottom:8}},'\uD83D\uDCDD \u067E\u06CC\u0634\u0631\u0641\u062A'),
+        React.createElement('div',{style:{display:'flex',gap:7,marginBottom:8}},
+          React.createElement('div',{style:{flex:1}},
+            React.createElement('div',{style:{fontSize:8,color:'#999'}},'\u06C1\u062F\u0641'),
+            React.createElement('div',{style:{padding:7,borderRadius:7,background:'#f0ebe0',fontSize:14,fontWeight:800,color:a.cls.a,textAlign:'center'}},'\u0635',a.target)),
+          React.createElement('div',{style:{flex:1}},
+            React.createElement('div',{style:{fontSize:8,color:'#999'}},'\u062D\u0642\u06CC\u0642\u06CC'),
+            React.createElement('input',{type:'number',value:rp.actual||'',
+              onChange:e=>upd(a.sub.id,'actual',e.target.value),placeholder:'\u2014',
+              style:{width:'100%',padding:7,borderRadius:7,border:'1.5px solid #d5d0c5',fontSize:14,fontWeight:800,textAlign:'center',fontFamily:'inherit',outline:'none',background:'#faf8f3',boxSizing:'border-box'}}))
+        ),
+        React.createElement('div',{style:{display:'flex',gap:4,marginBottom:4}},
+          ['\u06C1\u0627\u06BA','\u062C\u0632\u0648\u06CC','\u0646\u06C1\u06CC\u06BA'].map(o=>React.createElement('button',{key:o,
+            onClick:()=>upd(a.sub.id,'complete',o),
+            style:{flex:1,padding:6,borderRadius:7,border:'none',fontSize:10,fontWeight:700,fontFamily:'inherit',cursor:'pointer',
+              background:rp.complete===o?(o==='\u06C1\u0627\u06BA'?'#10b981':o==='\u062C\u0632\u0648\u06CC'?'#f59e0b':'#ef4444'):'#f0ebe0',
+              color:rp.complete===o?'#fff':'#6b7c6b'}},o))
+        ),
+        part && React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:3,marginTop:5}},
+          ['\u063A\u06CC\u0631 \u062D\u0627\u0636\u0631\u06CC','\u0648\u0642\u062A','\u0645\u0631\u0627\u062C\u0639\u06C1','\u062A\u0627\u062E\u06CC\u0631','\u062F\u06CC\u06AF\u0631'].map(rv=>React.createElement('button',{key:rv,
+            onClick:()=>upd(a.sub.id,'reason',rv),
+            style:{padding:'3px 7px',borderRadius:5,border:'none',fontSize:8,fontWeight:600,fontFamily:'inherit',cursor:'pointer',
+              background:rp.reason===rv?ST.dk:'#f0ebe0',color:rp.reason===rv?ST.gd:'#6b7c6b'}},rv))
+        ),
+        // Attendance
+        React.createElement('div',{style:{marginTop:14,paddingTop:12,borderTop:'1.5px solid #f0ebe0'}},
+          React.createElement('div',{style:{fontSize:11,fontWeight:700,color:ST.dk,marginBottom:8}},
+            '\uD83D\uDCCB \u062D\u0627\u0636\u0631\u06CC '+a.cls.n+' ('+clsStudents.length+')'),
+          clsStudents.length === 0
+            ? React.createElement('div',{
+                onClick:()=>{setTab('students');setStudFilter(a.sub.c);},
+                style:{textAlign:'center',padding:12,color:ST.dk,fontSize:11,cursor:'pointer',textDecoration:'underline',background:'#faf8f3',borderRadius:8}},
+                '\u0637\u0644\u0628\u0627 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA \u2190')
+            : React.createElement('div',null,
+                React.createElement('div',{style:{display:'flex',gap:4,marginBottom:8}},
+                  React.createElement('button',{onClick:()=>markAllR('P'),style:{flex:1,padding:5,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#d1fae5',color:'#065f46'}},'\u0633\u0628 \u062D\u0627\u0636\u0631'),
+                  React.createElement('button',{onClick:()=>markAllR('A'),style:{flex:1,padding:5,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#fee2e2',color:'#991b1b'}},'\u0633\u0628 \u063A\u0627\u0626\u0628')
+                ),
+                clsStudents.map(s => {
+                  const st = aData[s.id] || '';
+                  return React.createElement('div',{key:s.id, style:{display:'flex',alignItems:'center',gap:6,padding:'5px 0',borderBottom:'1px solid #f0ebe0'}},
+                    React.createElement('span',{style:{flex:1,fontSize:12,fontWeight:600}},s.n),
+                    ['P','A','L'].map(v => React.createElement('button',{
+                      key:v, onClick:()=>setSAttend(prev=>({...prev,[aKey]:{...(prev[aKey]||{}),[s.id]:v}})),
+                      style:{width:30,height:26,borderRadius:6,border:'none',fontSize:10,fontWeight:800,fontFamily:'inherit',cursor:'pointer',
+                        background:st===v?(v==='P'?'#10b981':v==='A'?'#ef4444':'#3b82f6'):'#f0ebe0',
+                        color:st===v?'#fff':'#999'}
+                    },v==='P'?'\u062D':v==='A'?'\u063A':'\u0631'))
+                  );
+                }),
+                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}},
+                  React.createElement('span',{style:{fontSize:10,color:'#888'}},pCt+'\u062D '+aCt+'\u063A '+lCt+'\u0631'),
+                  React.createElement(Btn, {small:true, color:'#1a3a5c', onClick:()=>syncAttendance(a.sub.c)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC')
                 )
-          )
-        );
-      })
+              )
+        )
+      )
     );
-  })(),
+  }),
   /*#__PURE__*/React.createElement(Btn, {
     full: true,
     onClick: submitD
-  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), 
+  }, "\u0627\u0631\u0633\u0627\u0644 \u0631\u067E\u0648\u0631\u0679 \u2713")), 
 tab === 'thu' && isEx && React.createElement('div', null,
   React.createElement(Ttl, {icon:'\uD83D\uDCCB', text:'\u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646'}),
   (() => {
@@ -3046,7 +2979,9 @@ tab === 'thu' && isEx && React.createElement('div', null,
                         );
                       }),
                       React.createElement('div',{style:{fontSize:10,color:'#888',textAlign:'center',marginTop:8}},
-                        pCount+' \u062D\u0627\u0636\u0631 \u2022 '+aCount+' \u063A\u0627\u0626\u0628 \u2022 '+lCount+' \u0631\u062E\u0635\u062A \u2022 '+(clsStudents.length-pCount-aCount-lCount)+' \u0628\u0627\u0642\u06CC')
+                        pCount+' \u062D\u0627\u0636\u0631 \u2022 '+aCount+' \u063A\u0627\u0626\u0628 \u2022 '+lCount+' \u0631\u062E\u0635\u062A \u2022 '+(clsStudents.length-pCount-aCount-lCount)+' \u0628\u0627\u0642\u06CC'),
+                      React.createElement(Btn, {full:true, small:true, color:'#1a3a5c', style:{marginTop:10},
+                        onClick:()=>syncAttendance(myAsg.sub.c)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
                     )
               )
             )
