@@ -1321,6 +1321,14 @@ async function saveSyncQ(q) {
     await _stSave("iri-syncq", JSON.stringify(q));
   } catch (e) {}
 }
+async function loadSAttend() {
+  try { const r = await _stLoad("iri-sattend"); return r ? JSON.parse(r.value) : {}; } catch (e) { return {}; }
+}
+async function saveSAttend(d) { try { await _stSave("iri-sattend", JSON.stringify(d)); } catch (e) {} }
+async function loadTAttend() {
+  try { const r = await _stLoad("iri-tattend"); return r ? JSON.parse(r.value) : {}; } catch (e) { return {}; }
+}
+async function saveTAttend(d) { try { await _stSave("iri-tattend", JSON.stringify(d)); } catch (e) {} }
 
 // ═══════════════════════════════════════════════════════════
 // APP
@@ -1381,6 +1389,9 @@ function App() {
   const [newStud, setNewStud] = useState({id:'',n:'',parent:'',phone:'',residence:'',c:'hifz',qari:'T8',status:'active'});
 
   const [thWk, setThWk] = useState(null);
+  const [sAttend, setSAttendRaw] = useState({});
+  const [tAttend, setTAttendRaw] = useState({});
+  const [attExpand, setAttExpand] = useState({});
   const saveTimer = useRef(null);
 
   // Wrapped setters that auto-persist
@@ -1415,12 +1426,18 @@ function App() {
   const setHifzLogs = useCallback(updater => {
     setHifzLogsRaw(prev => { const next = typeof updater==='function'?updater(prev):updater; saveHifzLogs(next); return next; });
   }, []);
+  const setSAttend = useCallback(updater => {
+    setSAttendRaw(prev => { const next = typeof updater==='function'?updater(prev):updater; saveSAttend(next); return next; });
+  }, []);
+  const setTAttend = useCallback(updater => {
+    setTAttendRaw(prev => { const next = typeof updater==='function'?updater(prev):updater; saveTAttend(next); return next; });
+  }, []);
 
 
   // Load on mount
   useEffect(() => {
     (async () => {
-      const [saved, savedReps, savedQ, savedStudents, savedHifz] = await Promise.all([loadConfig(), loadReports(), loadSyncQ(), loadStudents(), loadHifzLogs()]);
+      const [saved, savedReps, savedQ, savedStudents, savedHifz, savedSA, savedTA] = await Promise.all([loadConfig(), loadReports(), loadSyncQ(), loadStudents(), loadHifzLogs(), loadSAttend(), loadTAttend()]);
       if (saved) {
         const sv = saved._version || 0;
         const dv = DEFAULTS._version || 0;
@@ -1458,6 +1475,8 @@ function App() {
       setSyncQRaw(savedQ || []);
       setStudentsRaw(savedStudents || DEFAULTS.students || []);
       setHifzLogsRaw(savedHifz || {});
+      setSAttendRaw(savedSA || {});
+      setTAttendRaw(savedTA || {});
       setLoading(false);
     })();
   }, []);
@@ -1852,6 +1871,15 @@ function App() {
       date: new Date().toISOString().split('T')[0],
       entries
     };
+    // Collect student attendance for teacher's classes
+    const todayDt = pl.date;
+    const myClasses = [...new Set(myA.map(a => a.sub.c))];
+    const attData = {};
+    myClasses.forEach(cId => {
+      const aKey = cId + '_' + todayDt;
+      if (sAttend[aKey] && Object.keys(sAttend[aKey]).length) attData[cId] = sAttend[aKey];
+    });
+    if (Object.keys(attData).length) pl.attendance = attData;
     if (cfg.script_url) syncPost('daily_report', pl);else {
       setSyncQ(p => [...p, {
         type: 'daily_report',
@@ -2213,6 +2241,10 @@ function App() {
     ic: '📚',
     l: `مضامین (${subjects.length})`,
     k: 'subjects'
+  }, {
+    ic: '✅',
+    l: 'حاضری اساتذہ',
+    k: 'tAttend'
   }, {
     ic: '👥',
     l: `طلبا (${students.length})`,
@@ -2614,7 +2646,69 @@ function App() {
         color: rp.reason === rv ? ST.gd : '#6b7c6b'
       }
     }, rv))));
-  }), /*#__PURE__*/React.createElement(Btn, {
+  }),
+  /* ── Student Attendance Section ── */
+  (() => {
+    const todayDt = new Date().toISOString().split('T')[0];
+    const myClasses = [...new Set(myA.map(a => a.sub.c))];
+    if (!myClasses.length) return null;
+    return React.createElement('div', {style:{marginTop:16}},
+      React.createElement('div', {style:{fontSize:13,fontWeight:800,color:ST.dk,marginBottom:8,display:'flex',alignItems:'center',gap:6}},
+        '\uD83D\uDCCB', ' \u062D\u0627\u0636\u0631\u06CC'),
+      myClasses.map(cId => {
+        const cls = gC(CL, cId);
+        const clsStudents = students.filter(s => s.c === cId && s.status === 'active');
+        const aKey = cId + '_' + todayDt;
+        const aData = sAttend[aKey] || {};
+        const expanded = attExpand[cId];
+        const pCount = clsStudents.filter(s => aData[s.id] === 'P').length;
+        const aCount = clsStudents.filter(s => aData[s.id] === 'A').length;
+        const lCount = clsStudents.filter(s => aData[s.id] === 'L').length;
+        const markAll = st => {
+          const nd = {};
+          clsStudents.forEach(s => { nd[s.id] = st; });
+          setSAttend(prev => ({...prev, [aKey]: {...(prev[aKey]||{}), ...nd}}));
+        };
+        return React.createElement(Card, {key: cId, style:{borderRight:'4px solid '+cls.a}},
+          React.createElement('div', {
+            onClick: () => setAttExpand(p => ({...p, [cId]: !p[cId]})),
+            style:{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}
+          },
+            React.createElement(Bdg, {text: cls.n, bg: cls.c, color: cls.a}),
+            React.createElement('span', {style:{flex:1,fontSize:11,color:'#888'}},
+              clsStudents.length ? (pCount+'\u062D '+aCount+'\u063A '+lCount+'\u0631') : '\u067E\u06C1\u0644\u06D2 \u0637\u0644\u0628\u0627 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA'),
+            React.createElement('span', {style:{fontSize:14,color:'#999'}}, expanded ? '\u25B2' : '\u25BC')
+          ),
+          expanded && React.createElement('div', {style:{marginTop:10}},
+            clsStudents.length === 0
+              ? React.createElement('div', {
+                  onClick: () => { setTab('students'); setStudFilter(cId); },
+                  style:{textAlign:'center',padding:12,color:ST.dk,fontSize:11,cursor:'pointer',textDecoration:'underline'}
+                }, '\u0637\u0644\u0628\u0627 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA \u2190')
+              : React.createElement('div', null,
+                  React.createElement('div', {style:{display:'flex',gap:4,marginBottom:8}},
+                    React.createElement('button', {onClick:()=>markAll('P'),style:{flex:1,padding:4,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#d1fae5',color:'#065f46'}}, '\u0633\u0628 \u062D\u0627\u0636\u0631'),
+                    React.createElement('button', {onClick:()=>markAll('A'),style:{flex:1,padding:4,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#fee2e2',color:'#991b1b'}}, '\u0633\u0628 \u063A\u0627\u0626\u0628')
+                  ),
+                  clsStudents.map(s => {
+                    const st = aData[s.id] || '';
+                    return React.createElement('div', {key:s.id, style:{display:'flex',alignItems:'center',gap:6,padding:'5px 0',borderBottom:'1px solid #f0ebe0'}},
+                      React.createElement('span', {style:{flex:1,fontSize:12,fontWeight:600}}, s.n),
+                      ['P','A','L'].map(v => React.createElement('button', {
+                        key:v, onClick: () => setSAttend(prev => ({...prev, [aKey]: {...(prev[aKey]||{}), [s.id]: v}})),
+                        style:{width:30,height:26,borderRadius:6,border:'none',fontSize:10,fontWeight:800,fontFamily:'inherit',cursor:'pointer',
+                          background: st===v ? (v==='P'?'#10b981':v==='A'?'#ef4444':'#3b82f6') : '#f0ebe0',
+                          color: st===v ? '#fff' : '#999'}
+                      }, v==='P'?'\u062D':v==='A'?'\u063A':'\u0631'))
+                    );
+                  })
+                )
+          )
+        );
+      })
+    );
+  })(),
+  /*#__PURE__*/React.createElement(Btn, {
     full: true,
     onClick: submitD
   }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), 
@@ -3523,7 +3617,50 @@ tab === 'thu' && isEx && React.createElement('div', null,
       );
     });
   })()
-), admSub === 'teachers' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+), admSub === 'tAttend' && (() => {
+  const todayDt = new Date().toISOString().split('T')[0];
+  const td = tAttend[todayDt] || {};
+  const activeT = teachers.filter(t => t.id !== 'T7');
+  const statuses = ['present','late','absent','leave'];
+  const sLbl = {present:'\u062D\u0627\u0636\u0631',late:'\u062A\u0627\u062E\u06CC\u0631',absent:'\u063A\u0627\u0626\u0628',leave:'\u0631\u062E\u0635\u062A'};
+  const sClr = {present:'#10b981',late:'#f59e0b',absent:'#ef4444',leave:'#3b82f6'};
+  const cycle = tid => {
+    const cur = td[tid] || '';
+    const idx = statuses.indexOf(cur);
+    const nxt = statuses[(idx+1) % statuses.length];
+    const nd = {...td, [tid]: nxt};
+    setTAttend(prev => ({...prev, [todayDt]: nd}));
+  };
+  const counts = {present:0,late:0,absent:0,leave:0};
+  activeT.forEach(t => { const s = td[t.id]; if(s && counts[s]!==undefined) counts[s]++; });
+  return React.createElement('div', null,
+    React.createElement('div', {style:{fontSize:13,fontWeight:800,color:ST.dk,marginBottom:10}}, '\u2705 \u062D\u0627\u0636\u0631\u06CC \u0627\u0633\u0627\u062A\u0630\u06C1 \u2014 ' + todayDt),
+    React.createElement('div', {style:{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}},
+      statuses.map(s => React.createElement('span', {key:s, style:{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,background:sClr[s]+'22',color:sClr[s]}},
+        sLbl[s] + ' ' + counts[s]))
+    ),
+    activeT.map(t => {
+      const st = td[t.id] || '';
+      return React.createElement(Card, {key:t.id, onClick:()=>cycle(t.id), style:{display:'flex',alignItems:'center',gap:10,cursor:'pointer',
+        borderRight: '4px solid '+(st?sClr[st]:'#ddd')}},
+        React.createElement('div', {style:{width:36,height:36,borderRadius:10,background:st?sClr[st]+'22':'#f0ebe0',
+          display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:st?sClr[st]:'#999'}},
+          t.id.replace('T','')),
+        React.createElement('div', {style:{flex:1}},
+          React.createElement('div', {style:{fontWeight:700,fontSize:13}}, t.n),
+          React.createElement('div', {style:{fontSize:10,color:'#999'}}, t.role === 'qari' ? '\u0642\u0627\u0631\u06CC' : t.role === 'principal' ? '\u067E\u0631\u0646\u0633\u067E\u0644' : '\u0627\u0633\u062A\u0627\u062F')
+        ),
+        React.createElement('div', {style:{padding:'4px 12px',borderRadius:8,fontSize:11,fontWeight:700,
+          background:st?sClr[st]:'#f0ebe0',color:st?'#fff':'#999'}},
+          st ? sLbl[st] : '\u2014')
+      );
+    }),
+    React.createElement(Btn, {full:true, style:{marginTop:12}, onClick:() => {
+      const pl = {teacher_id:'admin',date:todayDt,attendance:td};
+      if(cfg.script_url) syncPost('teacher_attendance',pl); else { setSyncQ(p=>[...p,{type:'teacher_attendance',payload:pl}]); flash('\u2713 \u0642\u0637\u0627\u0631'); }
+    }}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
+  );
+})(), admSub === 'teachers' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -4298,6 +4435,8 @@ tab === 'thu' && isEx && React.createElement('div', null,
         await _stDel("iri-syncq");
         await _stDel("iri-students-v7");
         await _stDel("iri-hifz-v7");
+        await _stDel("iri-sattend");
+        await _stDel("iri-tattend");
         await _stDel("iri-config-v7");
       } catch (e) {}
       setCfgRaw({
@@ -4317,8 +4456,12 @@ tab === 'thu' && isEx && React.createElement('div', null,
       background: '#fff',
       borderTop: '1px solid #e5e0d5',
       display: 'flex',
-      justifyContent: 'space-around',
-      padding: '5px 0 9px',
+      overflowX: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      flexWrap: 'nowrap',
+      justifyContent: 'flex-start',
+      gap: 0,
+      padding: '5px 8px 9px',
       zIndex: 100
     }
   }, tabs.map(t => /*#__PURE__*/React.createElement("button", {
@@ -4338,7 +4481,9 @@ tab === 'thu' && isEx && React.createElement('div', null,
       gap: 1,
       color: tab === t.id ? ST.dk : '#b5b0a5',
       fontFamily: 'inherit',
-      padding: '2px 10px'
+      padding: '2px 10px',
+      minWidth: 56,
+      flexShrink: 0
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: {
