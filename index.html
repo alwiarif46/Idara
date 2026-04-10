@@ -134,8 +134,8 @@ const DEFAULTS = {
     id: 'S06',
     n: 'قرآت',
     c: 'oola',
-    s: 584,
-    e: 611
+    s: 1,
+    e: 30
   }, {
     id: 'S07',
     n: 'میزان الصرف',
@@ -188,20 +188,20 @@ const DEFAULTS = {
     id: 'S15',
     n: 'درس قرآن ثالثہ',
     c: 'salisa',
-    s: 1,
-    e: 36
+    s: 123,
+    e: 162
   }, {
     id: 'S16',
-    n: 'معلم الانشاء ۳',
+    n: 'النحو الواضح',
     c: 'salisa',
-    s: 1,
-    e: 51
+    s: 3,
+    e: 79
   }, {
     id: 'S17',
     n: 'دروس البلاغة',
     c: 'salisa',
-    s: 1,
-    e: 30
+    s: 15,
+    e: 97
   }, {
     id: 'S18',
     n: 'ہدایة النحو',
@@ -266,8 +266,8 @@ const DEFAULTS = {
     id: 'S28',
     n: 'معلم الانشاء ۴',
     c: 'rabia',
-    s: 1,
-    e: 51
+    s: 2,
+    e: 40
   }, {
     id: 'S29',
     n: 'شرح الوقایة',
@@ -1017,11 +1017,51 @@ function genThursdays(cfg) {
   }
   return dates;
 }
+function _thuShuffle(arr, seed) {
+  const a = [...arr]; let s = seed;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    const j = s % (i + 1); [a[i], a[j]] = [a[j], a[i]];
+  } return a;
+}
+function _thuDerange(teachers, origTeachers, seed) {
+  for (let att = 0; att < 200; att++) {
+    const perm = _thuShuffle(teachers, seed + att);
+    if (perm.every((t, i) => t !== origTeachers[i])) return perm;
+  }
+  const perm = _thuShuffle(teachers, seed);
+  for (let i = 0; i < perm.length; i++) {
+    if (perm[i] === origTeachers[i]) {
+      for (let j = 0; j < perm.length; j++) {
+        if (i !== j && perm[j] !== origTeachers[i] && perm[i] !== origTeachers[j]) {
+          [perm[i], perm[j]] = [perm[j], perm[i]]; break;
+        }
+      }
+    }
+  } return perm;
+}
+function genThuMap(regularAsg, eligibleIds, thuDates) {
+  const byPeriod = {};
+  for (const a of regularAsg) { if (!byPeriod[a.p]) byPeriod[a.p] = []; byPeriod[a.p].push(a); }
+  const result = [];
+  for (let wi = 0; wi < thuDates.length; wi++) {
+    const weekAsg = [];
+    for (const [period, slots] of Object.entries(byPeriod)) {
+      const origT = slots.map(s => s.t);
+      const pool = _thuShuffle(eligibleIds, wi * 100 + parseInt(period));
+      const subset = pool.slice(0, origT.length);
+      const assigned = _thuDerange(subset, origT, wi * 1000 + parseInt(period));
+      for (let si = 0; si < slots.length; si++) {
+        weekAsg.push({ t: assigned[si], sub: slots[si].sub, p: parseInt(period), origT: slots[si].t });
+      }
+    }
+    result.push({ wk: wi + 1, dt: thuDates[wi], assignments: weekAsg });
+  }
+  return result;
+}
 function genThuSch(dates, examiners) {
   return dates.map((dt, i) => ({
-    wk: i + 1,
-    dt,
-    ex: examiners.length ? examiners[i % examiners.length] : null
+    wk: i + 1, dt, ex: examiners.length ? examiners[i % examiners.length] : null
   }));
 }
 function cSR(sc, ab, scoring) {
@@ -1322,7 +1362,8 @@ function App() {
   const [newAsg, setNewAsg] = useState({
     t: '',
     sub: '',
-    p: ''
+    p: '',
+    edit: ''
   });
   const [newPer, setNewPer] = useState({
     s: '',
@@ -1347,8 +1388,6 @@ function App() {
   const [showStudForm, setShowStudForm] = useState(false);
   const [newStud, setNewStud] = useState({id:'',n:'',parent:'',phone:'',residence:'',c:'hifz',qari:'T8',status:'active'});
 
-  const [thB, setThB] = useState(0);
-  const [thD, setThD] = useState([]);
   const [thWk, setThWk] = useState(null);
   const saveTimer = useRef(null);
 
@@ -1427,27 +1466,24 @@ function App() {
     };
   }, []);
 
-  // Init Thursday test grid when classes or assignments change
+  // Init Thursday test grids — one per assignment slot, persisted per week
+  const [thuStore, setThuStore] = useState({});
+  const [thOpen, setThOpen] = useState(null);
   useEffect(() => {
-    if (cfg) {
-      setThD(cfg.classes.map(cl => {
-        // Find subjects actually assigned (via timetable) for this class
-        const claSubs = [...new Set(cfg.assignments.filter(a => {
-          const sub = cfg.subjects.find(s => s.id === a.sub);
-          return sub && sub.c === cl.id;
-        }).map(a => a.sub))];
-        // Auto-select if exactly one subject assigned to this class
-        const autoSid = claSubs.length === 1 ? claSubs[0] : '';
-        return {
-          sid: autoSid,
+    if (cfg && thuMap.length > 0 && user) {
+      const store = {};
+      for (const w of thuMap) {
+        const myA = w.assignments.filter(a => a.t === user.id).sort((a,b) => a.p - b.p);
+        store[w.wk] = myA.map(a => ({
+          sub: a.sub, p: a.p, origT: a.origT,
           ptn: '',
           grid: Array.from({length: 15}, (_, i) => ({num: i+1, nm: '', sc: [null,null,null,null,null], ab: false})),
-          nt: '',
-          sg: ''
-        };
-      }));
+          nt: '', sg: ''
+        }));
+      }
+      setThuStore(store);
     }
-  }, [cfg && cfg.classes && cfg.classes.length, cfg && cfg.assignments && cfg.assignments.length]);
+  }, [cfg && cfg.assignments && cfg.assignments.length, user && user.id]);
   const flash = useCallback(m => {
     setToast(m);
     setTimeout(() => setToast(''), 2500);
@@ -1552,6 +1588,9 @@ function App() {
   const examiners = teachers.filter(t => t.exam).map(t => t.id);
   const thuDates = genThursdays(inst);
   const thuSch = genThuSch(thuDates, examiners);
+  const thuEligibleIds = teachers.filter(t => !['T7','T8','T9'].includes(t.id)).map(t => t.id);
+  const thuEligibleAsg = assignments.filter(a => thuEligibleIds.includes(a.t));
+  const thuMap = genThuMap(thuEligibleAsg, thuEligibleIds, thuDates);
   const tA = tid => assignments.filter(a => a.t === tid).length;
   const pA = pid => assignments.filter(a => a.p === pid).length;
   const unassigned = subjects.filter(s => !assignments.some(a => a.sub === s.id));
@@ -1568,7 +1607,7 @@ function App() {
       total: tot
     };
   }).filter(Boolean).sort((a, b) => a.p - b.p) : [];
-  const myThu = user ? thuSch.filter(w => w.ex === user.id) : [];
+  const myThu = user ? thuMap.filter(w => w.assignments.some(a => a.t === user.id)).map(w => ({...w, myAsg: w.assignments.filter(a => a.t === user.id).sort((a,b)=>a.p-b.p)})) : [];
   const upd = (sid, f, v) => {
     const n = {
       ...reps,
@@ -1580,18 +1619,15 @@ function App() {
     setReps(n);
   };
   const r = sid => reps[sid] || {};
-  const uTh = (bi, si, f, v) => setThD(prev => {
-    const nx = [...prev];
-    if (!nx[bi]) return nx;
-    const bl = {
-      ...nx[bi]
-    };
-    if (f === 'sid') bl.sid = v;else if (f === 'ptn') bl.ptn = v;else if (f === 'nt') bl.nt = v;else if (f === 'sg') bl.sg = v;else {
+  const uTh = (wk, bi, si, f, v) => setThuStore(prev => {
+    const nx = {...prev};
+    if (!nx[wk] || !nx[wk][bi]) return nx;
+    const slots = [...nx[wk]];
+    const bl = {...slots[bi]};
+    if (f === 'ptn') bl.ptn = v; else if (f === 'nt') bl.nt = v; else if (f === 'sg') bl.sg = v; else {
       const gr = [...bl.grid];
-      const st = {
-        ...gr[si]
-      };
-      if (f === 'nm') st.nm = v;else if (f === 'ab') st.ab = v;else {
+      const st = {...gr[si]};
+      if (f === 'nm') st.nm = v; else if (f === 'ab') st.ab = v; else {
         const sc = [...st.sc];
         sc[parseInt(f[1])] = v === '' ? null : parseInt(v);
         st.sc = sc;
@@ -1599,7 +1635,8 @@ function App() {
       gr[si] = st;
       bl.grid = gr;
     }
-    nx[bi] = bl;
+    slots[bi] = bl;
+    nx[wk] = slots;
     return nx;
   });
   const dashData = subjects.map(s => {
@@ -1728,7 +1765,8 @@ function App() {
     setNewAsg({
       t: '',
       sub: '',
-      p: ''
+      p: '',
+      edit: ''
     });
     setShowForm(null);
     flash('✓');
@@ -1809,58 +1847,37 @@ function App() {
     }
   };
   const submitTh = () => {
-    const blocks = CL.map((cl, i) => {
-      const d = thD[i];
-      if (!d && d.sid) return null;
-      const f = d.grid.filter(st => st.nm.trim());
+    const todayStr = new Date().toISOString().split('T')[0];
+    const autoWk = thuMap.find(w => w.dt >= todayStr) || thuMap[thuMap.length-1];
+    const selWk = thWk || autoWk;
+    if (!selWk) { flash('⚠️'); return; }
+    const slots = thuStore[selWk.wk] || [];
+    const blocks = slots.map(slot => {
+      const f = slot.grid.filter(st => st.nm.trim());
       if (!f.length) return null;
-      const ct = {
-        excellent: 0,
-        good: 0,
-        weak: 0,
-        fail: 0,
-        absent: 0
-      };
-      let tp = 0,
-        cn = 0;
+      const ct = {excellent:0,good:0,weak:0,fail:0,absent:0};
+      let tp = 0, cn = 0;
       f.forEach(st => {
         const rs = cSR(st.sc, st.ab, scoring);
-        if (rs.c && rs.c !== 'invalid') {
-          ct[rs.c]++;
-          if (rs.p != null) {
-            tp += rs.p;
-            cn++;
-          }
-        }
+        if (rs.c && rs.c !== 'invalid') { ct[rs.c]++; if (rs.p != null) { tp += rs.p; cn++; } }
       });
+      const sub = gS(slot.sub);
       return {
-        class_id: cl.id,
-        subject_id: d.sid,
-        portion: d.ptn || '',
+        period: slot.p,
+        subject_id: slot.sub,
+        class_id: sub ? sub.c : '',
+        subject_teacher_id: slot.origT,
+        portion: slot.ptn || '',
         ...ct,
         average: cn ? Math.round(tp / cn) : 0,
-        notes: d.nt,
-        suggestions: d.sg
+        notes: slot.nt,
+        suggestions: slot.sg
       };
     }).filter(Boolean);
-    if (!blocks.length) {
-      flash('⚠️');
-      return;
-    }
-    const todayStr = new Date().toISOString().split('T')[0];
-    const autoWk = thuSch.find(w => w.dt >= todayStr) || thuSch[thuSch.length-1];
-    const w = thWk || (myThu.find(x => x.wk === (autoWk && autoWk.wk)) || myThu[0]);
-    const pl = {
-      examiner_id: user.id,
-      week: w && w.wk || 0,
-      date: w && w.dt || '',
-      blocks
-    };
-    if (cfg.script_url) syncPost('thursday_test', pl);else {
-      setSyncQ(p => [...p, {
-        type: 'thursday_test',
-        payload: pl
-      }]);
+    if (!blocks.length) { flash('⚠️'); return; }
+    const pl = { teacher_id: user.id, week: selWk.wk, date: selWk.dt, blocks };
+    if (cfg.script_url) syncPost('thursday_test', pl); else {
+      setSyncQ(p => [...p, { type: 'thursday_test', payload: pl }]);
       flash('✓ قطار');
     }
   };
@@ -2215,15 +2232,15 @@ function App() {
     l: 'ری سیٹ',
     k: 'reset'
   }];
-  const isEx = user && user.exam,
+  const isEx = user && myThu.length > 0,
     isAd = user && user.role === 'admin',
     isQari = user && user.role === 'qari';
   const tabs = [
-    {id:'home',ic:'������',l:'ہوم'},
-    ...(!isQari?[{id:'report',ic:'������',l:'رپورٹ'}]:[]),
-    ...(isEx?[{id:'thu',ic:'������',l:'امتحان'}]:[]),
-    ...(!isQari?[{id:'tt',ic:'������',l:'اوقات'}]:[]),
-    ...((isAd||isQari)?[{id:'students',ic:'������',l:'طلبا'}]:[]),
+    {id:'home',ic:'������',l:'ہوم'},
+    ...(!isQari?[{id:'report',ic:'������',l:'رپورٹ'}]:[]),
+    ...(isEx?[{id:'thu',ic:'������',l:'امتحان'}]:[]),
+    ...(!isQari?[{id:'tt',ic:'������',l:'اوقات'}]:[]),
+    ...((isAd||isQari)?[{id:'students',ic:'������',l:'طلبا'}]:[]),
     ...(isAd?[{id:'adm',ic:'⚙️',l:'ایڈمن'}]:[])
   ];
   const goHome = () => { setTab('home'); setAdmSub(null); setShowForm(null); };
@@ -2360,7 +2377,7 @@ function App() {
       fontSize: 9,
       color: '#f59e0b'
     }
-  }, "\uD83D\uDCCB \u0645\u0645\u062A\u062D\u0646: \u06C1\u0641\u062A\u06C1 ", myThu.map(w => w.wk).join('،'))), isQari && /*#__PURE__*/React.createElement("div", null,
+  }, "\uD83D\uDCCB \u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646\u0627\u062A: ", thuMap.length, " \u06C1\u0641\u062A\u06D2 \u2022 ", myThu.length > 0 ? myThu[0].myAsg.length : 0, " \u067E\u06CC\u0631\u06CC\u0688/\u06C1\u0641\u062A\u06C1")), isQari && /*#__PURE__*/React.createElement("div", null,
       /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:'#9ca3af',marginBottom:8}},
         students.filter(s=>s.qari===user.id&&s.status!=='left').length, " طالب علم"),
       students.filter(s=>s.qari===user.id&&s.status!=='left').map((s,i)=>{
@@ -2592,230 +2609,173 @@ function App() {
   }), /*#__PURE__*/React.createElement(Btn, {
     full: true,
     onClick: submitD
-  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), tab === 'thu' && isEx && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
-    icon: "\uD83D\uDCCB",
-    text: "\u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646"
-  }), myThu.length === 0 ? /*#__PURE__*/React.createElement(Card, {
-    style: {
-      textAlign: 'center',
-      padding: 20
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: '#999'
-    }
-  }, "\u06A9\u0648\u0626\u06CC \u06C1\u0641\u062A\u06C1 \u0645\u0642\u0631\u0631 \u0646\u06C1\u06CC\u06BA")) : /*#__PURE__*/React.createElement(React.Fragment, null,
-    (() => {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const autoWk = thuSch.find(w => w.dt >= todayStr) || thuSch[thuSch.length-1];
-      const selW = thWk || (myThu.find(x => x.wk === (autoWk && autoWk.wk)) || myThu[0]);
-      const isCurrentWk = selW && autoWk && selW.wk === autoWk.wk;
-      return React.createElement('div', null,
-        // Week selector chips
-        React.createElement('div', {style:{display:'flex',gap:5,overflowX:'auto',marginBottom:10,paddingBottom:4}},
-          myThu.map(w => {
-            const active = selW && selW.wk === w.wk;
-            return React.createElement('button', {
-              key: w.wk,
-              onClick: () => setThWk(w),
-              style:{padding:'6px 13px',borderRadius:20,border:'none',cursor:'pointer',
-                fontSize:11,fontWeight:700,fontFamily:'inherit',whiteSpace:'nowrap',
-                background: active ? ST.dk : '#e5e0d5',
-                color: active ? ST.gd : '#555'}
-            }, '\u06C1\u0641\u062A\u06C1\xA0' + w.wk + '\xA0\u2014\xA0' + w.dt);
-          })
-        ),
-        // Examiner banner
-        selW && React.createElement('div', {style:{
-          background: isCurrentWk ? 'linear-gradient(135deg,#1a3a5c,#2a5298)' : '#e5e0d5',
-          color: isCurrentWk ? '#fff' : '#555',
-          borderRadius:12,padding:'10px 14px',marginBottom:12,
-          display:'flex',justifyContent:'space-between',alignItems:'center'
-        }},
-          React.createElement('div', null,
-            React.createElement('div', {style:{fontWeight:700,fontSize:13}},
-              '\uD83D\uDCC5\xA0' + selW.dt + '\xA0\u2014\xA0\u06C1\u0641\u062A\u06C1\xA0' + selW.wk),
-            React.createElement('div', {style:{fontSize:10,marginTop:2,opacity:0.85}},
-              isCurrentWk ? '\u2605\xA0\u0622\u067E \u0627\u0633 \u06C1\u0641\u062A\u06C1 \u06A9\u06D2 \u0645\u0645\u062A\u062D\u0646 \u06C1\u06CC\u06BA' : '\u06AF\u0632\u0634\u062A\u06C1 \u0627\u0645\u062A\u062D\u0627\u0646')
-          ),
-          React.createElement('div', {style:{fontSize:20}}, isCurrentWk ? '\u270F\uFE0F' : '\u2713')
-        )
-      );
-    })(),
-    CL.length > 0 && thD.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 3,
-      overflowX: 'auto',
-      marginBottom: 10
-    }
-  }, CL.map((cl, i) => /*#__PURE__*/React.createElement("button", {
-    key: cl.id,
-    onClick: () => setThB(i),
-    style: {
-      padding: '5px 10px',
-      borderRadius: 9,
-      border: 'none',
-      fontSize: 9,
-      fontWeight: 700,
-      fontFamily: 'inherit',
-      cursor: 'pointer',
-      whiteSpace: 'nowrap',
-      background: thB === i ? cl.a : cl.c,
-      color: thB === i ? '#fff' : cl.a
-    }
-  }, cl.n))), /*#__PURE__*/React.createElement(Card, {
-    style: {
-      border: `2px solid ${CL[thB] && CL[thB].a}30`
-    }
-  }, /*#__PURE__*/React.createElement(Sel, {
-    value: thD[thB] && thD[thB].sid || '',
-    onChange: v => uTh(thB, 0, 'sid', v)
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "\u2014 \u0645\u0636\u0645\u0648\u0646 \u2014"), (() => {
-    const clId = CL[thB] && CL[thB].id;
-    // Only show subjects that have a timetable assignment for this class
-    const assignedSubs = new Set(assignments.filter(a => {
-      const sub = subjects.find(s => s.id === a.sub);
-      return sub && sub.c === clId;
-    }).map(a => a.sub));
-    const filtered = subjects.filter(s => s.c === clId && assignedSubs.has(s.id));
-    // Fallback: if no assignments yet, show all class subjects
-    const list = filtered.length > 0 ? filtered : subjects.filter(s => s.c === clId);
-    return list.map(s => /*#__PURE__*/React.createElement("option", {key: s.id, value: s.id}, s.n));
-  })()), React.createElement('input', {
-    placeholder: '\u062D\u0635\u06C1 / \u0635\u0641\u062D\u0627\u062A \u2014 \u0645\u062B\u0644\u0627\u064B \u0635 \u06F1\u06F4\u06F0\u2013\u06F1\u06F6\u06F5',
-    value: thD[thB] && thD[thB].ptn || '',
-    onChange: e => uTh(thB, 0, 'ptn', e.target.value),
-    style:{width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid #ddd',
-      fontSize:11,fontFamily:'inherit',direction:'rtl',marginTop:7,
-      boxSizing:'border-box',outline:'none',background:'#fffdf8'}
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      overflowX: 'auto',
-      marginTop: 8
-    }
-  }, /*#__PURE__*/React.createElement("table", {
-    style: {
-      width: '100%',
-      borderCollapse: 'collapse',
-      fontSize: 10,
-      direction: 'rtl',
-      minWidth: 380
-    }
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
-    style: {
-      background: CL[thB] && CL[thB].a,
-      color: '#fff'
-    }
-  }, /*#__PURE__*/React.createElement("th", {
-    style: {
-      padding: 5,
-      width: 20
-    }
-  }, "#"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      padding: 5,
-      textAlign: 'right',
-      minWidth: 65
-    }
-  }, "\u0646\u0627\u0645"), [1, 2, 3, 4, 5].map(q => /*#__PURE__*/React.createElement("th", {
-    key: q,
-    style: {
-      padding: 5,
-      width: 30
-    }
-  }, "\u0633", q)), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 30
-    }
-  }, "\u06A9\u0644"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 26
-    }
-  }, "%"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 16
-    }
-  }, "\u063A"))), /*#__PURE__*/React.createElement("tbody", null, (thD[thB] && thD[thB].grid || []).map((st, si) => {
-    var _rs$t;
-    const rs = cSR(st.sc, st.ab, scoring);
-    return /*#__PURE__*/React.createElement("tr", {
-      key: si,
-      style: {
-        background: st.ab ? '#f0f0f0' : si % 2 ? '#fff' : '#faf8f3'
-      }
-    }, /*#__PURE__*/React.createElement("td", {
-      style: {
-        textAlign: 'center',
-        color: '#999',
-        fontSize: 9
-      }
-    }, st.num), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
-      value: st.nm,
-      onChange: e => uTh(thB, si, 'nm', e.target.value),
-      style: {
-        width: '100%',
-        border: 'none',
-        background: 'transparent',
-        fontSize: 10,
-        fontFamily: 'inherit',
-        outline: 'none',
-        direction: 'rtl',
-        padding: 2
-      }
-    })), [0, 1, 2, 3, 4].map(q => {
-      var _st$sc$q;
-      return /*#__PURE__*/React.createElement("td", {
-        key: q
-      }, /*#__PURE__*/React.createElement("input", {
-        type: "number",
-        min: "0",
-        max: "10",
-        value: (_st$sc$q = st.sc[q]) !== null && _st$sc$q !== void 0 ? _st$sc$q : '',
-        disabled: st.ab,
-        onChange: e => uTh(thB, si, `q${q}`, e.target.value),
-        style: {
-          width: 26,
-          padding: 2,
-          borderRadius: 4,
-          border: '1px solid #e5e0d5',
-          fontSize: 10,
-          textAlign: 'center',
-          fontFamily: 'inherit',
-          outline: 'none',
-          background: st.ab ? '#eee' : '#fff'
-        }
-      }));
-    }), /*#__PURE__*/React.createElement("td", {
-      style: {
-        textAlign: 'center',
-        fontWeight: 800,
-        fontSize: 11,
-        color: rs.c ? catC[rs.c] : '#ccc'
-      }
-    }, (_rs$t = rs.t) !== null && _rs$t !== void 0 ? _rs$t : '—'), /*#__PURE__*/React.createElement("td", {
-      style: {
-        textAlign: 'center',
-        fontSize: 9,
-        color: rs.c ? catC[rs.c] : '#ccc'
-      }
-    }, rs.p != null ? rs.p + '%' : '—'), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("input", {
-      type: "checkbox",
-      checked: st.ab,
-      onChange: e => uTh(thB, si, 'ab', e.target.checked),
-      style: {
-        width: 12,
-        height: 12
-      }
-    })));
-  }))))), /*#__PURE__*/React.createElement(Btn, {
-    full: true,
-    color: CL[thB] && CL[thB].a,
-    onClick: submitTh
-  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")))), tab === 'tt' && React.createElement('div', null,
-    React.createElement(Ttl, {icon:'������', text:'نظام الاوقات'}),
+  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")), 
+tab === 'thu' && isEx && React.createElement('div', null,
+  React.createElement(Ttl, {icon:'\uD83D\uDCCB', text:'\u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646'}),
+  (() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const autoWk = thuMap.find(w => w.dt >= todayStr) || thuMap[thuMap.length-1];
+    const selWk = thWk || autoWk;
+    const selWkNum = selWk ? selWk.wk : 0;
+    const slots = thuStore[selWkNum] || [];
+    const gT = id => teachers.find(t => t.id === id);
+    return React.createElement('div', null,
+      React.createElement('div', {style:{display:'flex',gap:5,overflowX:'auto',marginBottom:10,paddingBottom:4}},
+        thuMap.map(w => {
+          const active = selWkNum === w.wk;
+          const myCount = (w.assignments || []).filter(a => a.t === (user && user.id)).length;
+          return React.createElement('button', {
+            key: w.wk,
+            onClick: () => { setThWk(w); setThOpen(null); },
+            style:{padding:'6px 13px',borderRadius:20,border:'none',cursor:'pointer',
+              fontSize:11,fontWeight:700,fontFamily:'inherit',whiteSpace:'nowrap',
+              background: active ? ST.dk : '#e5e0d5',
+              color: active ? ST.gd : '#555'}
+          }, '\u06C1\u0641\u062A\u06C1\u00A0' + w.wk + '\u00A0\u2014\u00A0' + w.dt);
+        })
+      ),
+      selWk && React.createElement('div', {style:{
+        background: 'linear-gradient(135deg,#1a3a5c,#2a5298)',
+        color:'#fff',borderRadius:12,padding:'10px 14px',marginBottom:12
+      }},
+        React.createElement('div', {style:{fontWeight:700,fontSize:13}},
+          '\uD83D\uDCC5\u00A0' + (selWk && selWk.dt) + '\u00A0\u2014\u00A0\u06C1\u0641\u062A\u06C1\u00A0' + selWkNum),
+        React.createElement('div', {style:{fontSize:10,marginTop:2,opacity:0.85}},
+          slots.length + '\u00A0\u0627\u0645\u062A\u062D\u0627\u0646\u0627\u062A \u062A\u0641\u0648\u06CC\u0636 \u0634\u062F\u06C1')
+      ),
+      slots.length === 0
+        ? React.createElement(Card, {style:{textAlign:'center',padding:20}},
+            React.createElement('div', {style:{color:'#999',fontSize:13}},
+              '\u06A9\u0648\u0626\u06CC \u0627\u0645\u062A\u062D\u0627\u0646 \u062A\u0641\u0648\u06CC\u0636 \u0646\u06C1\u06CC\u06BA'))
+        : slots.map((slot, si) => {
+            const sub = gS(slot.sub);
+            const cls = sub ? gC(CL, sub.c) : {n:'?',c:'#eee',a:'#999'};
+            const per = periods.find(p => p.id === slot.p);
+            const origTeacher = gT(slot.origT);
+            const isOpen = thOpen === si;
+            const filled = slot.grid.filter(st => st.nm.trim()).length;
+            return React.createElement('div', {key: si, style:{marginBottom: isOpen ? 12 : 6}},
+              React.createElement('div', {
+                onClick: () => setThOpen(isOpen ? null : si),
+                style:{
+                  background:'#fff',borderRadius:13,padding:'12px 14px',
+                  boxShadow:'0 1px 3px rgba(0,0,0,0.04)',cursor:'pointer',
+                  borderRight: '4px solid ' + cls.a,
+                  display:'flex',alignItems:'center',gap:10
+                }
+              },
+                React.createElement('div', {style:{
+                  width:40,height:40,borderRadius:10,background:cls.c,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:11,fontWeight:800,color:cls.a
+                }}, 'P' + slot.p),
+                React.createElement('div', {style:{flex:1}},
+                  React.createElement('div', {style:{fontWeight:700,fontSize:13,color:'#333'}},
+                    sub ? sub.n : slot.sub),
+                  React.createElement('div', {style:{fontSize:10,color:'#888',marginTop:2}},
+                    cls.n + '\u00A0\u2022\u00A0' + (per ? per.s + '\u2013' + per.e : '') +
+                    '\u00A0\u2022\u00A0\u0645\u0636\u0645\u0648\u0646 \u0627\u0633\u062A\u0627\u062F: ' +
+                    (origTeacher ? origTeacher.n : slot.origT))
+                ),
+                React.createElement('div', {style:{textAlign:'center'}},
+                  filled > 0
+                    ? React.createElement('div', {style:{fontSize:10,fontWeight:700,color:'#10b981'}}, filled + '/15')
+                    : null,
+                  React.createElement('div', {style:{fontSize:16}}, isOpen ? '\u25B2' : '\u25BC')
+                )
+              ),
+              isOpen && React.createElement(Card, {style:{borderRadius:'0 0 13px 13px',marginTop:-4,border:'2px solid ' + cls.a + '30'}},
+                React.createElement('input', {
+                  placeholder: '\u062D\u0635\u06C1 / \u0635\u0641\u062D\u0627\u062A',
+                  value: slot.ptn || '',
+                  onChange: e => uTh(selWkNum, si, 0, 'ptn', e.target.value),
+                  style:{width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid #ddd',
+                    fontSize:11,fontFamily:'inherit',direction:'rtl',marginBottom:8,
+                    boxSizing:'border-box',outline:'none',background:'#fffdf8'}
+                }),
+                React.createElement('div', {style:{overflowX:'auto'}},
+                  React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',fontSize:10,direction:'rtl',minWidth:380}},
+                    React.createElement('thead', null,
+                      React.createElement('tr', {style:{background:cls.a,color:'#fff'}},
+                        React.createElement('th', {style:{padding:5,width:20}}, '#'),
+                        React.createElement('th', {style:{padding:5,textAlign:'right',minWidth:65}}, '\u0646\u0627\u0645'),
+                        [1,2,3,4,5].map(q => React.createElement('th', {key:q,style:{padding:5,width:30}}, '\u0633'+q)),
+                        React.createElement('th', {style:{width:30}}, '\u06A9\u0644'),
+                        React.createElement('th', {style:{width:26}}, '%'),
+                        React.createElement('th', {style:{width:16}}, '\u063A')
+                      )
+                    ),
+                    React.createElement('tbody', null,
+                      slot.grid.map((st, sti) => {
+                        const rs = cSR(st.sc, st.ab, scoring);
+                        return React.createElement('tr', {key:sti, style:{background:st.ab?'#f0f0f0':sti%2?'#fff':'#faf8f3'}},
+                          React.createElement('td', {style:{textAlign:'center',color:'#999',fontSize:9}}, st.num),
+                          React.createElement('td', null,
+                            React.createElement('input', {value:st.nm,
+                              onChange:e=>uTh(selWkNum,si,sti,'nm',e.target.value),
+                              style:{width:'100%',border:'none',background:'transparent',fontSize:10,fontFamily:'inherit',outline:'none',direction:'rtl',padding:2}
+                            })
+                          ),
+                          [0,1,2,3,4].map(q => React.createElement('td', {key:q},
+                            React.createElement('input', {type:'number',min:'0',max:'10',
+                              value: st.sc[q] != null ? st.sc[q] : '',
+                              disabled:st.ab,
+                              onChange:e=>uTh(selWkNum,si,sti,'q'+q,e.target.value),
+                              style:{width:26,padding:2,borderRadius:4,border:'1px solid #e5e0d5',fontSize:10,textAlign:'center',fontFamily:'inherit',outline:'none',background:st.ab?'#eee':'#fff'}
+                            })
+                          )),
+                          React.createElement('td', {style:{textAlign:'center',fontWeight:800,fontSize:11,color:rs.c?catC[rs.c]:'#ccc'}}, rs.t != null ? rs.t : '\u2014'),
+                          React.createElement('td', {style:{textAlign:'center',fontSize:9,color:rs.c?catC[rs.c]:'#ccc'}}, rs.p != null ? rs.p+'%' : '\u2014'),
+                          React.createElement('td', null,
+                            React.createElement('input', {type:'checkbox',checked:st.ab,
+                              onChange:e=>uTh(selWkNum,si,sti,'ab',e.target.checked),
+                              style:{width:12,height:12}
+                            })
+                          )
+                        );
+                      })
+                    )
+                  )
+                ),
+                (() => {
+                  const filled = slot.grid.filter(st => st.nm.trim());
+                  const cats = {excellent:0,good:0,weak:0,fail:0,absent:0};
+                  let tp=0,cn=0;
+                  filled.forEach(st => {
+                    const rs = cSR(st.sc, st.ab, scoring);
+                    if (rs.c && rs.c !== 'invalid') { cats[rs.c]++; if (rs.p!=null){tp+=rs.p;cn++;} }
+                  });
+                  const avg = cn ? Math.round(tp/cn) : 0;
+                  if (!filled.length) return null;
+                  return React.createElement('div', {style:{display:'flex',gap:6,flexWrap:'wrap',marginTop:8,padding:'8px 0',borderTop:'1px solid #eee'}},
+                    [{k:'excellent',l:'\u0627\u0639\u0644\u06CC\u0670',c:'#10b981'},{k:'good',l:'\u0627\u0686\u06BE\u0627',c:'#3b82f6'},{k:'weak',l:'\u06A9\u0645\u0632\u0648\u0631',c:'#f59e0b'},{k:'fail',l:'\u0646\u0627\u06A9\u0627\u0645',c:'#ef4444'},{k:'absent',l:'\u063A\u0627\u0626\u0628',c:'#6b7280'}].map(cat =>
+                      React.createElement('div', {key:cat.k, style:{background:cat.c+'15',borderRadius:8,padding:'4px 8px',fontSize:10,fontWeight:700,color:cat.c}},
+                        cat.l + ': ' + cats[cat.k])
+                    ),
+                    React.createElement('div', {style:{background:'#f0ebe0',borderRadius:8,padding:'4px 8px',fontSize:10,fontWeight:700,color:'#333'}},
+                      '\u0627\u0648\u0633\u0637: ' + avg + '%')
+                  );
+                })(),
+                React.createElement('div', {style:{marginTop:8}},
+                  React.createElement('div', {style:{fontSize:10,color:'#888',marginBottom:3}}, '\u0637\u0644\u0628\u06C1 \u06A9\u06CC \u062A\u06CC\u0627\u0631\u06CC'),
+                  React.createElement('textarea', {value:slot.nt||'',
+                    onChange:e=>uTh(selWkNum,si,0,'nt',e.target.value),
+                    rows:2,style:{width:'100%',padding:8,borderRadius:8,border:'1px solid #ddd',fontSize:11,fontFamily:'inherit',direction:'rtl',boxSizing:'border-box',outline:'none',resize:'vertical',background:'#fffdf8'}
+                  }),
+                  React.createElement('div', {style:{fontSize:10,color:'#888',marginBottom:3,marginTop:6}}, '\u0645\u0636\u0645\u0648\u0646 \u0627\u0633\u062A\u0627\u062F \u06A9\u06D2 \u0644\u06CC\u06D2 \u062A\u062C\u0627\u0648\u06CC\u0632'),
+                  React.createElement('textarea', {value:slot.sg||'',
+                    onChange:e=>uTh(selWkNum,si,0,'sg',e.target.value),
+                    rows:2,style:{width:'100%',padding:8,borderRadius:8,border:'1px solid #ddd',fontSize:11,fontFamily:'inherit',direction:'rtl',boxSizing:'border-box',outline:'none',resize:'vertical',background:'#fffdf8'}
+                  })
+                )
+              )
+            );
+          }),
+      slots.length > 0 && React.createElement(Btn, {full:true, color:'#1a3a5c', onClick: submitTh}, '\u0627\u0631\u0633\u0627\u0644 \u2713')
+    );
+  })()
+), tab === 'tt' && React.createElement('div', null,
+    React.createElement(Ttl, {icon:'������', text:'نظام الاوقات'}),
 
     /* View toggle chips */
     React.createElement('div', {style:{display:'flex',gap:6,marginBottom:14}},
@@ -2846,13 +2806,14 @@ function App() {
             return React.createElement('div',{key:p.id,style:{marginBottom:8}},
               React.createElement('div',{style:{fontSize:9,color:'#9ca3af',direction:'ltr',marginBottom:4,fontFamily:'monospace'}},p.s+'–'+p.e),
               allForPeriod.length===0
-                ? React.createElement('div',{style:{background:'#f5f0e8',borderRadius:10,padding:'10px 14px',color:'#ccc',fontSize:11}},'—')
+                ? React.createElement('div',{style:{background:'#f5f0e8',borderRadius:13,padding:'10px 14px',color:'#ccc',fontSize:11,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}},'—')
                 : allForPeriod.map((a,i)=>{
                     const sub=gS(a.sub); if(!sub) return null;
                     const cls=gC(CL,sub.c);
                     const t=teachers.find(x=>x.id===a.t);
                     return React.createElement('div',{key:i,
-                      style:{background:'#fff',borderRadius:10,padding:'12px 14px',marginBottom:4,
+                      style:{background:'#fff',borderRadius:13,padding:'12px 14px',marginBottom:4,
+                        boxShadow:'0 2px 8px rgba(0,0,0,0.08)',
                         borderRight:'4px solid '+cls.a,position:'relative'}},
                       React.createElement('div',{style:{fontWeight:800,fontSize:13}},sub.n),
                       React.createElement('div',{style:{fontSize:10,color:'#777',marginTop:2}},
@@ -2864,13 +2825,15 @@ function App() {
           // Teacher sees their own period
           const myAsg = myA.find(a=>a.p===p.id);
           if(!myAsg) return React.createElement('div',{key:p.id,
-            style:{background:'#f5f0e8',borderRadius:10,padding:'10px 14px',marginBottom:8,
+            style:{background:'#f5f0e8',borderRadius:13,padding:'10px 14px',marginBottom:8,
+              boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
               display:'flex',justifyContent:'space-between',alignItems:'center'}},
             React.createElement('div',{style:{fontSize:9,color:'#9ca3af',direction:'ltr',fontFamily:'monospace'}},p.s+'–'+p.e),
             React.createElement('div',{style:{fontSize:11,color:'#ccc'}},'— خالی —')
           );
           return React.createElement('div',{key:p.id,
-            style:{background:'#fff',borderRadius:12,padding:'13px 15px',marginBottom:8,
+            style:{background:'#fff',borderRadius:13,padding:'13px 15px',marginBottom:8,
+              boxShadow:'0 2px 8px rgba(0,0,0,0.08)',
               borderRight:'4px solid '+myAsg.cls.a}},
             React.createElement('div',{style:{fontWeight:800,fontSize:14}},myAsg.sub.n),
             React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}},
@@ -2887,7 +2850,7 @@ function App() {
               fontSize:11,color:ST.gd,fontWeight:700,
               background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')',
               borderRadius:10}
-          },'������ نماز و کھانا — '+breakP.s+'–'+breakP.e),
+          },'������ نماز و کھانا — '+breakP.s+'–'+breakP.e),
           after.map(p=>PCard(p))
         );
       })()
@@ -2919,7 +2882,8 @@ function App() {
           const sub = asg ? gS(asg.sub) : null;
           const t   = asg ? teachers.find(x=>x.id===asg.t) : null;
           return React.createElement('div',{key:p.id,
-            style:{background: sub?'#fff':'#f5f0e8',borderRadius:12,padding:'13px 15px',marginBottom:8,
+            style:{background: sub?'#fff':'#f5f0e8',borderRadius:13,padding:'13px 15px',marginBottom:8,
+              boxShadow: sub?'0 2px 8px rgba(0,0,0,0.08)':'0 1px 3px rgba(0,0,0,0.04)',
               borderRight:'4px solid '+(sub?selectedCls.a:'#ddd')}},
             React.createElement('div',{style:{fontWeight:800,fontSize:14,color:sub?'#1a2a1a':'#ccc'}},
               sub ? sub.n : '— کھالی —'),
@@ -2938,7 +2902,7 @@ function App() {
               fontSize:11,color:ST.gd,fontWeight:700,
               background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')',
               borderRadius:10}
-          },'������ نماز و کھانا — '+breakP.s+'–'+breakP.e),
+          },'������ نماز و کھانا — '+breakP.s+'–'+breakP.e),
           after.map(p=>CCard(p))
         );
       })()
@@ -3463,77 +3427,86 @@ function App() {
       fontSize: 10,
       color: '#065f46'
     }
-  }, "\u2713 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0645\u062D\u0641\u0648\u0638"))), admSub === 'thuSch' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement(Bk, {
-    onClick: goHome
-  }), /*#__PURE__*/React.createElement(Ttl, {
-    icon: "\uD83D\uDCC5",
-    text: "\u062C\u0645\u0639\u0631\u0627\u062A \u0634\u06CC\u0688\u0648\u0644"
-  }), /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement(Card, {
-    style: {
-      background: `linear-gradient(135deg,${ST.dk},${ST.gn})`
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: ST.gd,
-      fontSize: 11,
-      fontWeight: 700
-    }
-  }, "\u062E\u0648\u062F\u06A9\u0627\u0631 \u2014 ", examiners.length, " \u0645\u0645\u062A\u062D\u0646 \u2022 ", thuDates.length, " \u062C\u0645\u0639\u0631\u0627\u062A"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: ST.sg,
-      fontSize: 9,
-      marginTop: 2
-    }
-  }, "\u062A\u0627\u0631\u06CC\u062E\u06CC\u06BA \u0627\u062F\u0627\u0631\u06C1 \u062A\u0631\u062A\u06CC\u0628\u0627\u062A \u0633\u06D2 \u0622\u062A\u06CC \u06C1\u06CC\u06BA")), thuSch.map(w => {
-    const t = teachers.find(x => x.id === w.ex);
-    return /*#__PURE__*/React.createElement(Card, {
-      key: w.wk,
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 13px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 36,
-        height: 36,
-        borderRadius: 9,
-        background: '#fff3cd',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 13,
-        fontWeight: 800,
-        color: '#92400e'
-      }
-    }, "W", w.wk), /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        fontWeight: 700
-      }
-    }, w.dt), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 10,
-        color: t ? '#333' : '#999'
-      }
-    }, t ? t.n : '—')), /*#__PURE__*/React.createElement(Bdg, {
-      text: t ? '✓' : '✗',
-      bg: t ? '#d1fae5' : '#fef2f2',
-      color: t ? '#065f46' : '#991b1b'
-    }));
-  })), admSub === 'teachers' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "\u2713 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0645\u062D\u0641\u0648\u0638"))), admSub === 'thuSch' && React.createElement('div', null,
+  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    React.createElement(Bk, {onClick: goHome}),
+    React.createElement(Ttl, {icon:'\uD83D\uDCC5', text:'\u062C\u0645\u0639\u0631\u0627\u062A \u0634\u06CC\u0688\u0648\u0644'}),
+    React.createElement('div', null)
+  ),
+  React.createElement(Card, {style:{background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')'}},
+    React.createElement('div',{style:{color:ST.gd,fontSize:11,fontWeight:700}},
+      '\u062E\u0648\u062F\u06A9\u0627\u0631 \u062A\u0641\u0648\u06CC\u0636 \u2014 ',thuEligibleIds.length,' \u0627\u0633\u0627\u062A\u0630\u06C1 \u2022 ',thuDates.length,' \u062C\u0645\u0639\u0631\u0627\u062A'),
+    React.createElement('div',{style:{color:ST.sg,fontSize:9,marginTop:2}},
+      '\u06A9\u0648\u0626\u06CC \u0627\u0633\u062A\u0627\u062F \u0627\u067E\u0646\u0627 \u0645\u0636\u0645\u0648\u0646 \u0646\u06C1\u06CC\u06BA \u0644\u06CC \u0633\u06A9\u062A\u0627')
+  ),
+  (() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const [expWk, setExpWk] = [thWk && thWk.wk, w => setThWk(thuMap.find(x=>x.wk===w)||null)];
+    return thuMap.map(w => {
+      const isCur = w.dt >= todayStr && (!thuMap.find(x => x.dt >= todayStr && x.wk < w.wk));
+      const isPast = w.dt < todayStr;
+      const isExp = expWk === w.wk;
+      const myAsgCount = w.assignments.length;
+      return React.createElement('div', {key: w.wk, style:{marginBottom:8}},
+        React.createElement('div', {
+          onClick: () => setExpWk(isExp ? null : w.wk),
+          style:{
+            background:'#fff',borderRadius:13,padding:'12px 14px',
+            boxShadow:'0 1px 3px rgba(0,0,0,0.04)',cursor:'pointer',
+            display:'flex',alignItems:'center',gap:10,
+            border: isCur ? '2px solid #2a5298' : '2px solid transparent',
+            opacity: isPast ? 0.6 : 1
+          }
+        },
+          React.createElement('div', {style:{
+            width:36,height:36,borderRadius:9,
+            background: isCur ? '#2a5298' : '#fff3cd',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:13,fontWeight:800,
+            color: isCur ? '#ffd700' : '#92400e'
+          }}, 'W', w.wk),
+          React.createElement('div', {style:{flex:1}},
+            React.createElement('div', {style:{fontSize:12,fontWeight:700,color:isCur?'#2a5298':'#1a2a1a'}}, w.dt),
+            React.createElement('div', {style:{fontSize:10,color:'#888'}}, myAsgCount + ' \u062A\u0641\u0648\u06CC\u0636\u0627\u062A')
+          ),
+          React.createElement('div', {style:{fontSize:14}}, isExp ? '\u25B2' : '\u25BC')
+        ),
+        isExp && React.createElement('div', {style:{background:'#faf8f3',borderRadius:'0 0 13px 13px',padding:10,marginTop:-4}},
+          (() => {
+            const byPeriod = {};
+            w.assignments.forEach(a => { if(!byPeriod[a.p]) byPeriod[a.p]=[]; byPeriod[a.p].push(a); });
+            return Object.entries(byPeriod).sort((a,b)=>parseInt(a[0])-parseInt(b[0])).map(([pid, slots]) => {
+              const per = periods.find(p => p.id === parseInt(pid));
+              return React.createElement('div', {key:pid, style:{marginBottom:8}},
+                React.createElement('div', {style:{fontSize:9,fontWeight:700,color:'#888',marginBottom:4}},
+                  'P' + pid + (per ? ' \u2022 ' + per.s + '\u2013' + per.e : '')),
+                slots.map((a,ai) => {
+                  const sub = gS(a.sub);
+                  const cls = sub ? gC(CL, sub.c) : {n:'?',c:'#eee',a:'#999'};
+                  const examT = teachers.find(t=>t.id===a.t);
+                  const origT = teachers.find(t=>t.id===a.origT);
+                  return React.createElement('div', {key:ai, style:{
+                    display:'flex',alignItems:'center',gap:8,padding:'6px 10px',
+                    background:'#fff',borderRadius:10,marginBottom:4,
+                    borderRight:'3px solid '+cls.a
+                  }},
+                    React.createElement('div', {style:{width:28,height:28,borderRadius:7,background:cls.c,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:cls.a}}, cls.n.charAt(0)),
+                    React.createElement('div', {style:{flex:1}},
+                      React.createElement('div', {style:{fontSize:11,fontWeight:700}}, sub ? sub.n : a.sub),
+                      React.createElement('div', {style:{fontSize:9,color:'#888'}},
+                        '\u0645\u0645\u062A\u062D\u0646: ', examT ? examT.n : a.t,
+                        ' \u2022 \u0627\u0635\u0644: ', origT ? origT.n : a.origT)
+                    )
+                  );
+                })
+              );
+            });
+          })()
+        )
+      );
+    });
+  })()
+), admSub === 'teachers' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -3890,200 +3863,135 @@ function App() {
         color: '#ef4444'
       }
     }, "\u2717"));
-  })), admSub === 'assign' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement(Bk, {
-    onClick: goHome
-  }), /*#__PURE__*/React.createElement(Ttl, {
-    icon: "\uD83D\uDCCB",
-    text: "\u062A\u0641\u0648\u06CC\u0636"
-  }), /*#__PURE__*/React.createElement(Btn, {
-    small: true,
-    color: ST.gd,
-    onClick: () => setShowForm(showForm === 'a' ? null : 'a')
-  }, showForm === 'a' ? '✗' : '+')), showForm === 'a' && /*#__PURE__*/React.createElement(Card, {
-    style: {
-      border: `2px solid ${ST.gd}40`
-    }
-  }, /*#__PURE__*/React.createElement(Sel, {
-    value: newAsg.t,
-    onChange: v => setNewAsg(p => ({
-      ...p,
-      t: v
-    })),
-    style: {
-      marginBottom: 6
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "\u2014 \u0627\u0633\u062A\u0627\u062F \u2014"), teachers.filter(t => t.role !== 'qari').map(t => /*#__PURE__*/React.createElement("option", {
-    key: t.id,
-    value: t.id
-  }, t.n, " (", tA(t.id), ")"))), /*#__PURE__*/React.createElement(Sel, {
-    value: newAsg.sub,
-    onChange: v => setNewAsg(p => ({
-      ...p,
-      sub: v
-    })),
-    style: {
-      marginBottom: 6
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "\u2014 \u0645\u0636\u0645\u0648\u0646 (", unassigned.length, ") \u2014"), unassigned.map(s => /*#__PURE__*/React.createElement("option", {
-    key: s.id,
-    value: s.id
-  }, s.n, " (", gC(CL, s.c).n, ")"))), /*#__PURE__*/React.createElement(Sel, {
-    value: newAsg.p,
-    onChange: v => setNewAsg(p => ({
-      ...p,
-      p: v
-    })),
-    style: {
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "\u2014 \u067E\u06CC\u0631\u06CC\u0688 \u2014"), cPer.map(p => /*#__PURE__*/React.createElement("option", {
-    key: p.id,
-    value: p.id
-  }, "P", p.id, ": ", p.s, "\u2013", p.e))), /*#__PURE__*/React.createElement(Btn, {
-    full: true,
-    color: "#10b981",
-    onClick: addAsg
-  }, "\u2713")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      overflowX: 'auto'
-    }
-  }, /*#__PURE__*/React.createElement("table", {
-    style: {
-      width: '100%',
-      borderCollapse: 'collapse',
-      fontSize: 9,
-      minWidth: 500
-    }
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
-    style: {
-      background: ST.dk
-    }
-  }, /*#__PURE__*/React.createElement("th", {
-    style: {
-      padding: 6,
-      color: ST.gd,
-      textAlign: 'right',
-      position: 'sticky',
-      right: 0,
-      background: ST.dk,
-      zIndex: 1,
-      minWidth: 70
-    }
-  }, "\u0627\u0633\u062A\u0627\u062F"), cPer.map(p => /*#__PURE__*/React.createElement("th", {
-    key: p.id,
-    style: {
-      padding: 4,
-      color: '#8fbc8f',
-      textAlign: 'center',
-      minWidth: 55,
-      direction: 'ltr',
-      fontFamily: 'monospace',
-      fontSize: 8
-    }
-  }, p.s, /*#__PURE__*/React.createElement("br", null), p.e)))), /*#__PURE__*/React.createElement("tbody", null, teachers.filter(t => t.role !== 'qari').map(t => /*#__PURE__*/React.createElement("tr", {
-    key: t.id,
-    style: {
-      borderBottom: '1px solid #e5e0d5'
-    }
-  }, /*#__PURE__*/React.createElement("td", {
-    style: {
-      padding: '6px 4px',
-      fontWeight: 700,
-      fontSize: 10,
-      textAlign: 'right',
-      position: 'sticky',
-      right: 0,
-      background: '#fff',
-      zIndex: 1
-    }
-  }, t.n), cPer.map(p => {
-    const asg = assignments.find(a => a.t === t.id && a.p === p.id);
-    if (!asg) return /*#__PURE__*/React.createElement("td", {
-      key: p.id,
-      style: {
-        padding: 2
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        height: 36,
-        borderRadius: 6,
-        background: '#f5f0e8',
-        border: '1px dashed #d5d0c5'
-      }
-    }));
-    const sub = gS(asg.sub);
-    if (!sub) return /*#__PURE__*/React.createElement("td", {
-      key: p.id
-    });
-    const cl = gC(CL, sub.c);
-    return /*#__PURE__*/React.createElement("td", {
-      key: p.id,
-      style: {
-        padding: 2
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: cl.c,
-        borderRadius: 6,
-        padding: '4px 3px',
-        textAlign: 'center',
-        position: 'relative',
-        height: 36,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        fontWeight: 700,
-        color: cl.a,
-        lineHeight: 1.2
-      }
-    }, sub.n), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 7,
-        color: '#999'
-      }
-    }, cl.n), /*#__PURE__*/React.createElement("button", {
-      onClick: () => rmAsg(t.id, asg.sub),
-      style: {
-        position: 'absolute',
-        top: -4,
-        left: -4,
-        width: 14,
-        height: 14,
-        borderRadius: '50%',
-        background: '#ef4444',
-        border: 'none',
-        color: '#fff',
-        fontSize: 8,
-        cursor: 'pointer',
-        lineHeight: '14px',
-        padding: 0
-      }
-    }, "\u2717")));
-  })))))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: ST.mt,
-      textAlign: 'center',
-      marginTop: 8
-    }
-  }, assignments.length, " \u062A\u0641\u0648\u06CC\u0636 \u2022 ", unassigned.length, " \u0628\u0627\u0642\u06CC")), admSub === 'pins' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  })), admSub === 'assign' && React.createElement('div', null,
+  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    React.createElement(Bk, {onClick: goHome}),
+    React.createElement(Ttl, {icon:'\uD83D\uDCCB', text:'\u062A\u0641\u0648\u06CC\u0636'}),
+    React.createElement(Btn, {small:true, color:ST.gd, onClick:()=>setShowForm(showForm==='a'?null:'a')}, showForm==='a'?'\u2717':'+')
+  ),
+  // Add form
+  showForm==='a' && React.createElement(Card, {style:{border:'2px solid '+ST.gd+'40',marginBottom:10}},
+    React.createElement(Sel, {value:newAsg.t, onChange:v=>setNewAsg(p=>({...p,t:v})), style:{marginBottom:6}},
+      React.createElement('option',{value:''},'\u2014 \u0627\u0633\u062A\u0627\u062F \u2014'),
+      teachers.filter(t=>t.role!=='qari').map(t=>React.createElement('option',{key:t.id,value:t.id},t.n,' (',tA(t.id),')'))
+    ),
+    React.createElement(Sel, {value:newAsg.sub, onChange:v=>setNewAsg(p=>({...p,sub:v})), style:{marginBottom:6}},
+      React.createElement('option',{value:''},'\u2014 \u0645\u0636\u0645\u0648\u0646 (',unassigned.length,') \u2014'),
+      unassigned.map(s=>React.createElement('option',{key:s.id,value:s.id},s.n,' (',gC(CL,s.c).n,')'))
+    ),
+    React.createElement(Sel, {value:newAsg.p, onChange:v=>setNewAsg(p=>({...p,p:v})), style:{marginBottom:8}},
+      React.createElement('option',{value:''},'\u2014 \u067E\u06CC\u0631\u06CC\u0688 \u2014'),
+      cPer.map(p=>React.createElement('option',{key:p.id,value:p.id},'P',p.id,': ',p.s,'\u2013',p.e))
+    ),
+    React.createElement(Btn, {full:true, color:'#10b981', onClick:addAsg}, '\u2713')
+  ),
+  // Filter chips — teacher
+  React.createElement('div', {style:{marginBottom:6}},
+    React.createElement('div', {style:{fontSize:9,color:'#999',marginBottom:3}}, '\u0627\u0633\u062A\u0627\u062F'),
+    React.createElement('div', {style:{display:'flex',gap:4,overflowX:'auto',paddingBottom:4}},
+      React.createElement('button', {key:'all', onClick:()=>setSelT(''),
+        style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',whiteSpace:'nowrap',
+          background:!selT?ST.dk:'#e5e0d5',color:!selT?ST.gd:'#555'}}, '\u0633\u0628'),
+      teachers.filter(t=>t.role!=='qari').map(t=>React.createElement('button',{key:t.id,
+        onClick:()=>setSelT(selT===t.id?'':t.id),
+        style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',whiteSpace:'nowrap',
+          background:selT===t.id?ST.dk:'#e5e0d5',color:selT===t.id?ST.gd:'#555'}
+      },t.n.split(' ').pop(),' (',tA(t.id),')')
+      )
+    )
+  ),
+  // Filter chips — class
+  React.createElement('div', {style:{marginBottom:10}},
+    React.createElement('div', {style:{fontSize:9,color:'#999',marginBottom:3}}, '\u062C\u0645\u0627\u0639\u062A'),
+    React.createElement('div', {style:{display:'flex',gap:4,overflowX:'auto',paddingBottom:4}},
+      React.createElement('button', {key:'all', onClick:()=>setTtClass(''),
+        style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+          background:!ttClass?ST.dk:'#e5e0d5',color:!ttClass?ST.gd:'#555'}}, '\u0633\u0628'),
+      CL.filter(cl=>cl.id!=='hifz').map(cl=>React.createElement('button',{key:cl.id,
+        onClick:()=>setTtClass(ttClass===cl.id?'':cl.id),
+        style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+          background:ttClass===cl.id?cl.a:'#e5e0d5',color:ttClass===cl.id?'#fff':cl.a}
+      },cl.n)
+      )
+    )
+  ),
+  // Assignment cards grouped by period
+  (() => {
+    const filtered = assignments.filter(a => {
+      if (selT && a.t !== selT) return false;
+      if (ttClass) { const sub = gS(a.sub); if (!sub || sub.c !== ttClass) return false; }
+      return true;
+    }).sort((a,b) => a.p - b.p);
+    const byPeriod = {};
+    filtered.forEach(a => { if(!byPeriod[a.p]) byPeriod[a.p]=[]; byPeriod[a.p].push(a); });
+    const breakP = periods.find(p=>p.type==='break');
+    const breakId = breakP ? breakP.id : 6;
+    return React.createElement('div', null,
+      Object.entries(byPeriod).sort((a,b)=>parseInt(a[0])-parseInt(b[0])).map(([pid, slots]) => {
+        const per = periods.find(p=>p.id===parseInt(pid));
+        const afterBreak = parseInt(pid) > breakId;
+        return React.createElement('div', {key:pid},
+          parseInt(pid) === breakId+1 && breakP && React.createElement('div',{
+            style:{textAlign:'center',padding:'6px 0',margin:'4px 0 8px',fontSize:10,color:ST.gd,fontWeight:700,
+              background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')',borderRadius:8}
+          },'\uD83D\uDD4C \u0646\u0645\u0627\u0632 \u0648 \u06A9\u06BE\u0627\u0646\u0627 \u2014 '+breakP.s+'\u2013'+breakP.e),
+          React.createElement('div',{style:{fontSize:9,color:'#9ca3af',marginBottom:4,direction:'ltr',fontFamily:'monospace'}},
+            'P'+pid+(per?' \u2022 '+per.s+'\u2013'+per.e:'')),
+          slots.map((a,ai) => {
+            const sub = gS(a.sub);
+            if (!sub) return null;
+            const cls = gC(CL, sub.c);
+            const t = teachers.find(x=>x.id===a.t);
+            return React.createElement('div', {key:ai, style:{
+              background:'#fff',borderRadius:13,padding:'12px 14px',marginBottom:5,
+              boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
+              borderRight:'4px solid '+cls.a,
+              display:'flex',alignItems:'center',gap:10
+            }},
+              React.createElement('div', {style:{width:36,height:36,borderRadius:9,background:cls.c,
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:cls.a}}, cls.n.charAt(0)),
+              React.createElement('div', {style:{flex:1,cursor:'pointer'},
+                onClick:()=>setNewAsg(newAsg.edit===a.t+'_'+a.sub?{t:'',sub:'',p:'',edit:''}:{t:a.t,sub:a.sub,p:String(a.p),edit:a.t+'_'+a.sub})},
+                React.createElement('div', {style:{fontSize:13,fontWeight:700}}, sub.n),
+                React.createElement('div', {style:{fontSize:10,color:'#888',marginTop:2}},
+                  cls.n,' \u2022 ',(t?t.n:''),' \u2022 P',a.p),
+                newAsg.edit===a.t+'_'+a.sub && React.createElement('div',{style:{marginTop:8,display:'flex',flexDirection:'column',gap:6},onClick:e=>e.stopPropagation()},
+                  React.createElement(Sel,{value:newAsg.t,onChange:v=>setNewAsg(p=>({...p,t:v}))},
+                    React.createElement('option',{value:''},'\u2014 \u0627\u0633\u062A\u0627\u062F \u2014'),
+                    teachers.filter(x=>x.role!=='qari').map(x=>React.createElement('option',{key:x.id,value:x.id},x.n))
+                  ),
+                  React.createElement(Sel,{value:newAsg.p,onChange:v=>setNewAsg(p=>({...p,p:v}))},
+                    React.createElement('option',{value:''},'\u2014 \u067E\u06CC\u0631\u06CC\u0688 \u2014'),
+                    cPer.map(p=>React.createElement('option',{key:p.id,value:p.id},'P',p.id,': ',p.s,'\u2013',p.e))
+                  ),
+                  React.createElement(Btn,{small:true,full:true,color:'#10b981',onClick:()=>{
+                    if(!newAsg.t||!newAsg.p){flash('\u26A0\uFE0F');return;}
+                    if(newAsg.t!==a.t||parseInt(newAsg.p)!==a.p){
+                      if(assignments.find(x=>x.t===newAsg.t&&x.p===parseInt(newAsg.p)&&x.sub!==a.sub)){flash('\u26A0\uFE0F \u062A\u0635\u0627\u062F\u0645');return;}
+                      updCfg('assignments',assignments.map(x=>x.t===a.t&&x.sub===a.sub?{t:newAsg.t,sub:a.sub,p:parseInt(newAsg.p)}:x));
+                      flash('\u2713');
+                    }
+                    setNewAsg({t:'',sub:'',p:'',edit:''});
+                  }},'\u0645\u062D\u0641\u0648\u0638 \u2713')
+                )
+              ),
+              React.createElement('button', {
+                onClick:(e)=>{e.stopPropagation();rmAsg(a.t,a.sub);},
+                style:{width:26,height:26,borderRadius:7,border:'none',fontSize:10,cursor:'pointer',
+                  background:'#fef2f2',color:'#ef4444',alignSelf:'flex-start',marginTop:2}
+              }, '\u2717')
+            );
+          }),
+          React.createElement('div',{style:{height:4}})
+        );
+      }),
+      filtered.length === 0 && React.createElement('div',{style:{textAlign:'center',padding:30,color:'#ccc',fontSize:12}},
+        '\u06A9\u0648\u0626\u06CC \u062A\u0641\u0648\u06CC\u0636 \u0646\u06C1\u06CC\u06BA')
+    );
+  })(),
+  React.createElement('div',{style:{fontSize:10,color:ST.mt,textAlign:'center',marginTop:8}},
+    assignments.length,' \u062A\u0641\u0648\u06CC\u0636 \u2022 ',unassigned.length,' \u0628\u0627\u0642\u06CC')
+), admSub === 'pins' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -4313,7 +4221,7 @@ function App() {
   }, "\u0627\u0628\u06BE\u06CC \u0627\u0631\u0633\u0627\u0644"))), admSub === 'creds' && React.createElement('div',null,
   React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
     React.createElement(Bk,{onClick:goHome}),
-    React.createElement(Ttl,{icon:'������',text:'ایڈمن ایکاؤنٹ'}),
+    React.createElement(Ttl,{icon:'������',text:'ایڈمن ایکاؤنٹ'}),
     React.createElement('div',null)
   ),
   React.createElement(Card,null,
