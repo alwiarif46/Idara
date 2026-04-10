@@ -1380,20 +1380,7 @@ function App() {
   const setHifzLogs = useCallback(updater => {
     setHifzLogsRaw(prev => { const next = typeof updater==='function'?updater(prev):updater; saveHifzLogs(next); return next; });
   }, []);
-  const setStudents = useCallback(updater => {
-    setStudentsRaw(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      saveStudents(next);
-      return next;
-    });
-  }, []);
-  const setHifzLogs = useCallback(updater => {
-    setHifzLogsRaw(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      saveHifzLogs(next);
-      return next;
-    });
-  }, []);
+
 
   // Load on mount
   useEffect(() => {
