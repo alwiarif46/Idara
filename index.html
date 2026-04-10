@@ -2395,14 +2395,12 @@ function App() {
         const pct=Math.round((paras/30)*100);
         return /*#__PURE__*/React.createElement("div",{
           key:s.id,
+          onClick:()=>setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}}),
           style:{background:'#fff',borderRadius:12,padding:'12px 14px',marginBottom:7,cursor:'pointer',borderRight:'4px solid #475569'}
         },
           /*#__PURE__*/React.createElement("div",{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
             /*#__PURE__*/React.createElement("div",{style:{fontWeight:700,fontSize:14}},s.n),
-            /*#__PURE__*/React.createElement("button",{
-              onClick:e=>{e.stopPropagation();setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}});setTab('students');},
-              style:{background:'#1e3a2f',color:'#a3e635',borderRadius:8,padding:'3px 10px',fontSize:11,fontWeight:700,border:'none',cursor:'pointer'}
-            },"✏️ اندراج")
+            /*#__PURE__*/React.createElement("div",{style:{fontSize:11,color:'#a3e635'}},"✏️")
           ),
           /*#__PURE__*/React.createElement("div",{style:{marginTop:6,background:'#e2e8f0',borderRadius:4,height:6,overflow:'hidden'}},
             /*#__PURE__*/React.createElement("div",{style:{background:'#059669',width:pct+'%',height:'100%',borderRadius:4,transition:'width 0.3s'}})
@@ -2949,7 +2947,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
         direction:'rtl',fontFamily:ST.f,marginBottom:10,boxSizing:'border-box'}
     }),
 
-    (isAd || (!isQari && user)) && /*#__PURE__*/React.createElement("button", {
+    user && !isQari && /*#__PURE__*/React.createElement("button", {
       onClick: () => setShowStudForm(true),
       style:{width:'100%',padding:'9px',borderRadius:10,border:'2px dashed #aaa',background:'none',
         cursor:'pointer',fontSize:12,color:'#555',marginBottom:10,fontFamily:ST.f}
@@ -2971,7 +2969,8 @@ tab === 'thu' && isEx && React.createElement('div', null,
         const lastLog = logEntries.length ? JSON.parse(logEntries[0][1]) : null;
         const paras = lastLog ? lastLog.paras : (s.hifz ? s.hifz.paras : 0);
         const pct = Math.round((paras/30)*100);
-        return /*#__PURE__*/React.createElement(Card, {key:s.id, style:{marginBottom:8}},
+        return /*#__PURE__*/React.createElement(Card, {key:s.id, style:{marginBottom:8, cursor: s.c==='hifz' ? 'pointer' : 'default'},
+            onClick: () => { if (s.c==='hifz') setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}}); }},
           /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
             /*#__PURE__*/React.createElement("div", {style:{flex:1}},
               /*#__PURE__*/React.createElement("div", {style:{fontSize:14,fontWeight:800}}, s.n),
@@ -2985,10 +2984,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
                 bg: s.status==='completed'?'#d1fae5':s.status==='left'?'#fee2e2':'#dbeafe',
                 color: s.status==='completed'?'#065f46':s.status==='left'?'#991b1b':'#1e40af'
               }),
-              (isAd||isQari) && s.c==='hifz' && /*#__PURE__*/React.createElement("button", {
-                onClick: () => setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}}),
-                style:{fontSize:10,padding:'3px 8px',borderRadius:8,border:'none',background:ST.dk,color:ST.gd,cursor:'pointer',fontWeight:700}
-              }, "✏️ حفظ"),
+
               isAd && /*#__PURE__*/React.createElement("button", {
                 onClick: () => { setStudents(prev=>prev.filter(st=>st.id!==s.id)); flash('✓ حذف'); },
                 style:{fontSize:10,padding:'3px 8px',borderRadius:8,border:'none',background:'#fee2e2',color:'#dc2626',cursor:'pointer'}
@@ -3098,7 +3094,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     ),
 
     /* Add Student Form Modal */
-    showStudForm && (isAd || (!isQari && user)) && /*#__PURE__*/React.createElement("div", {
+    showStudForm && user && !isQari && /*#__PURE__*/React.createElement("div", {
       style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center'},
       onClick:()=>setShowStudForm(false)
     },
