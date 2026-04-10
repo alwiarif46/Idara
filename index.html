@@ -1336,6 +1336,9 @@ function App() {
     val: ''
   });
   const [urlInp, setUrlInp] = useState('');
+  const [ttView, setTtView] = useState(0);
+  const [ttClass, setTtClass] = useState('');
+  const [covers, setCovers] = useState({});
   const [students, setStudentsRaw] = useState([]);
   const [hifzLogs, setHifzLogsRaw] = useState({});
   const [studFilter, setStudFilter] = useState('all');
@@ -2749,59 +2752,136 @@ function App() {
     full: true,
     color: CL[thB] && CL[thB].a,
     onClick: submitTh
-  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")))), tab === 'tt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Ttl, {
-    icon: "\uD83D\uDD50",
-    text: "\u0646\u0638\u0627\u0645 \u0627\u0644\u0627\u0648\u0642\u0627\u062A"
-  }), periods.map(p => {
-    const isB = p.brk || p.type === 'break';
-    const a = myA.find(a2 => a2.p === p.id);
-    return /*#__PURE__*/React.createElement("div", {
-      key: p.id,
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 9,
-        marginBottom: 4,
-        background: isB ? `linear-gradient(135deg,${ST.dk},${ST.gn})` : a ? '#fff' : '#f5f0e8',
-        borderRadius: 9,
-        padding: '8px 11px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        color: isB ? ST.sg : '#8a9a8a',
-        width: 65,
-        textAlign: 'center',
-        direction: 'ltr',
-        fontFamily: 'monospace'
-      }
-    }, p.s, "\u2013", p.e), isB ? /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: ST.gd,
-        fontSize: 11,
-        fontWeight: 700
-      }
-    }, "\uD83D\uDD4C \u0648\u0642\u0641\u06C1") : a ? /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1
-      }
-    }, /*#__PURE__*/React.createElement(Bdg, {
-      text: a.cls.n,
-      bg: a.cls.c,
-      color: a.cls.a
-    }), " ", /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        fontWeight: 700
-      }
-    }, a.sub.n)) : /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1,
-        color: '#c5c0b5',
-        fontSize: 10
-      }
-    }, "\u2014"));
-  })),
+  }, "\u0627\u0631\u0633\u0627\u0644 \u2713")))), tab === 'tt' && React.createElement('div', null,
+    React.createElement(Ttl, {icon:'������', text:'نظام الاوقات'}),
+
+    /* View toggle chips */
+    React.createElement('div', {style:{display:'flex',gap:6,marginBottom:14}},
+      ['میرا شیڈول','جماعت کا شیڈول'].map((lbl,i)=>
+        React.createElement('button',{key:i,
+          onClick:()=>setTtView(i),
+          style:{flex:1,padding:'7px 0',borderRadius:20,border:'none',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',
+            background:ttView===i?ST.dk:'#e5e0d5',color:ttView===i?ST.gd:'#666'}
+        },lbl)
+      )
+    ),
+
+    /* ── MY SCHEDULE ── */
+    ttView===0 && React.createElement('div', null,
+      (() => {
+        const myPeriods = periods.filter(p=>p.type!=='break');
+        const breakP = periods.find(p=>p.type==='break');
+        const breakId = breakP ? breakP.id : 6;
+        const before = myPeriods.filter(p=>p.id<breakId);
+        const after  = myPeriods.filter(p=>p.id>breakId);
+
+        const PCard = (p) => {
+          const asg = (isAd ? assignments : myA).find(a=>a.p===p.id && (isAd||true));
+          const allForPeriod = assignments.filter(a=>a.p===p.id);
+          const cover = covers && covers[new Date().toISOString().slice(0,10)+'_'+p.id];
+          if(isAd) {
+            // Admin sees all assignments for each period stacked
+            return React.createElement('div',{key:p.id,style:{marginBottom:8}},
+              React.createElement('div',{style:{fontSize:9,color:'#9ca3af',direction:'ltr',marginBottom:4,fontFamily:'monospace'}},p.s+'–'+p.e),
+              allForPeriod.length===0
+                ? React.createElement('div',{style:{background:'#f5f0e8',borderRadius:10,padding:'10px 14px',color:'#ccc',fontSize:11}},'—')
+                : allForPeriod.map((a,i)=>{
+                    const sub=gS(a.sub); if(!sub) return null;
+                    const cls=gC(CL,sub.c);
+                    const t=teachers.find(x=>x.id===a.t);
+                    return React.createElement('div',{key:i,
+                      style:{background:'#fff',borderRadius:10,padding:'12px 14px',marginBottom:4,
+                        borderRight:'4px solid '+cls.a,position:'relative'}},
+                      React.createElement('div',{style:{fontWeight:800,fontSize:13}},sub.n),
+                      React.createElement('div',{style:{fontSize:10,color:'#777',marginTop:2}},
+                        cls.n+' • '+(t?t.n:''))
+                    );
+                  })
+            );
+          }
+          // Teacher sees their own period
+          const myAsg = myA.find(a=>a.p===p.id);
+          if(!myAsg) return React.createElement('div',{key:p.id,
+            style:{background:'#f5f0e8',borderRadius:10,padding:'10px 14px',marginBottom:8,
+              display:'flex',justifyContent:'space-between',alignItems:'center'}},
+            React.createElement('div',{style:{fontSize:9,color:'#9ca3af',direction:'ltr',fontFamily:'monospace'}},p.s+'–'+p.e),
+            React.createElement('div',{style:{fontSize:11,color:'#ccc'}},'— خالی —')
+          );
+          return React.createElement('div',{key:p.id,
+            style:{background:'#fff',borderRadius:12,padding:'13px 15px',marginBottom:8,
+              borderRight:'4px solid '+myAsg.cls.a}},
+            React.createElement('div',{style:{fontWeight:800,fontSize:14}},myAsg.sub.n),
+            React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}},
+              React.createElement('span',{style:{fontSize:11,color:'#777'}},myAsg.cls.n),
+              React.createElement('span',{style:{fontSize:10,color:'#9ca3af',direction:'ltr',fontFamily:'monospace'}},p.s+'–'+p.e)
+            )
+          );
+        };
+
+        return React.createElement('div',null,
+          before.map(p=>PCard(p)),
+          breakP && React.createElement('div',{
+            style:{textAlign:'center',padding:'8px 0',margin:'4px 0 8px',
+              fontSize:11,color:ST.gd,fontWeight:700,
+              background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')',
+              borderRadius:10}
+          },'������ نماز و کھانا — '+breakP.s+'–'+breakP.e),
+          after.map(p=>PCard(p))
+        );
+      })()
+    ),
+
+    /* ── CLASS SCHEDULE ── */
+    ttView===1 && React.createElement('div', null,
+      React.createElement('select',{
+        value: ttClass,
+        onChange: e=>setTtClass(e.target.value),
+        style:{width:'100%',padding:'10px 12px',borderRadius:12,border:'1px solid #ddd',
+          fontSize:13,fontFamily:'inherit',direction:'rtl',marginBottom:12,
+          background:'#fff',outline:'none',boxSizing:'border-box'}
+      },
+        React.createElement('option',{value:''},'جماعت منتخب کریں'),
+        (isAd ? CL : [...new Set(myA.map(a=>a.cls.id))].map(id=>CL.find(cl=>cl.id===id)).filter(Boolean))
+          .map(cl=>React.createElement('option',{key:cl.id,value:cl.id},cl.n))
+      ),
+      ttClass && (() => {
+        const breakP = periods.find(p=>p.type==='break');
+        const breakId = breakP ? breakP.id : 6;
+        const classPeriods = periods.filter(p=>p.type!=='break');
+        const before = classPeriods.filter(p=>p.id<breakId);
+        const after  = classPeriods.filter(p=>p.id>breakId);
+        const selectedCls = gC(CL, ttClass);
+
+        const CCard = (p) => {
+          const asg = assignments.find(a=>a.p===p.id && a.sub && gS(a.sub) && gS(a.sub).c===ttClass);
+          const sub = asg ? gS(asg.sub) : null;
+          const t   = asg ? teachers.find(x=>x.id===asg.t) : null;
+          return React.createElement('div',{key:p.id,
+            style:{background: sub?'#fff':'#f5f0e8',borderRadius:12,padding:'13px 15px',marginBottom:8,
+              borderRight:'4px solid '+(sub?selectedCls.a:'#ddd')}},
+            React.createElement('div',{style:{fontWeight:800,fontSize:14,color:sub?'#1a2a1a':'#ccc'}},
+              sub ? sub.n : '— کھالی —'),
+            sub && React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}},
+              React.createElement('span',{style:{fontSize:11,color:'#777'}},t?t.n:''),
+              React.createElement('span',{style:{fontSize:10,color:'#9ca3af',direction:'ltr',fontFamily:'monospace'}},p.s+'–'+p.e)
+            ),
+            !sub && React.createElement('div',{style:{fontSize:10,color:'#9ca3af',direction:'ltr',fontFamily:'monospace',marginTop:2}},p.s+'–'+p.e)
+          );
+        };
+
+        return React.createElement('div',null,
+          before.map(p=>CCard(p)),
+          breakP && React.createElement('div',{
+            style:{textAlign:'center',padding:'8px 0',margin:'4px 0 8px',
+              fontSize:11,color:ST.gd,fontWeight:700,
+              background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')',
+              borderRadius:10}
+          },'������ نماز و کھانا — '+breakP.s+'–'+breakP.e),
+          after.map(p=>CCard(p))
+        );
+      })()
+    )
+  ),
 
   /* ═══ STUDENTS TAB ═══ */
   tab === 'students' && /*#__PURE__*/React.createElement("div", null,
