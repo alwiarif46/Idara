@@ -139,7 +139,7 @@ function _handleDailyReport(data) {
   // --- Write student attendance to DB_Student_Attendance ---
   if (data.attendance && typeof data.attendance === 'object') {
     var attHeaders = [
-      'Date', 'Teacher_ID', 'Class_ID', 'Student_ID', 'Status', 'Submitted_At'
+      'Date', 'Teacher_ID', 'Class_ID', 'Subject_ID', 'Student_ID', 'Status', 'Submitted_At'
     ];
     var attSheet = _getOrCreateTab(ss, 'DB_Student_Attendance', attHeaders, '#4285f4');
 
@@ -151,7 +151,7 @@ function _handleDailyReport(data) {
       for (var s = 0; s < studentIds.length; s++) {
         var sid = studentIds[s];
         _appendRow(attSheet, [
-          date, teacherId, classId, sid, students[sid], submittedAt
+          date, teacherId, classId, '', sid, students[sid], submittedAt
         ]);
       }
     }
@@ -248,12 +248,13 @@ function _handleTeacherAttendance(data) {
 function _handleStudentAttendance(data) {
   var ss = SpreadsheetApp.openById(ADMIN_ID);
   var headers = [
-    'Date', 'Teacher_ID', 'Class_ID', 'Student_ID', 'Status', 'Submitted_At'
+    'Date', 'Teacher_ID', 'Class_ID', 'Subject_ID', 'Student_ID', 'Status', 'Submitted_At'
   ];
   var sheet = _getOrCreateTab(ss, 'DB_Student_Attendance', headers, '#4285f4');
 
   var date = data.date || '';
   var classId = data.class_id || '';
+  var subjectId = data.subject_id || '';
   var teacherId = data.teacher_id || '';
   var att = data.attendance || {};
   var submittedAt = data.submitted_at || _ts();
@@ -273,7 +274,7 @@ function _handleStudentAttendance(data) {
   var studentIds = Object.keys(att);
   for (var j = 0; j < studentIds.length; j++) {
     var sid = studentIds[j];
-    _appendRow(sheet, [date, teacherId, classId, sid, att[sid], submittedAt]);
+    _appendRow(sheet, [date, teacherId, classId, subjectId, sid, att[sid], submittedAt]);
   }
 
   return _json({ success: true, rows: studentIds.length });
@@ -536,7 +537,7 @@ function setupAllTabs() {
     '#4285f4');
 
   _getOrCreateTab(ss, 'DB_Student_Attendance',
-    ['Date', 'Teacher_ID', 'Class_ID', 'Student_ID', 'Status', 'Submitted_At'],
+    ['Date', 'Teacher_ID', 'Class_ID', 'Subject_ID', 'Student_ID', 'Status', 'Submitted_At'],
     '#4285f4');
 
   _getOrCreateTab(ss, 'ADMIN_Students',

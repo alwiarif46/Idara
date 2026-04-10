@@ -1581,14 +1581,25 @@ function App() {
       flash('✓');
     }
   };
-  const syncAttendance = (classId) => {
+  const syncAttendance = async (classId, subjectId) => {
     const todayDt = new Date().toISOString().split('T')[0];
     const aKey = classId + '_' + todayDt;
     const att = sAttend[aKey];
     if (!att || !Object.keys(att).length) { flash('⚠️ خالی'); return; }
-    const pl = { teacher_id: user ? user.id : '', class_id: classId, date: todayDt, attendance: att };
-    if (cfg.script_url) { syncPost('student_attendance', pl); }
-    else { setSyncQ(p => [...p, { type: 'student_attendance', payload: pl }]); flash('✓ قطار'); }
+    const pl = { teacher_id: user ? user.id : '', class_id: classId, subject_id: subjectId || '', date: todayDt, attendance: att };
+    console.log('[ATTEND] sending:', JSON.stringify(pl));
+    if (cfg.script_url) {
+      flash('⏳ بھیج رہے ہیں...');
+      try {
+        const res = await syncPost('student_attendance', pl);
+        console.log('[ATTEND] response:', JSON.stringify(res));
+        if (res && res.success) flash('✅ حاضری محفوظ — ' + Object.keys(att).length + ' طلبا');
+        else flash('❌ ناکام: ' + (res && res.error ? res.error : JSON.stringify(res)));
+      } catch(err) {
+        console.error('[ATTEND] error:', err);
+        flash('❌ ' + err.message);
+      }
+    } else { setSyncQ(p => [...p, { type: 'student_attendance', payload: pl }]); flash('✓ قطار — URL سیٹ کریں'); }
   };
   useEffect(() => {
     const iv = setInterval(() => {
@@ -2648,7 +2659,7 @@ function App() {
                 }),
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}},
                   React.createElement('span',{style:{fontSize:10,color:'#888'}},pCt+'\u062D '+aCt+'\u063A '+lCt+'\u0631'),
-                  React.createElement(Btn, {small:true, color:'#1a3a5c', onClick:()=>syncAttendance(a.sub.c)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC')
+                  React.createElement(Btn, {small:true, color:'#1a3a5c', onClick:()=>syncAttendance(a.sub.c, a.sub.id)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC')
                 )
               )
         )
@@ -2981,7 +2992,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
                       React.createElement('div',{style:{fontSize:10,color:'#888',textAlign:'center',marginTop:8}},
                         pCount+' \u062D\u0627\u0636\u0631 \u2022 '+aCount+' \u063A\u0627\u0626\u0628 \u2022 '+lCount+' \u0631\u062E\u0635\u062A \u2022 '+(clsStudents.length-pCount-aCount-lCount)+' \u0628\u0627\u0642\u06CC'),
                       React.createElement(Btn, {full:true, small:true, color:'#1a3a5c', style:{marginTop:10},
-                        onClick:()=>syncAttendance(myAsg.sub.c)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
+                        onClick:()=>syncAttendance(myAsg.sub.c, myAsg.sub.id)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
                     )
               )
             )
@@ -3087,7 +3098,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     }),
 
     user && /*#__PURE__*/React.createElement("button", {
-      onClick: () => { const maxId = students.reduce((mx,s) => { const n=parseInt(s.id); return n>mx?n:mx; }, 921114); const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id); setNewStud(p=>({...p,id:String(maxId+1).padStart(8,'0'),c:defClass})); setShowStudForm(true); },
+      onClick: () => { const prefixMap={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'}; const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id); const px=prefixMap[defClass]||'ST'; const clsStuds=students.filter(s=>s.id.startsWith(px)); const maxNum=clsStuds.reduce((mx,s)=>{const n=parseInt(s.id.slice(2));return n>mx?n:mx;},0); const newId=px+String(maxNum+1).padStart(2,'0'); setNewStud(p=>({...p,id:newId,c:defClass})); setShowStudForm(true); },
       style:{width:'100%',padding:'9px',borderRadius:10,border:'2px dashed #aaa',background:'none',
         cursor:'pointer',fontSize:12,color:'#555',marginBottom:10,fontFamily:ST.f}
     }, "+ نیا طالب علم"),
@@ -3258,7 +3269,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
             /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:'#666',marginBottom:3}}, "جماعت"),
             /*#__PURE__*/React.createElement("select", {
               value:newStud.c,
-              onChange:e=>setNewStud(p=>({...p,c:e.target.value})),
+              onChange:e=>{const nc=e.target.value;const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const px=pm[nc]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud(p=>({...p,c:nc,id:px+String(mx+1).padStart(2,'0')}));},
               style:{width:'100%',padding:'8px',borderRadius:8,border:'1px solid #ddd',fontSize:12,fontFamily:ST.f}
             },
               (isAd ? CL : CL.filter(cl=>{ const mc=new Set(myA.map(a=>a.sub.c)); return mc.has(cl.id) || cl.id==='hifz'; })).map(cl=>/*#__PURE__*/React.createElement("option",{key:cl.id,value:cl.id},cl.n))
