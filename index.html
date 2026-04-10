@@ -3044,7 +3044,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     }),
 
     user && /*#__PURE__*/React.createElement("button", {
-      onClick: () => { const maxId = students.reduce((mx,s) => { const n=parseInt(s.id); return n>mx?n:mx; }, 921114); setNewStud(p=>({...p,id:String(maxId+1).padStart(8,'0')})); setShowStudForm(true); },
+      onClick: () => { const maxId = students.reduce((mx,s) => { const n=parseInt(s.id); return n>mx?n:mx; }, 921114); const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id); setNewStud(p=>({...p,id:String(maxId+1).padStart(8,'0'),c:defClass})); setShowStudForm(true); },
       style:{width:'100%',padding:'9px',borderRadius:10,border:'2px dashed #aaa',background:'none',
         cursor:'pointer',fontSize:12,color:'#555',marginBottom:10,fontFamily:ST.f}
     }, "+ نیا طالب علم"),
@@ -3218,7 +3218,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
               onChange:e=>setNewStud(p=>({...p,c:e.target.value})),
               style:{width:'100%',padding:'8px',borderRadius:8,border:'1px solid #ddd',fontSize:12,fontFamily:ST.f}
             },
-              (isAd ? CL : CL.filter(cl=>{ const mc=new Set(myA.map(a=>a.sub.c)); return mc.has(cl.id); })).map(cl=>/*#__PURE__*/React.createElement("option",{key:cl.id,value:cl.id},cl.n))
+              (isAd ? CL : CL.filter(cl=>{ const mc=new Set(myA.map(a=>a.sub.c)); return mc.has(cl.id) || cl.id==='hifz'; })).map(cl=>/*#__PURE__*/React.createElement("option",{key:cl.id,value:cl.id},cl.n))
             )
           ),
           /*#__PURE__*/React.createElement("div", null,
@@ -3236,8 +3236,11 @@ tab === 'thu' && isEx && React.createElement('div', null,
           onClick: ()=>{
             if(!newStud.n.trim()||!newStud.id.trim()){flash('⚠️ نام اور کوڈ ضروری');return;}
             if(students.find(s=>s.id===newStud.id)){flash('⚠️ کوڈ موجود');return;}
-            setStudents(prev=>[...prev,{...newStud,status:'active',hifz:{paras:0,soorah:'',aayat:0,daur_para:''}}]);
-            setNewStud({id:'',n:'',parent:'',phone:'',residence:'',c:'hifz',qari:teachers.find(t=>t.role==='qari')?.id||'T8',status:'active'});
+            const stud = {...newStud,status:'active',hifz:{paras:0,soorah:'',aayat:0,daur_para:''}};
+            setStudents(prev=>[...prev,stud]);
+            if(cfg.script_url) syncPost('student_upsert',{student:stud}); else { setSyncQ(p=>[...p,{type:'student_upsert',payload:{student:stud}}]); }
+            const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id);
+            setNewStud({id:'',n:'',parent:'',phone:'',residence:'',c:defClass,qari:teachers.find(t=>t.role==='qari')?.id||'T8',status:'active'});
             setShowStudForm(false);
             flash('✓ طالب علم شامل');
           },
