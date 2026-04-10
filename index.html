@@ -1343,13 +1343,7 @@ function App() {
   const [hifzEntry, setHifzEntry] = useState(null);
   const [showStudForm, setShowStudForm] = useState(false);
   const [newStud, setNewStud] = useState({id:'',n:'',parent:'',phone:'',residence:'',c:'hifz',qari:'T8',status:'active'});
-  const [students, setStudentsRaw] = useState([]);
-  const [hifzLogs, setHifzLogsRaw] = useState({});
-  const [studFilter, setStudFilter] = useState('all');
-  const [studSearch, setStudSearch] = useState('');
-  const [hifzEntry, setHifzEntry] = useState(null); // {sid, data}
-  const [showStudForm, setShowStudForm] = useState(false);
-  const [newStud, setNewStud] = useState({ id:'', n:'', parent:'', phone:'', residence:'', c:'hifz', qari:'T8', status:'active' });
+
   const [thB, setThB] = useState(0);
   const [thD, setThD] = useState([]);
   const saveTimer = useRef(null);
