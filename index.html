@@ -2203,6 +2203,19 @@ function App() {
     l: 'Ø±ÛŒ Ø³ÛŒÙ¹',
     k: 'reset'
   }];
+  const isEx = user && user.exam,
+    isAd = user && user.role === 'admin',
+    isQari = user && user.role === 'qari';
+  const tabs = [
+    {id:'home',ic:'í ¼í¿ ',l:'ÛÙˆÙ…'},
+    ...(!isQari?[{id:'report',ic:'í ½í³',l:'Ø±Ù¾ÙˆØ±Ù¹'}]:[]),
+    ...(isEx?[{id:'thu',ic:'í ½í³‹',l:'Ø§Ù…ØªØ­Ø§Ù†'}]:[]),
+    ...(!isQari?[{id:'tt',ic:'í ½íµ',l:'Ø§ÙˆÙ‚Ø§Øª'}]:[]),
+    ...((isAd||isQari)?[{id:'students',ic:'í ½í±¥',l:'Ø·Ù„Ø¨Ø§'}]:[]),
+    ...(isAd?[{id:'adm',ic:'âš™ï¸',l:'Ø§ÛŒÚˆÙ…Ù†'}]:[])
+  ];
+  const goHome = () => { setTab('home'); setAdmSub(null); setShowForm(null); };
+
   return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: '100vh',
