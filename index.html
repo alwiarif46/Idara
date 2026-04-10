@@ -2395,7 +2395,7 @@ function App() {
         const pct=Math.round((paras/30)*100);
         return /*#__PURE__*/React.createElement("div",{
           key:s.id,
-          onClick:()=>setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}}),
+          onClick:()=>{setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}});setTab('students');},
           style:{background:'#fff',borderRadius:12,padding:'12px 14px',marginBottom:7,cursor:'pointer',borderRight:'4px solid #475569'}
         },
           /*#__PURE__*/React.createElement("div",{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
@@ -2947,7 +2947,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
         direction:'rtl',fontFamily:ST.f,marginBottom:10,boxSizing:'border-box'}
     }),
 
-    user && !isQari && /*#__PURE__*/React.createElement("button", {
+    user && /*#__PURE__*/React.createElement("button", {
       onClick: () => setShowStudForm(true),
       style:{width:'100%',padding:'9px',borderRadius:10,border:'2px dashed #aaa',background:'none',
         cursor:'pointer',fontSize:12,color:'#555',marginBottom:10,fontFamily:ST.f}
@@ -3094,7 +3094,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     ),
 
     /* Add Student Form Modal */
-    showStudForm && user && !isQari && /*#__PURE__*/React.createElement("div", {
+    showStudForm && user && /*#__PURE__*/React.createElement("div", {
       style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center'},
       onClick:()=>setShowStudForm(false)
     },
