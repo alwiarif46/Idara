@@ -173,11 +173,12 @@ async function loadAll() {
       sb('daily_reports','select=*&date=eq.'+TODAY),
     ]);
     // These may fail if tables are new/empty — load separately
-    let leaveSummary=[],adminTasks=[],adminScores=[];
+    let leaveSummary=[],adminTasks=[],adminScores=[],adminReport=null;
     try { leaveSummary = await sb('teacher_leave_summary','select=*'); } catch(e) { console.warn('leave_summary:',e); }
     try { adminTasks = await sb('admin_tasks','select=*&date=eq.'+TODAY); } catch(e) { console.warn('admin_tasks:',e); }
     try { adminScores = await sb('admin_daily_score','select=*&limit=14&order=date.desc'); } catch(e) { console.warn('admin_scores:',e); }
-    DATA = {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary,adminTasks,adminScores};
+    try { const ar = await sb('admin_accountability','select=*&date=eq.'+TODAY); adminReport = ar.length?ar[0]:null; } catch(e) { console.warn('admin_report:',e); }
+    DATA = {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary,adminTasks,adminScores,adminReport};
     return DATA;
   } catch(e) {
     document.getElementById('app').innerHTML = '<div class="loading">❌ Supabase سے رابطہ ناکام<br><small>'+e.message+'</small></div>';
@@ -350,204 +351,181 @@ function render() {
   }
 
   // ═══════════════════════════════════════════
-  // TAB: ADMIN ACCOUNTABILITY
+  // TAB: ADMIN ACCOUNTABILITY — ذمہ داریاں
   // ═══════════════════════════════════════════
   if (activeTab === 'admin') {
     try {
-    const adminTasks = DATA.adminTasks || [];
+    const rpt = DATA.adminReport || {};
     const adminScores = DATA.adminScores || [];
-
-    // Define daily tasks — some auto-verified from data
     const activeTeacherIds = teachers.filter(t=>!['T7','T8','T9'].includes(t.id)).map(t=>t.id);
     const tAttApproved = tAttToday.filter(r=>r.approved).length;
     const tAttTotal = tAttToday.length;
     const allApproved = tAttTotal > 0 && tAttApproved === tAttTotal;
-
     const teachersWithReports = [...new Set(reportsToday.map(r=>r.teacher_id))];
     const teachersWhoShouldReport = [...new Set(assignments.filter(a=>activeTeacherIds.includes(a.teacher_id)).map(a=>a.teacher_id))];
     const missingReports = teachersWhoShouldReport.filter(t=>!teachersWithReports.includes(t));
     const allReportsIn = missingReports.length === 0 && reportsToday.length > 0;
-
     const absentStudents = sAttToday.filter(r=>r.status==='A');
     const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
-
     const behindSubjects = reportsToday.filter(r=>(r.actual_page||0)<(r.target_page||0));
-
     const isThursday = new Date().getDay() === 4;
+    const actualAbsent = absentStudents.length;
+    const actualBehind = behindSubjects.length;
+    const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:rtl;min-height:44px;box-sizing:border-box;'+s;
 
-    const dailyTasks = [
-      {
-        id: 'approve_attendance',
-        name: '✅ اساتذہ حاضری منظور کریں',
-        auto: true,
-        done: allApproved,
-        detail: allApproved
-          ? `${tAttApproved}/${tAttTotal} منظور`
-          : `${tAttApproved}/${tAttTotal} منظور — ${tAttTotal-tAttApproved} زیر التوا`,
-        severity: allApproved ? 'gr' : 'rd'
-      },
-      {
-        id: 'check_reports',
-        name: '📝 تمام اساتذہ کی رپورٹس چیک کریں',
-        auto: true,
-        done: allReportsIn,
-        detail: allReportsIn
-          ? `${teachersWithReports.length} اساتذہ نے رپورٹ دی`
-          : `⚠️ رپورٹ نہیں دی: ${missingReports.map(tid=>{const t=teachers.find(x=>x.id===tid);return t?t.name:tid;}).join('، ')}`,
-        severity: allReportsIn ? 'gr' : 'rd'
-      },
-      {
-        id: 'coverage_arrange',
-        name: '🔄 غائب اساتذہ کا بندوبست',
-        auto: false,
-        autoCheck: tAttToday.length > 0 && absentTeachers.length === 0,
-        detail: tAttToday.length === 0
-          ? '⏳ ابھی حاضری ڈیٹا نہیں آیا'
-          : absentTeachers.length === 0
-          ? 'آج سب حاضر — بندوبست کی ضرورت نہیں'
-          : `${absentTeachers.length} غائب: ${absentTeachers.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id);return t?t.name:r.teacher_id;}).join('، ')}`,
-        severity: tAttToday.length === 0 ? 'bl' : absentTeachers.length === 0 ? 'gr' : 'yl'
-      },
-      {
-        id: 'call_parents',
-        name: '📞 غائب طلبا کے والدین کو اطلاع',
-        auto: false,
-        autoCheck: sAttToday.length > 0 && absentStudents.length === 0,
-        detail: sAttToday.length === 0
-          ? '⏳ ابھی طلبا حاضری ڈیٹا نہیں آیا'
-          : absentStudents.length === 0
-          ? 'آج کوئی طالب علم غائب نہیں'
-          : `${absentStudents.length} طلبا غائب — والدین کو فون کریں`,
-        severity: sAttToday.length === 0 ? 'bl' : absentStudents.length === 0 ? 'gr' : 'yl'
-      },
-      {
-        id: 'review_progress',
-        name: '📊 نصاب پیشرفت جائزہ لیں',
-        auto: false,
-        autoCheck: reportsToday.length > 0 && behindSubjects.length === 0,
-        detail: behindSubjects.length === 0
-          ? (reportsToday.length > 0 ? 'سب مضامین ہدف پر' : 'ابھی رپورٹس نہیں آئیں')
-          : `⚠️ ${behindSubjects.length} مضامین ہدف سے پیچھے`,
-        severity: reportsToday.length === 0 ? 'bl' : behindSubjects.length === 0 ? 'gr' : 'yl'
-      },
-      {
-        id: 'hifz_check',
-        name: '📖 حفظ پیشرفت جائزہ',
-        auto: false,
-        detail: 'قاری عارف اور قاری زبیر سے حفظ اپڈیٹ لیں',
-        severity: 'bl'
-      },
-    ];
-
-    if (isThursday) {
-      dailyTasks.push({
-        id: 'thursday_review',
-        name: '✍️ جمعرات امتحانی نتائج جائزہ',
-        auto: false,
-        detail: 'آج جمعرات ہے — امتحانی نتائج چیک کریں',
-        severity: 'yl'
-      });
-    }
-
-    // Check which tasks are already marked done
-    const taskStatus = {};
-    adminTasks.forEach(t => { taskStatus[t.task_id] = t; });
-
-    // Calculate today's score
-    let doneCount = 0;
-    dailyTasks.forEach(t => {
-      if (t.auto && t.done) doneCount++;
-      else if (t.autoCheck) doneCount++;
-      else if (taskStatus[t.id] && taskStatus[t.id].completed) doneCount++;
-    });
-    const todayScore = Math.round(doneCount / dailyTasks.length * 100);
-    const scoreColor = todayScore >= 80 ? 'var(--gr)' : todayScore >= 50 ? 'var(--yl)' : 'var(--rd)';
-
-    // ── Auto-persist ALL tasks (auto + manual) so admin_daily_score view stays accurate ──
-    (async () => {
-      try {
-        const rows = dailyTasks.map(t => {
-          const isDone = (t.auto && t.done) || (t.autoCheck) || (taskStatus[t.id] && taskStatus[t.id].completed);
-          return {date:TODAY, task_id:t.id, task_name:t.name, completed:!!isDone, completed_at: isDone ? (taskStatus[t.id]?.completed_at || new Date().toISOString()) : null};
-        });
-        await fetch(SB_URL+'/rest/v1/admin_tasks?on_conflict=date,task_id', {
-          method:'POST', headers:{...headers,'Prefer':'resolution=merge-duplicates'},
-          body: JSON.stringify(rows)
-        });
-      } catch(e) { console.warn('auto-persist tasks:', e); }
-    })();
+    // Calculate score from filled fields
+    let filled = 0, total = 11;
+    if (rpt.absent_students_entered != null) filled++;
+    if (rpt.behind_subjects_entered != null) filled++;
+    if (rpt.coverage_details) filled++;
+    if ((rpt.class_visited||'').length >= 3 && (rpt.class_observations||'').length >= 10) filled++;
+    if ((rpt.absent_actions||'').length >= 10) filled++;
+    if ((rpt.syllabus_notes||'').length >= 10) filled++;
+    if ((rpt.hifz_notes||'').length >= 10) filled++;
+    if ((rpt.general_remarks||'').length >= 5) filled++;
+    if (rpt.called_parents) filled++;
+    if (rpt.checked_hifz) filled++;
+    if (rpt.reviewed_thursday) filled++;
+    const pct = Math.round(filled/total*100);
+    const scoreColor = pct>=80?'var(--gr)':pct>=50?'var(--yl)':'var(--rd)';
+    const isSubmitted = !!rpt.submitted_at;
 
     // ── Score Header ──
     html += `<div class="section" style="text-align:center;border:2px solid ${scoreColor}">
-      <div style="font-size:56px;font-weight:800;color:${scoreColor}">${todayScore}%</div>
-      <div style="font-size:14px;font-weight:700;color:var(--gd);margin:4px 0">آج کی کارکردگی</div>
-      <div style="font-size:11px;color:#8a9ab5">${doneCount} / ${dailyTasks.length} کام مکمل</div>
+      <div style="font-size:56px;font-weight:800;color:${scoreColor}">${pct}%</div>
+      <div style="font-size:14px;font-weight:700;color:var(--gd);margin:4px 0">آج کی جوابدہی</div>
+      <div style="font-size:11px;color:#8a9ab5">${filled} / ${total} خانے مکمل</div>
+      ${isSubmitted ? `<div style="font-size:10px;color:var(--gr);margin-top:4px">✅ جمع شدہ: ${new Date(rpt.submitted_at).toLocaleTimeString('ur-PK',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})}</div>` : ''}
       <div style="width:100%;height:8px;background:var(--dk);border-radius:4px;margin-top:10px;overflow:hidden">
-        <div style="width:${todayScore}%;height:100%;background:${scoreColor};border-radius:4px;transition:.5s"></div>
+        <div style="width:${pct}%;height:100%;background:${scoreColor};border-radius:4px;transition:.5s"></div>
       </div>
     </div>`;
 
-    // ── Task List ──
-    html += '<div class="section"><h2>📋 آج کے فرائض</h2>';
-    dailyTasks.forEach(t => {
-      const saved = taskStatus[t.id];
-      const isDone = (t.auto && t.done) || (t.autoCheck) || (saved && saved.completed);
-      const icon = isDone ? '✅' : '⬜';
-      const bg = isDone ? '#34a85315' : 'var(--dk)';
-      const border = isDone ? '1px solid #34a85344' : '1px solid #1f3d5e';
+    // ═══ Section A: Auto-Verified Status (read-only) ═══
+    html += '<div class="section"><h2>🤖 خودکار حالت — صرف معلومات</h2>';
+    html += `<div class="period-card" style="border-right:4px solid ${allApproved?'var(--gr)':'var(--rd)'}">
+      <div style="flex:1"><div class="teacher">اساتذہ حاضری</div>
+        <div class="subject">${tAttTotal>0?tAttApproved+'/'+tAttTotal+' منظور':'⏳ ابھی ڈیٹا نہیں'}</div></div>
+      <div style="font-size:18px">${allApproved?'✅':'⏳'}</div>
+    </div>`;
+    html += `<div class="period-card" style="border-right:4px solid ${allReportsIn?'var(--gr)':'var(--rd)'}">
+      <div style="flex:1"><div class="teacher">اساتذہ رپورٹس</div>
+        <div class="subject">${allReportsIn?teachersWithReports.length+' اساتذہ نے رپورٹ دی':'⚠️ نہیں دی: '+missingReports.map(tid=>{const t=teachers.find(x=>x.id===tid);return t?t.name:tid;}).join('، ')}</div></div>
+      <div style="font-size:18px">${allReportsIn?'✅':'❌'}</div>
+    </div>`;
+    html += '</div>';
 
-      const canClick = !t.auto && !t.autoCheck;
+    // ═══ Section B: Verifiable Fields ═══
+    html += '<div class="section"><h2>📊 قابل تصدیق — نظام جانچے گا</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">آپ جو عدد لکھیں گے، نظام حقیقی ڈیٹا سے ملائے گا</div>';
 
-      html += `<div class="task-item ${isDone?'task-done':''}">
-        <div class="task-icon" style="${canClick?'cursor:pointer':''}"
-          ${canClick ? `onclick="markTask('${t.id}','${t.name.replace(/'/g,'')}',${isDone})"` : ''}>${icon}</div>
-        <div style="flex:1">
-          <div style="font-weight:700;font-size:12px;color:${isDone?'var(--gr)':'var(--wh)'};${isDone?'text-decoration:line-through':''}">${t.name}</div>
-          <div style="font-size:10px;color:${t.severity==='rd'?'var(--rd)':t.severity==='yl'?'var(--yl)':'#8a9ab5'};margin-top:3px">${t.detail}</div>
-          ${saved && saved.completed_at ? `<div style="font-size:9px;color:#556;margin-top:2px">مکمل: ${new Date(saved.completed_at).toLocaleTimeString('ur-PK',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})}</div>` : ''}
-          ${t.auto ? '<div style="font-size:8px;color:#556;margin-top:2px">🤖 خودکار تصدیق</div>' : ''}
+    // Absent students count
+    const enteredAbsent = rpt.absent_students_entered;
+    const absMatch = enteredAbsent != null && enteredAbsent === actualAbsent;
+    const absMismatch = enteredAbsent != null && enteredAbsent !== actualAbsent;
+    html += `<div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">آج کتنے طلبا غائب ہیں؟</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="acc_absent" value="${enteredAbsent!=null?enteredAbsent:''}" placeholder="عدد لکھیں" style="${iS('flex:1;')}" min="0">
+        <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${absMatch?'#34a85322':absMismatch?'#ea433522':'var(--dk)'};color:${absMatch?'var(--gr)':absMismatch?'var(--rd)':'#8a9ab5'}">
+          ${enteredAbsent!=null?(absMatch?'✅ صحیح':'⚠️ اصل: '+actualAbsent):'📊 اصل: '+actualAbsent}
         </div>
+      </div>
+    </div>`;
+
+    // Behind subjects count
+    const enteredBehind = rpt.behind_subjects_entered;
+    const behMatch = enteredBehind != null && enteredBehind === actualBehind;
+    const behMismatch = enteredBehind != null && enteredBehind !== actualBehind;
+    html += `<div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">کتنے مضامین ہدف سے پیچھے ہیں؟</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="acc_behind" value="${enteredBehind!=null?enteredBehind:''}" placeholder="عدد لکھیں" style="${iS('flex:1;')}" min="0">
+        <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${behMatch?'#34a85322':behMismatch?'#ea433522':'var(--dk)'};color:${behMatch?'var(--gr)':behMismatch?'var(--rd)':'#8a9ab5'}">
+          ${enteredBehind!=null?(behMatch?'✅ صحیح':'⚠️ اصل: '+actualBehind):'📊 اصل: '+actualBehind}
+        </div>
+      </div>
+    </div>`;
+
+    // Coverage details
+    const covText = rpt.coverage_details||'';
+    html += `<div style="margin-bottom:8px">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">غائب اساتذہ — بندوبست کی تفصیل</label>
+      ${absentTeachers.length === 0 && tAttToday.length > 0
+        ? '<div style="font-size:11px;color:var(--gr);padding:10px;background:#34a85315;border-radius:8px">✅ آج سب حاضر — بندوبست کی ضرورت نہیں</div>'
+        : `<textarea id="acc_coverage" rows="3" placeholder="${absentTeachers.length>0?absentTeachers.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id);return t?t.name:r.teacher_id;}).join('، ')+' غائب — کس نے ان کی جگہ پڑھایا؟':'کوئی غائب نہیں یا ابھی ڈیٹا نہیں آیا'}" style="${iS('resize:vertical;')}">${typeof covText==='string'?covText:JSON.stringify(covText)}</textarea>`
+      }
+    </div>`;
+    html += '</div>';
+
+    // ═══ Section C: Descriptive Reports ═══
+    html += '<div class="section"><h2>📝 تفصیلی رپورٹ — لازمی</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">کم از کم 10 حروف — خالی چھوڑنے سے سکور کم ہوگا</div>';
+
+    const descFields = [
+      {id:'acc_class_visited', label:'📍 کون سی کلاس دیکھی؟', field:'class_visited', ph:'مثلاً: الرابعة، الثالثة', rows:1, min:3},
+      {id:'acc_class_obs', label:'👁️ کلاس معائنہ — کیا دیکھا؟', field:'class_observations', ph:'اساتذہ کی تدریس، طلبا کی توجہ، نظم و ضبط...', rows:3, min:10},
+      {id:'acc_absent_actions', label:'📞 غائب طلبا — کیا اقدام کیا؟', field:'absent_actions', ph:'کن والدین کو فون کیا، کیا جواب ملا...', rows:3, min:10},
+      {id:'acc_syllabus', label:'📚 نصاب پیشرفت نوٹس', field:'syllabus_notes', ph:'کون سے مضامین پیچھے ہیں، کیا منصوبہ ہے...', rows:3, min:10},
+      {id:'acc_hifz', label:'📖 حفظ اپڈیٹ — قاری صاحبان سے', field:'hifz_notes', ph:'کس طالب علم نے کتنا حفظ کیا، کوئی مسئلہ...', rows:3, min:10},
+      {id:'acc_remarks', label:'💬 عمومی ملاحظات', field:'general_remarks', ph:'آج کا کوئی خاص واقعہ، تجویز، شکایت...', rows:2, min:5},
+    ];
+    descFields.forEach(f => {
+      const val = rpt[f.field] || '';
+      const ok = val.length >= f.min;
+      html += `<div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <label style="font-size:12px;font-weight:700">${f.label}</label>
+          <span style="font-size:9px;color:${ok?'var(--gr)':'#8a9ab5'}">${val.length}/${f.min} ${ok?'✅':''}</span>
+        </div>
+        <textarea id="${f.id}" rows="${f.rows}" placeholder="${f.ph}" style="${iS('resize:vertical;')}">${val}</textarea>
       </div>`;
     });
     html += '</div>';
 
-    // ── Historical Scores ──
-    if (adminScores.length > 1) {
-      html += '<div class="section"><h2>📈 پچھلے دنوں کی کارکردگی</h2>';
+    // ═══ Section D: Checklist ═══
+    html += '<div class="section"><h2>✅ چیک لسٹ</h2>';
+    const checks = [
+      {id:'acc_chk_parents', label:'📞 غائب طلبا کے والدین کو فون کیا', field:'called_parents'},
+      {id:'acc_chk_hifz', label:'📖 حفظ پیشرفت خود دیکھی', field:'checked_hifz'},
+    ];
+    if (isThursday) checks.push({id:'acc_chk_thu', label:'✍️ جمعرات امتحانی نتائج دیکھے', field:'reviewed_thursday'});
+    checks.forEach(c => {
+      const ck = rpt[c.field] ? 'checked' : '';
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px;min-height:48px;cursor:pointer" onclick="document.getElementById('${c.id}').click()">
+        <input type="checkbox" id="${c.id}" ${ck} style="width:22px;height:22px;accent-color:var(--gr)" onclick="event.stopPropagation()">
+        <label style="font-size:12px;font-weight:700;cursor:pointer" for="${c.id}">${c.label}</label>
+      </div>`;
+    });
+    html += '</div>';
+
+    // ═══ Submit Button ═══
+    html += `<div style="padding:0 12px;margin-bottom:20px">
+      <button onclick="submitAccountability()" class="btn btn-gr" style="width:100%;padding:16px;font-size:16px;font-weight:800;border-radius:14px;border:none;cursor:pointer">
+        📤 ${isSubmitted?'اپڈیٹ کریں':'رپورٹ جمع کرائیں'}
+      </button>
+    </div>`;
+
+    // ═══ Historical Scores ═══
+    if (adminScores.length > 0) {
+      html += '<div class="section"><h2>📈 پچھلے دنوں کی جوابدہی</h2>';
       html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
-      html += '<th>تاریخ</th><th>کل کام</th><th>مکمل</th><th>سکور</th>';
+      html += '<th>تاریخ</th><th>مکمل</th><th>کل</th><th>سکور</th><th>وقت</th>';
       html += '</tr></thead><tbody>';
       adminScores.forEach(s => {
-        const sc = parseInt(s.score_pct);
-        const c = sc >= 80 ? 'var(--gr)' : sc >= 50 ? 'var(--yl)' : 'var(--rd)';
+        const sc = parseInt(s.score_pct||0);
+        const c = sc>=80?'var(--gr)':sc>=50?'var(--yl)':'var(--rd)';
         html += `<tr>
           <td>${s.date}</td>
-          <td>${s.total_tasks}</td>
           <td>${s.completed_tasks}</td>
+          <td>${s.total_tasks}</td>
           <td style="font-weight:800;color:${c}">${sc}%</td>
+          <td style="font-size:9px">${s.submitted_at?new Date(s.submitted_at).toLocaleTimeString('ur-PK',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}):'-'}</td>
         </tr>`;
       });
-      html += '</tbody></table></div>';
-      html += '</div>';
+      html += '</tbody></table></div></div>';
     }
 
-    // ── Unsubmitted Teachers Alert ──
-    if (missingReports.length > 0) {
-      html += '<div class="section" style="border:2px solid var(--rd)"><h2>🚨 رپورٹ جمع نہیں کرائی</h2>';
-      missingReports.forEach(tid => {
-        const t = teachers.find(x=>x.id===tid);
-        const tAsg = assignments.filter(a=>a.teacher_id===tid).map(a=>{
-          const s=subjects.find(x=>x.id===a.subject_id); return s?s.name:a.subject_id;
-        });
-        html += `<div class="period-card" style="border-right:4px solid var(--rd)">
-          <div>
-            <div class="teacher">${t?t.name:tid}</div>
-            <div class="subject">${tAsg.join(' • ')}</div>
-          </div>
-        </div>`;
-      });
-      html += '</div>';
-    }
     } catch(err) {
       console.error('Admin tab error:', err);
       html += `<div class="section" style="border:2px solid var(--rd)"><h2>❌ خرابی</h2>
@@ -774,6 +752,43 @@ async function exportCSV(table, colStr) {
     a.href=url; a.download=table+'_'+from+'_to_'+to+'.csv';
     a.click(); URL.revokeObjectURL(url);
     toast('✅ ڈاؤنلوڈ — '+data.length+' سطریں');
+  } catch(e) { toast('❌ '+e.message); }
+}
+
+// ═══════════════════════════════════════════
+// SUBMIT ACCOUNTABILITY REPORT
+// ═══════════════════════════════════════════
+async function submitAccountability() {
+  try {
+    const g = id => document.getElementById(id);
+    const v = id => (g(id)||{}).value||'';
+    const ck = id => (g(id)||{}).checked||false;
+    const ni = id => { const x=v(id); return x===''?null:parseInt(x); };
+
+    const payload = {
+      date: TODAY,
+      absent_students_entered: ni('acc_absent'),
+      behind_subjects_entered: ni('acc_behind'),
+      coverage_details: v('acc_coverage')||null,
+      class_visited: v('acc_class_visited')||null,
+      class_observations: v('acc_class_obs')||null,
+      absent_actions: v('acc_absent_actions')||null,
+      syllabus_notes: v('acc_syllabus')||null,
+      hifz_notes: v('acc_hifz')||null,
+      general_remarks: v('acc_remarks')||null,
+      called_parents: ck('acc_chk_parents'),
+      checked_hifz: ck('acc_chk_hifz'),
+      reviewed_thursday: ck('acc_chk_thu'),
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const r = await fetch(SB_URL+'/rest/v1/admin_accountability?on_conflict=date', {
+      method:'POST', headers:{...headers,'Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify(payload)
+    });
+    if (r.ok) { toast('✅ رپورٹ جمع — جزاک اللہ'); await loadAll(); render(); }
+    else { const e = await r.text(); toast('❌ ناکام: '+e); }
   } catch(e) { toast('❌ '+e.message); }
 }
 
