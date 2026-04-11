@@ -1408,6 +1408,17 @@ function App() {
   const [sAttend, setSAttendRaw] = useState({});
   const [tAttend, setTAttendRaw] = useState({});
   const [attExpand, setAttExpand] = useState({});
+  // Self-attendance states
+  const [myAtt, setMyAtt] = useState('');
+  const [myLeaves, setMyLeaves] = useState(null);
+  const [coverageAlert, setCoverageAlert] = useState(null);
+  // Reports states
+  const [rptType, setRptType] = useState('student_attendance');
+  const [rptData, setRptData] = useState(null);
+  const [rptLoading, setRptLoading] = useState(false);
+  const [rptDateFrom, setRptDateFrom] = useState('');
+  const [rptDateTo, setRptDateTo] = useState('');
+  const [rptFilter, setRptFilter] = useState('');
   const saveTimer = useRef(null);
   // Early-bind CL so hooks before the full destructuring never hit TDZ
   const CL = (cfg && cfg.classes) || [];
@@ -1521,6 +1532,37 @@ function App() {
       .then(d => { if (d && d.success) localStorage.setItem('iri-students-synced', today); })
       .catch(() => {});
   }, [loading, cfg && cfg.supabase_url, students.length]);
+
+  // Load self-attendance + leave count + coverage alerts
+  useEffect(() => {
+    if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key || !user) return;
+    const todayDt = new Date().toISOString().split('T')[0];
+    const saved = localStorage.getItem('iri-myatt-' + todayDt);
+    if (saved) setMyAtt(saved);
+    // Fetch leave summary
+    fetch(cfg.supabase_url + '/rest/v1/teacher_leave_summary?teacher_id=eq.' + user.id, {
+      headers: { 'apikey': cfg.supabase_key }
+    }).then(r=>r.json()).then(d => {
+      if (d && d.length) setMyLeaves(d[0]);
+    }).catch(()=>{});
+    // Fetch coverage alerts (who is absent/leave today?)
+    fetch(cfg.supabase_url + '/rest/v1/teacher_attendance?date=eq.' + todayDt + '&status=in.(absent,leave)', {
+      headers: { 'apikey': cfg.supabase_key }
+    }).then(r=>r.json()).then(d => {
+      if (d && d.length) {
+        const alerts = d.filter(r => r.teacher_id !== user.id).map(r => {
+          const t = teachers.find(x=>x.id===r.teacher_id);
+          const tName = t ? t.n : r.teacher_id;
+          const pers = assignments.filter(a=>a.t===r.teacher_id).map(a => {
+            const sub = subjects.find(s=>s.id===a.sub);
+            return sub ? ('P'+a.p+' '+sub.n) : ('P'+a.p);
+          });
+          return { name: tName, status: r.status, periods: pers };
+        });
+        if (alerts.length) setCoverageAlert(alerts);
+      }
+    }).catch(()=>{});
+  }, [loading, user && user.id]);
 
   // Watch daily attendance for 3x absent and fire notification
   useEffect(() => {
@@ -2779,42 +2821,7 @@ function App() {
         React.createElement(Btn, {full:true, small:true, color:'#1a3a5c', style:{marginTop:10},
           onClick:()=>syncAttendance('hifz')}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
     ), !isAd && !isQari && (() => {
-      // ── Teacher Self-Attendance ──
       const todayDt = new Date().toISOString().split('T')[0];
-      const myAttKey = 'iri-myatt-' + todayDt;
-      const [myAtt, setMyAtt] = React.useState(localStorage.getItem(myAttKey) || '');
-      const [myLeaves, setMyLeaves] = React.useState(null);
-      const [coverageAlert, setCoverageAlert] = React.useState(null);
-
-      // Fetch leave count + coverage alert on mount
-      React.useEffect(() => {
-        if (!cfg.supabase_url || !cfg.supabase_key) return;
-        // My leave count
-        fetch(cfg.supabase_url + '/rest/v1/teacher_leave_summary?teacher_id=eq.' + user.id, {
-          headers: { 'apikey': cfg.supabase_key }
-        }).then(r=>r.json()).then(d => {
-          if (d && d.length) setMyLeaves(d[0]);
-        }).catch(()=>{});
-        // Coverage: who is absent/leave today?
-        fetch(cfg.supabase_url + '/rest/v1/teacher_attendance?date=eq.' + todayDt + '&status=in.(absent,leave)', {
-          headers: { 'apikey': cfg.supabase_key }
-        }).then(r=>r.json()).then(d => {
-          if (d && d.length) {
-            const alerts = d.filter(r => r.teacher_id !== user.id).map(r => {
-              const t = teachers.find(x=>x.id===r.teacher_id);
-              const tName = t ? t.n : r.teacher_id;
-              const periods = assignments.filter(a=>a.t===r.teacher_id).map(a => {
-                const sub = subjects.find(s=>s.id===a.sub);
-                const per = periods.find(p=>p.id===a.p);
-                return sub ? ('P'+a.p+' '+sub.n) : ('P'+a.p);
-              });
-              return { name: tName, status: r.status, periods: periods };
-            });
-            if (alerts.length) setCoverageAlert(alerts);
-          }
-        }).catch(()=>{});
-      }, []);
-
       const stOpts = [
         {id:'present',l:'حاضر',ic:'✅',c:'#34a853'},
         {id:'late',l:'تاخیر',ic:'⏰',c:'#fbbc04'},
@@ -2823,10 +2830,9 @@ function App() {
       ];
       const markSelf = async (st) => {
         setMyAtt(st);
-        localStorage.setItem(myAttKey, st);
+        localStorage.setItem('iri-myatt-' + todayDt, st);
         const pl = {date:todayDt, attendance:{[user.id]:st}, teacher_id:user.id};
         const r = await syncPost('teacher_attendance', pl);
-        // If absent/leave — create notification for others
         if ((st === 'absent' || st === 'leave') && cfg.supabase_url) {
           const myPeriods = assignments.filter(a=>a.t===user.id).map(a => {
             const sub = subjects.find(s=>s.id===a.sub);
@@ -2842,7 +2848,6 @@ function App() {
       };
 
       return React.createElement('div', null,
-        // Coverage Alert Banner
         coverageAlert && React.createElement('div', {
           style:{background:'#fff3e0',border:'2px solid #ff9800',borderRadius:14,padding:'12px 14px',marginBottom:10}
         },
@@ -2854,8 +2859,6 @@ function App() {
               '🔄 پیریڈ: ' + a.periods.join(' • '))
           ))
         ),
-
-        // Self Attendance Card
         React.createElement('div', {
           style:{background:'#fff',borderRadius:14,padding:'14px 16px',marginBottom:10,
             border:myAtt?'2px solid '+(stOpts.find(s=>s.id===myAtt)||{c:'#ccc'}).c:'2px solid #e0e0e0'}
@@ -2867,7 +2870,6 @@ function App() {
               color:(stOpts.find(s=>s.id===myAtt)||{c:'#ccc'}).c}},
               (stOpts.find(s=>s.id===myAtt)||{}).l + (myAtt!=='present'?' ⏳ زیر التوا':''))
           ),
-          // Status buttons
           React.createElement('div', {style:{display:'flex',gap:6}},
             stOpts.map(st => React.createElement('button', {key:st.id,
               onClick: () => markSelf(st.id),
@@ -2876,7 +2878,6 @@ function App() {
                 fontFamily:'inherit',fontSize:11,fontWeight:700,color:myAtt===st.id?st.c:'#666'}
             }, st.ic + '\n' + st.l))
           ),
-          // Leave counter
           myLeaves && React.createElement('div', {style:{display:'flex',gap:8,marginTop:10,justifyContent:'center'}},
             React.createElement('span', {style:{fontSize:9,color:'#34a853',fontWeight:700}}, '✅ حاضر: ' + (myLeaves.present_days||0)),
             React.createElement('span', {style:{fontSize:9,color:'#fbbc04',fontWeight:700}}, '⏰ تاخیر: ' + (myLeaves.late_days||0)),
@@ -5015,12 +5016,6 @@ tab === 'thu' && isEx && React.createElement('div', null,
       'موجودہ: ',(adminCreds&&adminCreds.username)||'admin')
   )
 ), admSub === 'reports' && (() => {
-  const [rptType, setRptType] = React.useState('student_attendance');
-  const [rptData, setRptData] = React.useState(null);
-  const [rptLoading, setRptLoading] = React.useState(false);
-  const [rptDateFrom, setRptDateFrom] = React.useState('');
-  const [rptDateTo, setRptDateTo] = React.useState('');
-  const [rptFilter, setRptFilter] = React.useState('');
 
   const tables = [
     {id:'student_attendance', l:'📋 مضمون وار حاضری', cols:['date','teacher_name','subject_name','class','student_id','status']},
