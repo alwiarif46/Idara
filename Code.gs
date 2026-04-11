@@ -1,94 +1,76 @@
 // ═══════════════════════════════════════════════════════════
-// IRI Apps Script Backend v6 — Auto-Migration
+// IRI Apps Script Backend v6.1 — Auto-Migration + Filters
 // Deploy: Web App → Execute as Me → Anyone has access
 // ═══════════════════════════════════════════════════════════
 // RUN migrateAll() ONCE from Script Editor ▶ to:
-//   - Fix misaligned data in DB_Daily_Reports (229 rows)
-//   - Fix headers & data in all DB/ADMIN tabs
+//   - Fix misaligned data in DB_Daily_Reports (dedup 229→~9)
+//   - Fix headers & remap data in all DB/ADMIN tabs
+//   - Add Subject_ID/Name to DB_Student_Attendance
 //   - Create missing tabs, format all headers
+//   - Add auto-filters + search to daily-used sheets
 //   - Reorder tabs logically
-//   - Dedup DB_Daily_Reports (remove 220+ duplicates)
 // ═══════════════════════════════════════════════════════════
 
 var ADMIN_ID = '1TNSOKEWrO7lzRMeVenMG1zitECQVpwO5_QhEKlnOcCc';
 
 // ═══════════════════════════════════════════════════════════
 // TAB DEFINITIONS — order = tab order (left to right)
-// oldColMap: maps old PHYSICAL data column → new column index
-// (for tabs where data landed in wrong columns)
+// filter:true → auto-filter added on header row
 // ═══════════════════════════════════════════════════════════
 
 var TAB_DEFS = [
 
-  // ── 1. Attendance tabs (most used daily) ──
+  // ── 1. Attendance (most used) ──
 
-  { name:'DB_Daily_Attendance', color:'#4285f4',
+  { name:'DB_Daily_Attendance', color:'#4285f4', filter:true,
     headers:['تاریخ / Date','نشست / Slot','Marked_By_ID','نشان لگانے والا / Marked_By','Student_ID','حاضری / Status','وقت IST / Time_IST'],
-    // Old: Date(0),Slot(1),Student_ID(2),Class_ID(3),Status(4),Marked_By(5),Submitted_At(6)
-    // New: Date(0),Slot(1),Marked_By_ID(2),Marked_By(3),Student_ID(4),Status(5),Time_IST(6)
-    oldColMap:{0:0, 1:1, 2:4, 4:5, 5:2, 6:6}
-  },
+    oldColMap:{0:0, 1:1, 2:4, 4:5, 5:2, 6:6} },
 
-  { name:'DB_Student_Attendance', color:'#4285f4',
-    headers:['تاریخ / Date','Teacher_ID','استاذ / Teacher_Name','درجہ / Class_ID','Student_ID','حاضری / Status','وقت IST / Time_IST'],
+  { name:'DB_Student_Attendance', color:'#4285f4', filter:true,
+    headers:['تاریخ / Date','Teacher_ID','استاذ / Teacher_Name','Subject_ID','مضمون / Subject_Name','درجہ / Class_ID','Student_ID','حاضری / Status','وقت IST / Time_IST'],
     // Old: Date(0),Teacher_ID(1),Class_ID(2),Student_ID(3),Status(4),Submitted_At(5)
-    oldColMap:{0:0, 1:1, 2:3, 3:4, 4:5, 5:6}
-  },
+    // New: Date(0),Teacher_ID(1),Teacher_Name(2),Subject_ID(3),Subject_Name(4),Class_ID(5),Student_ID(6),Status(7),Time_IST(8)
+    oldColMap:{0:0, 1:1, 2:5, 3:6, 4:7, 5:8} },
 
-  { name:'DB_Teacher_Attendance', color:'#4285f4',
+  { name:'DB_Teacher_Attendance', color:'#4285f4', filter:true,
     headers:['تاریخ / Date','T1','T2','T3','T4','T5','T6','T7','T8','T9','وقت IST / Time_IST'],
-    // Old: same structure, just last col rename
-    oldColMap:{0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10}
-  },
+    oldColMap:{0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10} },
 
   // ── 2. Daily reports ──
 
-  { name:'DB_Daily_Reports', color:'#4285f4',
+  { name:'DB_Daily_Reports', color:'#4285f4', filter:true,
     headers:['تاریخ / Date','Teacher_ID','استاذ / Teacher_Name','Subject_ID','مضمون / Subject_Name','درجہ / Class','Period_#','ہدف / Target_Page','اصل / Actual_Page','مکمل / Complete','وجہ / Reason','وقت IST / Time_IST'],
-    // Old data was MISALIGNED — app sent 9 fields into 16-col sheet:
-    //   physical col 0=Date, 1=Teacher_ID, 2=Subject_ID(wrong col), 3=Class(wrong col),
-    //   4=Target(wrong col), 5=Actual(wrong col), 6=Complete(wrong col), 7=Reason, 8=Timestamp
     oldColMap:{0:0, 1:1, 2:3, 3:5, 4:7, 5:8, 6:9, 7:10, 8:11},
-    dedup:true  // flag to run dedup during migration
-  },
+    dedup:true },
 
-  { name:'DB_Thursday_Tests', color:'#4285f4',
+  { name:'DB_Thursday_Tests', color:'#4285f4', filter:true,
     headers:['تاریخ / Date','ہفتہ / Week','Examiner_ID','ممتحن / Examiner_Name','Subject_ID','مضمون / Subject_Name','درجہ / Class','Period_#','Subject_Teacher_ID','مدرس مضمون / Subject_Teacher','حصہ / Portion','اعلیٰ / Excellent','اچھا / Good','کمزور / Weak','ناکام / Fail','غائب / Absent','اوسط / Average','ملاحظات / Notes','تجاویز / Suggestions','وقت IST / Time_IST'],
-    // Old: 136 cols (per-student layout). Headers only, no data → just replace
-    oldColMap:{}
-  },
+    oldColMap:{} },
 
-  { name:'DB_Hifz_Progress', color:'#4285f4',
+  { name:'DB_Hifz_Progress', color:'#4285f4', filter:true,
     headers:['تاریخ / Date','Student_ID','طالب علم / Student_Name','پارے / Paras','سورة / Soorah','آیت / Aayat','دور پارہ / Daur_Para','Qari_ID','ملاحظات / Notes','وقت IST / Time_IST'],
-    // Old: Date(0),Student_ID(1),Student_Name(2),Paras(3),Soorah(4),Aayat(5),Daur_Para(6),Notes(7),Submitted_At(8)
-    // New: adds Qari_ID at col 7, shifts Notes→8, Time→9
-    oldColMap:{0:0, 1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:8, 8:9}
-  },
+    oldColMap:{0:0, 1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:8, 8:9} },
 
   // ── 3. Dashboard ──
 
-  { name:'DASHBOARD', color:'#f4b400',
-    headers:null  // don't touch — has 14 cols with subject data
-  },
+  { name:'DASHBOARD', color:'#f4b400', filter:true, headers:null },
 
-  // ── 4. Admin config (least touched) ──
+  // ── 4. Admin config ──
 
-  { name:'ADMIN_Students', color:'#ea4335',
+  { name:'ADMIN_Students', color:'#ea4335', filter:true,
     headers:['Student_ID','نام / Name','والد / Parent','فون / Phone','رہائش / Residence','درجہ / Class','قاری / Qari','حیثیت / Status','پارے / Hifz_Paras','سورة / Hifz_Soorah','آیت / Hifz_Aayat','دور / Hifz_Daur','وقت IST / Updated_IST'],
-    // Old: ID(0),Name(1),Parent(2),Phone(3),Residence(4),Class(5),Qari(6),Status(7),Enrolled=Paras(8),None(9),None(10),col11=Daur(11),col12=Timestamp(12)
-    oldColMap:{0:0, 1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:10, 11:11, 12:12}
-  },
+    oldColMap:{0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11,12:12} },
 
   { name:'ADMIN_Teachers', color:'#ea4335', headers:null },
-  { name:'ADMIN_Subjects', color:'#ea4335', headers:null },
+  { name:'ADMIN_Subjects', color:'#ea4335', headers:null, filter:true },
   { name:'ADMIN_Periods', color:'#ea4335', headers:null },
-  { name:'ADMIN_Assignments', color:'#ea4335', headers:null },
+  { name:'ADMIN_Assignments', color:'#ea4335', headers:null, filter:true },
   { name:'ADMIN_Thursday_Schedule', color:'#ea4335', headers:null },
   { name:'ADMIN_Calendar', color:'#ea4335', headers:null }
 ];
 
 // ═══════════════════════════════════════════════════════════
-// MIGRATION — run once
+// MIGRATION
 // ═══════════════════════════════════════════════════════════
 
 function migrateAll() {
@@ -98,22 +80,26 @@ function migrateAll() {
   for (var t = 0; t < TAB_DEFS.length; t++) {
     var def = TAB_DEFS[t];
 
-    // Tabs we don't manage — just set color
+    // Tabs we don't manage headers for
     if (!def.headers) {
       var sh = ss.getSheetByName(def.name);
-      if (sh) { sh.setTabColor(def.color); log.push(def.name + ': color set'); }
-      else { log.push(def.name + ': not found (skip)'); }
+      if (sh) {
+        sh.setTabColor(def.color);
+        if (def.filter) _ensureFilter(sh);
+        log.push(def.name + ': color' + (def.filter ? ' + filter' : ''));
+      } else { log.push(def.name + ': not found (skip)'); }
       continue;
     }
 
     var sheet = ss.getSheetByName(def.name);
 
-    // Tab doesn't exist — create fresh
+    // Create new
     if (!sheet) {
       sheet = ss.insertSheet(def.name);
       sheet.setTabColor(def.color);
       sheet.getRange(1,1,1,def.headers.length).setValues([def.headers]);
       _fmtHdr(sheet, def.headers.length);
+      if (def.filter) _ensureFilter(sheet);
       log.push(def.name + ': CREATED');
       continue;
     }
@@ -121,103 +107,92 @@ function migrateAll() {
     var lastCol = sheet.getLastColumn();
     var lastRow = sheet.getLastRow();
 
-    // Empty tab — just write headers
+    // Empty
     if (lastRow === 0 || lastCol === 0) {
       sheet.getRange(1,1,1,def.headers.length).setValues([def.headers]);
       sheet.setTabColor(def.color);
       _fmtHdr(sheet, def.headers.length);
-      log.push(def.name + ': headers written (was empty)');
+      if (def.filter) _ensureFilter(sheet);
+      log.push(def.name + ': headers written (empty)');
       continue;
     }
 
-    // Check if headers already match
+    // Check match
     var curHdr = sheet.getRange(1,1,1,Math.max(lastCol,1)).getValues()[0];
     var match = (curHdr.length >= def.headers.length) &&
-      def.headers.every(function(h,i){ return curHdr[i] === h; });
+      def.headers.every(function(h,i){ return curHdr[i]===h; });
 
     if (match && !def.dedup) {
       sheet.setTabColor(def.color);
       _fmtHdr(sheet, def.headers.length);
+      if (def.filter) _ensureFilter(sheet);
       log.push(def.name + ': OK, reformatted');
       continue;
     }
 
-    // ── MIGRATE: read data, remap columns, rewrite ──
+    // ── MIGRATE ──
     var allData = lastRow > 1 ? sheet.getRange(2,1,lastRow-1,lastCol).getValues() : [];
     log.push(def.name + ': MIGRATING ' + allData.length + ' rows (' + lastCol + '→' + def.headers.length + ' cols)');
 
-    // Build column mapping
     var colMap = def.oldColMap || {};
-
-    // If no explicit map, try header text match
     if (Object.keys(colMap).length === 0) {
+      // Try header text match
       for (var oi=0; oi<curHdr.length; oi++) {
         for (var ni=0; ni<def.headers.length; ni++) {
           if (curHdr[oi] && def.headers[ni] && curHdr[oi]===def.headers[ni]) { colMap[oi]=ni; break; }
         }
       }
     }
-    // Fallback: positional
     if (Object.keys(colMap).length === 0) {
       for (var pi=0; pi<Math.min(curHdr.length,def.headers.length); pi++) colMap[pi]=pi;
     }
 
-    // Remap each row
+    // Remap
     var newData = allData.map(function(oldRow) {
       var nr = new Array(def.headers.length);
       for (var c=0; c<nr.length; c++) nr[c]='';
       var mks = Object.keys(colMap);
       for (var m=0; m<mks.length; m++) {
         var from = parseInt(mks[m]);
-        if (from < oldRow.length && oldRow[from] !== null && oldRow[from] !== undefined) {
+        if (from < oldRow.length && oldRow[from] !== null && oldRow[from] !== undefined)
           nr[colMap[from]] = oldRow[from];
-        }
       }
       return nr;
     });
 
-    // ── DEDUP if flagged (DB_Daily_Reports) ──
+    // Dedup
     if (def.dedup && newData.length > 0) {
       var before = newData.length;
       var seen = {};
       var deduped = [];
-      // Keep LAST occurrence of each date+teacher+subject combo
       for (var di = newData.length-1; di >= 0; di--) {
-        var dk = String(newData[di][0]) + '|' + String(newData[di][1]) + '|' + String(newData[di][3]);
-        if (!seen[dk]) {
-          seen[dk] = true;
-          deduped.unshift(newData[di]);
-        }
+        var dk = String(newData[di][0])+'|'+String(newData[di][1])+'|'+String(newData[di][3]);
+        if (!seen[dk]) { seen[dk]=true; deduped.unshift(newData[di]); }
       }
       newData = deduped;
-      log.push('  DEDUP: ' + before + ' → ' + newData.length + ' rows (removed ' + (before-newData.length) + ' duplicates)');
+      log.push('  DEDUP: ' + before + ' → ' + newData.length + ' (removed ' + (before-newData.length) + ')');
     }
 
-    // Clear and rewrite
+    // Rewrite
     sheet.clear();
     sheet.getRange(1,1,1,def.headers.length).setValues([def.headers]);
-    if (newData.length > 0) {
+    if (newData.length > 0)
       sheet.getRange(2,1,newData.length,def.headers.length).setValues(newData);
-    }
     sheet.setTabColor(def.color);
     _fmtHdr(sheet, def.headers.length);
-
-    // Remove extra columns
-    if (sheet.getMaxColumns() > def.headers.length) {
+    if (sheet.getMaxColumns() > def.headers.length)
       sheet.deleteColumns(def.headers.length+1, sheet.getMaxColumns()-def.headers.length);
-    }
-
+    if (def.filter) _ensureFilter(sheet);
     log.push(def.name + ': done (' + newData.length + ' rows)');
   }
 
-  // ── Reorder tabs ──
+  // Reorder tabs
   for (var ti=0; ti<TAB_DEFS.length; ti++) {
     var ts = ss.getSheetByName(TAB_DEFS[ti].name);
     if (ts) { ss.setActiveSheet(ts); ss.moveActiveSheet(ti+1); }
   }
   log.push('Tabs reordered');
 
-  // Delete default Sheet1
   var s1 = ss.getSheetByName('Sheet1');
   if (s1 && ss.getSheets().length > 1) { ss.deleteSheet(s1); log.push('Deleted Sheet1'); }
 
@@ -241,6 +216,19 @@ function _fmtHdr(sheet, n) {
   for (var i=1; i<=Math.min(n,20); i++) sheet.autoResizeColumn(i);
 }
 
+// ── Add auto-filter on header row (dropdown arrows for search/filter) ──
+function _ensureFilter(sheet) {
+  // Remove existing filter first
+  var existingFilter = sheet.getFilter();
+  if (existingFilter) existingFilter.remove();
+
+  var lastCol = sheet.getLastColumn();
+  var lastRow = Math.max(sheet.getLastRow(), 2); // at least 2 rows for filter to work
+  if (lastCol > 0) {
+    sheet.getRange(1, 1, lastRow, lastCol).createFilter();
+  }
+}
+
 function _getTab(ss, name) {
   for (var i=0; i<TAB_DEFS.length; i++) {
     if (TAB_DEFS[i].name===name && TAB_DEFS[i].headers) {
@@ -250,9 +238,11 @@ function _getTab(ss, name) {
         sh.setTabColor(TAB_DEFS[i].color);
         sh.getRange(1,1,1,TAB_DEFS[i].headers.length).setValues([TAB_DEFS[i].headers]);
         _fmtHdr(sh, TAB_DEFS[i].headers.length);
+        _ensureFilter(sh);
       } else if (sh.getLastRow()===0) {
         sh.getRange(1,1,1,TAB_DEFS[i].headers.length).setValues([TAB_DEFS[i].headers]);
         _fmtHdr(sh, TAB_DEFS[i].headers.length);
+        _ensureFilter(sh);
       }
       return sh;
     }
@@ -276,6 +266,14 @@ function _upsert(sheet, newRows, keyIndices) {
     del.forEach(function(rn){sheet.deleteRow(rn)});
   }
   sheet.getRange(sheet.getLastRow()+1, 1, newRows.length, newRows[0].length).setValues(newRows);
+
+  // Refresh filter to include new rows
+  var filter = sheet.getFilter();
+  if (filter) {
+    filter.remove();
+    sheet.getRange(1,1,sheet.getLastRow(),sheet.getLastColumn()).createFilter();
+  }
+
   return newRows.length;
 }
 
@@ -295,7 +293,7 @@ function doPost(e) {
 function doGet(e) {
   try {
     var a=e.parameter.action||'';
-    if (a==='ping') return _json({success:true,timestamp:_ist(),version:'v6'});
+    if (a==='ping') return _json({success:true,timestamp:_ist(),version:'v6.1'});
     if (a==='config') return _json(_getConfig(e.parameter.teacher_id||''));
     if (e.parameter.data) return _process(JSON.parse(decodeURIComponent(e.parameter.data)));
     return _json({success:false,error:'NO_ACTION'});
@@ -308,7 +306,7 @@ function _process(payload) {
   var result;
   try {
     switch(payload.type) {
-      case 'ping':               result={success:true,timestamp:_ist(),version:'v6'}; break;
+      case 'ping':               result={success:true,timestamp:_ist(),version:'v6.1'}; break;
       case 'migrate':            result=migrateAll(); break;
       case 'daily_report':       result=_handleDailyReport(payload); break;
       case 'thursday_test':      result=_handleThursdayTest(payload); break;
@@ -362,11 +360,16 @@ function _handleHifzProgress(pl) {
   return {success:true};
 }
 
+// Subject-wise attendance: Date + Teacher + Subject + Student
 function _handleStudentAttendance(pl) {
   if (!pl.date||!pl.attendance) return {success:false,error:'MISSING_DATA'};
   var ss=SpreadsheetApp.openById(ADMIN_ID), sheet=_getTab(ss,'DB_Student_Attendance'), ist=_ist(), att=pl.attendance;
-  var rows=Object.keys(att).map(function(sid){return[pl.date,pl.teacher_id||'',pl.teacher_name||'',pl.class_id||'',sid,att[sid],ist];});
-  return {success:true, rows_written:_upsert(sheet,rows,[0,1,3,4])};
+  var rows=Object.keys(att).map(function(sid){return[
+    pl.date, pl.teacher_id||'', pl.teacher_name||'',
+    pl.subject_id||'', pl.subject_name||'', pl.class_id||'',
+    sid, att[sid], ist
+  ];});
+  return {success:true, rows_written:_upsert(sheet,rows,[0,1,3,6])};
 }
 
 function _handleDailyAttendance(pl) {

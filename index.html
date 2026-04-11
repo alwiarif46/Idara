@@ -1354,6 +1354,7 @@ function App() {
   const [alerts, setAlerts] = useState([]);
   const [admSub, setAdmSub] = useState(null);
   const [syncSt, setSyncSt] = useState(null);
+  const syncSentRef = React.useRef({});
   const [loginEmail, setLoginEmail] = useState('');
   const [loginStep, setLoginStep] = useState(1);
   const [otpCode, setOtpCode] = useState('');
@@ -1623,6 +1624,18 @@ function App() {
         success: false
       };
     }
+    // ── Debounce: same type+key within 3 seconds = skip ──
+    const dk = type + '_' + (payload.date || '') + '_' + (payload.teacher_id || payload.marked_by || payload.student_id || '') + '_' + (payload.class_id || payload.week || '');
+    const now = Date.now();
+    if (syncSentRef.current[dk] && now - syncSentRef.current[dk] < 3000) {
+      console.log('[SYNC] debounce skip:', dk);
+      return { success: true, note: 'DEBOUNCED' };
+    }
+    syncSentRef.current[dk] = now;
+    // Clean old keys every 50 entries
+    const keys = Object.keys(syncSentRef.current);
+    if (keys.length > 50) keys.filter(k => now - syncSentRef.current[k] > 10000).forEach(k => delete syncSentRef.current[k]);
+
     setSyncSt('sending');
     const body = {
       type,
@@ -1658,6 +1671,7 @@ function App() {
       } catch (e) {
         setSyncSt('error');
         setTimeout(() => setSyncSt(null), 3000);
+        delete syncSentRef.current[dk]; // Allow retry on failure
         return {
           success: false
         };
@@ -1678,7 +1692,9 @@ function App() {
     const aKey = classId + '_' + todayDt;
     const att = sAttend[aKey];
     if (!att || !Object.keys(att).length) { flash('⚠️ خالی'); return; }
-    const pl = { teacher_id: user ? user.id : '', class_id: classId, subject_id: subjectId || '', date: todayDt, attendance: att };
+    const tName = user ? (teachers.find(t => t.id === user.id) || {}).n || '' : '';
+    const subObj = subjectId ? gS(subjectId) : null;
+    const pl = { teacher_id: user ? user.id : '', teacher_name: tName, class_id: classId, subject_id: subjectId || '', subject_name: subObj ? subObj.n : '', date: todayDt, attendance: att };
     console.log('[ATTEND] sending:', JSON.stringify(pl));
     if (cfg.script_url) {
       flash('⏳ بھیج رہے ہیں...');
@@ -1698,7 +1714,8 @@ function App() {
     const daKey = slot + '_' + todayDt;
     const att = dAttend[daKey];
     if (!att || !Object.keys(att).length) { flash('⚠️ خالی'); return; }
-    const pl = { marked_by: user ? user.id : '', slot: slot, date: todayDt, attendance: att };
+    const tName = user ? (teachers.find(t => t.id === user.id) || {}).n || '' : '';
+    const pl = { marked_by: user ? user.id : '', marked_by_name: tName, slot: slot, date: todayDt, attendance: att };
     console.log('[DATTEND] sending:', JSON.stringify(pl));
     if (cfg.script_url) {
       flash('⏳ بھیج رہے ہیں...');
@@ -1982,11 +1999,14 @@ function App() {
   // ── Sync ──
 
   const submitD = () => {
+    const tName = teachers.find(t => t.id === user.id);
     const entries = myA.filter(a => r(a.sub.id).actual).map(a => {
       const rp = r(a.sub.id);
       return {
         subject_id: a.sub.id,
+        subject_name: a.sub.n || '',
         class_id: a.sub.c,
+        period: a.p || '',
         target_page: a.target,
         actual_page: parseInt(rp.actual),
         complete: rp.complete || '',
@@ -1999,6 +2019,7 @@ function App() {
     }
     const pl = {
       teacher_id: user.id,
+      teacher_name: tName ? tName.n : '',
       date: new Date().toISOString().split('T')[0],
       entries
     };
@@ -2025,6 +2046,7 @@ function App() {
     const selWk = thWk || autoWk;
     if (!selWk) { flash('⚠️'); return; }
     const slots = thuStore[selWk.wk] || [];
+    const examName = teachers.find(t => t.id === user.id);
     const blocks = slots.map(slot => {
       const f = slot.grid.filter(st => st.nm.trim());
       if (!f.length) return null;
@@ -2035,11 +2057,14 @@ function App() {
         if (rs.c && rs.c !== 'invalid') { ct[rs.c]++; if (rs.p != null) { tp += rs.p; cn++; } }
       });
       const sub = gS(slot.sub);
+      const origTeacher = teachers.find(t => t.id === slot.origT);
       return {
         period: slot.p,
         subject_id: slot.sub,
+        subject_name: sub ? sub.n : '',
         class_id: sub ? sub.c : '',
         subject_teacher_id: slot.origT,
+        subject_teacher_name: origTeacher ? origTeacher.n : '',
         portion: slot.ptn || '',
         ...ct,
         average: cn ? Math.round(tp / cn) : 0,
@@ -2048,7 +2073,7 @@ function App() {
       };
     }).filter(Boolean);
     if (!blocks.length) { flash('⚠️'); return; }
-    const pl = { teacher_id: user.id, week: selWk.wk, date: selWk.dt, blocks };
+    const pl = { teacher_id: user.id, examiner_name: examName ? examName.n : '', week: selWk.wk, date: selWk.dt, blocks };
     if (cfg.script_url) syncPost('thursday_test', pl); else {
       setSyncQ(p => [...p, { type: 'thursday_test', payload: pl }]);
       flash('✓ قطار');
