@@ -2872,12 +2872,22 @@ function App() {
           ),
           React.createElement('div', {style:{display:'flex',gap:6}},
             stOpts.map(st => React.createElement('button', {key:st.id,
-              onClick: () => markSelf(st.id),
+              onClick: () => setMyAtt(st.id),
               style:{flex:1,padding:'10px 4px',borderRadius:10,border:myAtt===st.id?'2px solid '+st.c:'2px solid #eee',
                 background:myAtt===st.id?st.c+'22':'#fafafa',cursor:'pointer',textAlign:'center',
                 fontFamily:'inherit',fontSize:11,fontWeight:700,color:myAtt===st.id?st.c:'#666'}
             }, st.ic + '\n' + st.l))
           ),
+          React.createElement('button', {
+            onClick: () => {
+              if (!myAtt) { flash('⚠️ پہلے حیثیت منتخب کریں'); return; }
+              markSelf(myAtt);
+            },
+            style:{width:'100%',marginTop:10,padding:'12px',borderRadius:12,border:'none',cursor:'pointer',
+              fontFamily:'inherit',fontSize:14,fontWeight:800,
+              background:myAtt?'linear-gradient(135deg, #1a5276, #1a2780)':'#e0e0e0',
+              color:myAtt?'#f4b400':'#999'}
+          }, '📤 ارسال حاضری'),
           myLeaves && React.createElement('div', {style:{display:'flex',gap:8,marginTop:10,justifyContent:'center'}},
             React.createElement('span', {style:{fontSize:9,color:'#34a853',fontWeight:700}}, '✅ حاضر: ' + (myLeaves.present_days||0)),
             React.createElement('span', {style:{fontSize:9,color:'#fbbc04',fontWeight:700}}, '⏰ تاخیر: ' + (myLeaves.late_days||0)),
