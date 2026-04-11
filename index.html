@@ -490,7 +490,8 @@ const DEFAULTS = {
     T8: '1234',
     T9: '1234'
   },
-  script_url: 'https://script.google.com/macros/s/AKfycbzOH8yGBU0gDvKGTLGv_uDlnk-E42JtlgU59q4LLv2Hy_ge5LdbuXAfY2_Uo1qR3_ZoXg/exec',
+  supabase_url: 'https://mhhifytmrlyksfrjacvi.supabase.co',
+  supabase_key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oaGlmeXRtcmx5a3NmcmphY3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTExNTAsImV4cCI6MjA4OTc2NzE1MH0.RIkSQq1Q7qLO_tVqklGV_KZabcKYfqqBFd7SLKpBE_Y',
   admin_creds: { username: 'admin', password: 'idara2026' },
   scoring: {
     excellent: 80,
@@ -1468,7 +1469,8 @@ function App() {
           // Preserve user-edited fields
           if (saved.pins) merged.pins = { ...DEFAULTS.pins, ...saved.pins };
           if (saved.assignments && saved.assignments.length > 0) merged.assignments = saved.assignments;
-          if (saved.script_url) merged.script_url = saved.script_url;
+          if (saved.supabase_url) merged.supabase_url = saved.supabase_url;
+          if (saved.supabase_key) merged.supabase_key = saved.supabase_key;
           if (saved.admin_creds) merged.admin_creds = saved.admin_creds;
           if (saved.scoring) merged.scoring = { ...DEFAULTS.scoring, ...saved.scoring };
           if (saved.dashboard) merged.dashboard = { ...DEFAULTS.dashboard, ...saved.dashboard };
@@ -1484,7 +1486,7 @@ function App() {
           // Same version: use saved config entirely
           merged = { ...DEFAULTS, ...saved };
           merged.pins = { ...DEFAULTS.pins, ...(saved.pins || {}) };
-          if (!merged.script_url) merged.script_url = DEFAULTS.script_url;
+          if (!merged.supabase_url) merged.supabase_url = DEFAULTS.supabase_url;
         }
         merged._version = dv;
         setCfgRaw(merged);
@@ -1509,19 +1511,16 @@ function App() {
     }
   }, []);
 
-  // Auto-sync all students to Google Sheets (once per day)
+  // Auto-sync all students to Supabase (once per day)
   useEffect(() => {
-    if (loading || !cfg || !cfg.script_url || !students.length) return;
+    if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key || !students.length) return;
     const today = new Date().toISOString().split('T')[0];
     const lastSync = localStorage.getItem('iri-students-synced');
     if (lastSync === today) return;
-    const body = JSON.stringify({ type: 'bulk_students', students: students });
-    const encoded = encodeURIComponent(body);
-    fetch(cfg.script_url + '?data=' + encoded)
-      .then(r => r.json())
-      .then(d => { if (d.success) localStorage.setItem('iri-students-synced', today); })
+    syncPost('bulk_students', { students: students })
+      .then(d => { if (d && d.success) localStorage.setItem('iri-students-synced', today); })
       .catch(() => {});
-  }, [loading, cfg && cfg.script_url, students.length]);
+  }, [loading, cfg && cfg.supabase_url, students.length]);
 
   // Watch daily attendance for 3x absent and fire notification
   useEffect(() => {
@@ -1631,12 +1630,26 @@ function App() {
     setToast(m);
     setTimeout(() => setToast(''), 2500);
   }, []);
+  // ── Supabase REST helper ──
+  const sbPost = async (table, rows) => {
+    const r = await fetch(cfg.supabase_url + '/rest/v1/' + table, {
+      method: 'POST',
+      headers: {
+        'apikey': cfg.supabase_key,
+        'Authorization': 'Bearer ' + cfg.supabase_key,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify(Array.isArray(rows) ? rows : [rows])
+    });
+    if (!r.ok) { const e = await r.text(); throw new Error(e); }
+    return { success: true };
+  };
+
   const syncPost = async (type, payload) => {
-    if (!cfg.script_url) {
+    if (!cfg.supabase_url || !cfg.supabase_key) {
       flash('⚠️ URL نہیں');
-      return {
-        success: false
-      };
+      return { success: false };
     }
     // ── Debounce: same type+key within 3 seconds = skip ──
     const dk = type + '_' + (payload.date || '') + '_' + (payload.teacher_id || payload.marked_by || payload.student_id || '') + '_' + (payload.class_id || payload.week || '');
@@ -1646,54 +1659,112 @@ function App() {
       return { success: true, note: 'DEBOUNCED' };
     }
     syncSentRef.current[dk] = now;
-    // Clean old keys every 50 entries
     const keys = Object.keys(syncSentRef.current);
     if (keys.length > 50) keys.filter(k => now - syncSentRef.current[k] > 10000).forEach(k => delete syncSentRef.current[k]);
 
     setSyncSt('sending');
-    const body = {
-      type,
-      ...payload,
-      submitted_at: new Date().toISOString()
-    };
     try {
-      // Try POST first
-      const r = await fetch(cfg.script_url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain'
-        },
-        body: JSON.stringify(body),
-        redirect: 'follow'
-      });
-      const d = await r.json();
-      if (d.success) {
-        setSyncSt('ok');
-        setTimeout(() => setSyncSt(null), 3000);
-        return d;
+      switch (type) {
+        case 'daily_report': {
+          const rows = payload.entries.map(e => ({
+            date: payload.date, teacher_id: payload.teacher_id, teacher_name: payload.teacher_name || '',
+            subject_id: e.subject_id, subject_name: e.subject_name || '', class: e.class_id || '',
+            period_id: e.period || null, target_page: e.target_page, actual_page: e.actual_page,
+            complete: e.complete || '', reason: e.reason_code || ''
+          }));
+          await sbPost('daily_reports', rows);
+          break;
+        }
+        case 'thursday_test': {
+          const rows = payload.blocks.map(b => ({
+            date: payload.date, week_num: payload.week, examiner_id: payload.teacher_id,
+            examiner_name: payload.examiner_name || '',
+            subject_id: b.subject_id, subject_name: b.subject_name || '', class: b.class_id || '',
+            period_id: b.period || null, subject_teacher_id: b.subject_teacher_id || '',
+            subject_teacher_name: b.subject_teacher_name || '', portion: b.portion || '',
+            excellent: b.excellent||0, good: b.good||0, weak: b.weak||0,
+            fail: b.fail||0, absent: b.absent||0, average: b.average||0,
+            notes: b.notes || '', suggestions: b.suggestions || ''
+          }));
+          await sbPost('thursday_tests', rows);
+          break;
+        }
+        case 'hifz_progress': {
+          await sbPost('hifz_progress', {
+            date: payload.date, student_id: payload.student_id, student_name: payload.student_name || '',
+            paras: payload.paras||0, soorah: payload.soorah||'', aayat: payload.aayat||0,
+            daur_para: payload.daur_para||'', qari_id: payload.qari_id||'', notes: payload.notes||''
+          });
+          break;
+        }
+        case 'student_attendance': {
+          const att = payload.attendance;
+          const rows = Object.keys(att).map(sid => ({
+            date: payload.date, teacher_id: payload.teacher_id||'', teacher_name: payload.teacher_name||'',
+            subject_id: payload.subject_id||'', subject_name: payload.subject_name||'',
+            class: payload.class_id||'', student_id: sid, status: att[sid]
+          }));
+          await sbPost('student_attendance', rows);
+          break;
+        }
+        case 'daily_attendance': {
+          const att2 = payload.attendance;
+          const rows = Object.keys(att2).map(sid => ({
+            date: payload.date, slot: payload.slot||'', marked_by: payload.marked_by||'',
+            marked_by_name: payload.marked_by_name||'', student_id: sid, status: att2[sid]
+          }));
+          await sbPost('daily_attendance', rows);
+          break;
+        }
+        case 'teacher_attendance': {
+          const ta = payload.attendance;
+          const rows = Object.keys(ta).map(tid => ({
+            date: payload.date, teacher_id: tid, teacher_name: '',
+            status: ta[tid], marked_by: payload.teacher_id||'admin', approved: false
+          }));
+          await sbPost('teacher_attendance', rows);
+          break;
+        }
+        case 'student_upsert': {
+          const s = payload.student || payload;
+          const h = s.hifz || {};
+          await sbPost('students', {
+            id: s.id||s.student_id, name: s.n||s.name||'', parent: s.parent||'',
+            phone: s.phone||'', residence: s.residence||'',
+            class: s.c||s.class_id||'', qari_id: s.qari||null, status: s.status||'active',
+            hifz_paras: h.paras||0, hifz_soorah: h.soorah||'', hifz_aayat: h.aayat||0, hifz_daur: h.daur_para||''
+          });
+          break;
+        }
+        case 'bulk_students': {
+          const rows = payload.students.map(s => {
+            const h = s.hifz || {};
+            return {
+              id: s.id||'', name: s.n||s.name||'', parent: s.parent||'',
+              phone: s.phone||'', residence: s.residence||'',
+              class: s.c||s.class_id||'', qari_id: s.qari||null, status: s.status||'active',
+              hifz_paras: h.paras||0, hifz_soorah: h.soorah||'', hifz_aayat: h.aayat||0, hifz_daur: h.daur_para||''
+            };
+          });
+          await sbPost('students', rows);
+          break;
+        }
+        default:
+          console.log('[SYNC] unknown type:', type);
       }
-      throw new Error('POST failed');
+      setSyncSt('ok');
+      setTimeout(() => setSyncSt(null), 3000);
+      return { success: true };
     } catch (e) {
-      try {
-        // Fallback: GET with data parameter (bypasses Apps Script 302 redirect issue)
-        const encoded = encodeURIComponent(JSON.stringify(body));
-        const r2 = await fetch(cfg.script_url + '?data=' + encoded);
-        const d2 = await r2.json();
-        setSyncSt(d2.success ? 'ok' : 'error');
-        setTimeout(() => setSyncSt(null), 3000);
-        return d2;
-      } catch (e) {
-        setSyncSt('error');
-        setTimeout(() => setSyncSt(null), 3000);
-        delete syncSentRef.current[dk]; // Allow retry on failure
-        return {
-          success: false
-        };
-      }
+      console.error('[SYNC] error:', type, e);
+      setSyncSt('error');
+      setTimeout(() => setSyncSt(null), 3000);
+      delete syncSentRef.current[dk];
+      return { success: false, error: e.message };
     }
   };
   const processQ = async () => {
-    if (!syncQ.length || !cfg.script_url) return;
+    if (!syncQ.length || !cfg.supabase_url) return;
     const it = syncQ[0];
     const r = await syncPost(it.type, it.payload);
     if (r.success) {
@@ -1710,7 +1781,7 @@ function App() {
     const subObj = subjectId ? gS(subjectId) : null;
     const pl = { teacher_id: user ? user.id : '', teacher_name: tName, class_id: classId, subject_id: subjectId || '', subject_name: subObj ? subObj.n : '', date: todayDt, attendance: att };
     console.log('[ATTEND] sending:', JSON.stringify(pl));
-    if (cfg.script_url) {
+    if (cfg.supabase_url) {
       flash('⏳ بھیج رہے ہیں...');
       try {
         const res = await syncPost('student_attendance', pl);
@@ -1731,7 +1802,7 @@ function App() {
     const tName = user ? (teachers.find(t => t.id === user.id) || {}).n || '' : '';
     const pl = { marked_by: user ? user.id : '', marked_by_name: tName, slot: slot, date: todayDt, attendance: att };
     console.log('[DATTEND] sending:', JSON.stringify(pl));
-    if (cfg.script_url) {
+    if (cfg.supabase_url) {
       flash('⏳ بھیج رہے ہیں...');
       try {
         const res = await syncPost('daily_attendance', pl);
@@ -1743,10 +1814,10 @@ function App() {
   };
   useEffect(() => {
     const iv = setInterval(() => {
-      if (syncQ.length && cfg && cfg.script_url && navigator.onLine) processQ();
+      if (syncQ.length && cfg && cfg.supabase_url && navigator.onLine) processQ();
     }, 300000);
     return () => clearInterval(iv);
-  }, [syncQ, cfg && cfg.script_url]);
+  }, [syncQ, cfg && cfg.supabase_url]);
   if (loading || !cfg) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: '100vh',
@@ -2046,7 +2117,7 @@ function App() {
       if (sAttend[aKey] && Object.keys(sAttend[aKey]).length) attData[cId] = sAttend[aKey];
     });
     if (Object.keys(attData).length) pl.attendance = attData;
-    if (cfg.script_url) syncPost('daily_report', pl);else {
+    if (cfg.supabase_url) syncPost('daily_report', pl);else {
       setSyncQ(p => [...p, {
         type: 'daily_report',
         payload: pl
@@ -2088,7 +2159,7 @@ function App() {
     }).filter(Boolean);
     if (!blocks.length) { flash('⚠️'); return; }
     const pl = { teacher_id: user.id, examiner_name: examName ? examName.n : '', week: selWk.wk, date: selWk.dt, blocks };
-    if (cfg.script_url) syncPost('thursday_test', pl); else {
+    if (cfg.supabase_url) syncPost('thursday_test', pl); else {
       setSyncQ(p => [...p, { type: 'thursday_test', payload: pl }]);
       flash('✓ قطار');
     }
@@ -2108,7 +2179,7 @@ function App() {
       setErr('یہ ای میل رجسٹرڈ نہیں ہے');
       return;
     }
-    if (!cfg.script_url) {
+    if (!cfg.supabase_url) {
       setErr('سنک URL سیٹ نہیں — ایڈمن سے رابطہ کریں');
       return;
     }
@@ -2121,7 +2192,7 @@ function App() {
       });
       let r;
       try {
-        r = await (await fetch(cfg.script_url, {
+        r = await (await fetch(cfg.supabase_url, {
           method: 'POST',
           headers: {
             'Content-Type': 'text/plain'
@@ -2130,7 +2201,7 @@ function App() {
         })).json();
       } catch (e) {
         const enc = encodeURIComponent(body);
-        r = await (await fetch(cfg.script_url + '?data=' + enc)).json();
+        r = await (await fetch(cfg.supabase_url + '?data=' + enc)).json();
       }
       if (r.success) {
         setLoginStep(2);
@@ -2156,7 +2227,7 @@ function App() {
       });
       let r;
       try {
-        r = await (await fetch(cfg.script_url, {
+        r = await (await fetch(cfg.supabase_url, {
           method: 'POST',
           headers: {
             'Content-Type': 'text/plain'
@@ -2165,7 +2236,7 @@ function App() {
         })).json();
       } catch (e) {
         const enc = encodeURIComponent(body);
-        r = await (await fetch(cfg.script_url + '?data=' + enc)).json();
+        r = await (await fetch(cfg.supabase_url + '?data=' + enc)).json();
       }
       if (r.success) {
         const teacher = teachers.find(t => t.email && t.email.toLowerCase() === loginEmail.trim().toLowerCase());
@@ -2439,6 +2510,10 @@ function App() {
     ic: '🔄',
     l: 'سنک',
     k: 'sync'
+  }, {
+    ic: '📥',
+    l: 'رپورٹس / ایکسپورٹ',
+    k: 'reports'
   }, {
     ic: '🔁',
     l: 'ری سیٹ',
@@ -3605,7 +3680,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
             if(students.find(s=>s.id===newStud.id)){flash('⚠️ کوڈ موجود');return;}
             const stud = {...newStud,status:'active',hifz:{paras:0,soorah:'',aayat:0,daur_para:''}};
             setStudents(prev=>[...prev,stud]);
-            if(cfg.script_url) syncPost('student_upsert',{student:stud}); else { setSyncQ(p=>[...p,{type:'student_upsert',payload:{student:stud}}]); }
+            if(cfg.supabase_url) syncPost('student_upsert',{student:stud}); else { setSyncQ(p=>[...p,{type:'student_upsert',payload:{student:stud}}]); }
             const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id);
             setNewStud({id:'',n:'',parent:'',phone:'',residence:'',c:defClass,qari:teachers.find(t=>t.role==='qari')?.id||'T8',status:'active'});
             setShowStudForm(false);
@@ -4027,8 +4102,44 @@ tab === 'thu' && isEx && React.createElement('div', null,
     }),
     React.createElement(Btn, {full:true, style:{marginTop:12}, onClick:() => {
       const pl = {teacher_id:'admin',date:todayDt,attendance:td};
-      if(cfg.script_url) syncPost('teacher_attendance',pl); else { setSyncQ(p=>[...p,{type:'teacher_attendance',payload:pl}]); flash('\u2713 \u0642\u0637\u0627\u0631'); }
-    }}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
+      if(cfg.supabase_url) syncPost('teacher_attendance',pl); else { setSyncQ(p=>[...p,{type:'teacher_attendance',payload:pl}]); flash('\u2713 \u0642\u0637\u0627\u0631'); }
+    }}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713'),
+
+    // ── Approval Section ──
+    React.createElement('div', {style:{marginTop:16,padding:12,background:'#fff8e1',borderRadius:12,border:'1px solid #ffe082'}},
+      React.createElement('div', {style:{fontWeight:700,fontSize:13,marginBottom:8,color:'#f57f17'}}, '✅ منظوری — آج کی حاضری'),
+      React.createElement(Btn, {small:true, color:'#1a2780', onClick: async () => {
+        if (!cfg.supabase_url || !cfg.supabase_key) return;
+        try {
+          const r = await fetch(cfg.supabase_url + '/rest/v1/teacher_attendance?date=eq.' + todayDt + '&select=*', {
+            headers: { 'apikey': cfg.supabase_key }
+          });
+          const d = await r.json();
+          if (Array.isArray(d) && d.length) {
+            const msg = d.map(row => {
+              const t = teachers.find(x=>x.id===row.teacher_id);
+              const nm = t ? t.n : row.teacher_id;
+              const st = row.status === 'present' ? '✅' : row.status === 'absent' ? '❌' : row.status === 'late' ? '⏰' : '📝';
+              const ap = row.approved ? '✓ منظور' : '⏳ زیر التوا';
+              return nm + ': ' + st + ' ' + row.status + ' — ' + ap;
+            }).join('\n');
+            if (confirm(msg + '\n\nسب منظور کریں؟')) {
+              await fetch(cfg.supabase_url + '/rest/v1/teacher_attendance?date=eq.' + todayDt + '&approved=eq.false', {
+                method: 'PATCH',
+                headers: {
+                  'apikey': cfg.supabase_key,
+                  'Authorization': 'Bearer ' + cfg.supabase_key,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({approved: true, approved_by: 'admin', approved_at: new Date().toISOString()})
+              });
+              flash('✅ سب منظور');
+            }
+          } else flash('آج کی حاضری نہیں ملی');
+        } catch(e) { flash('❌ ' + e.message); }
+      }}, '🔍 چیک کریں اور منظور کریں')
+    )
   );
 })(), admSub === 'teachers' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -4650,12 +4761,12 @@ tab === 'thu' && isEx && React.createElement('div', null,
     icon: "\uD83D\uDD04",
     text: "\u0633\u0646\u06A9"
   }), /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(Row, {
-    label: "Apps Script URL"
+    label: "Supabase URL"
   }, /*#__PURE__*/React.createElement(Inp, {
     value: urlInp,
-    onFocus: () => { if(!urlInp) setUrlInp(cfg.script_url||''); },
+    onFocus: () => { if(!urlInp) setUrlInp(cfg.supabase_url||''); },
     onChange: v => setUrlInp(v),
-    placeholder: "https://script.google.com/macros/s/.../exec",
+    placeholder: "https://xxxxx.supabase.co",
     style: {
       direction: 'ltr',
       fontSize: 10
@@ -4675,7 +4786,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
         flash('⚠️');
         return;
       }
-      updCfg('script_url', u);
+      updCfg('supabase_url', u);
       setUrlInp('');
       flash('✓');
     }
@@ -4683,17 +4794,18 @@ tab === 'thu' && isEx && React.createElement('div', null,
     full: true,
     small: true,
     color: "#3b82f6",
-    disabled: !cfg.script_url,
+    disabled: !cfg.supabase_url,
     onClick: async () => {
       try {
-        const r = await fetch(cfg.script_url + '?action=ping');
-        const d = await r.json();
-        flash(d.success ? '✓ کامیاب' : '⚠️');
+        const r = await fetch(cfg.supabase_url + '/rest/v1/teachers?select=id&limit=1', {
+          headers: { 'apikey': cfg.supabase_key }
+        });
+        flash(r.ok ? '✓ Supabase کامیاب' : '⚠️ ' + r.status);
       } catch (e) {
         flash('⚠️ ناکام');
       }
     }
-  }, "\u0679\u06CC\u0633\u0679"))), cfg.script_url ? /*#__PURE__*/React.createElement(Card, {
+  }, "\u0679\u06CC\u0633\u0679"))), cfg.supabase_url ? /*#__PURE__*/React.createElement(Card, {
     style: {
       background: '#f0fdf4',
       borderRight: '4px solid #10b981'
@@ -4711,7 +4823,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
       direction: 'ltr',
       wordBreak: 'break-all'
     }
-  }, cfg.script_url)) : /*#__PURE__*/React.createElement(Card, {
+  }, cfg.supabase_url)) : /*#__PURE__*/React.createElement(Card, {
     style: {
       background: '#fef2f2',
       borderRight: '4px solid #ef4444'
@@ -4761,7 +4873,126 @@ tab === 'thu' && isEx && React.createElement('div', null,
     React.createElement('div',{style:{marginTop:10,padding:8,background:'#f0fdf4',borderRadius:8,fontSize:10,color:'#065f46'}},
       'موجودہ: ',(adminCreds&&adminCreds.username)||'admin')
   )
-), admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+), admSub === 'reports' && (() => {
+  const [rptType, setRptType] = React.useState('student_attendance');
+  const [rptData, setRptData] = React.useState(null);
+  const [rptLoading, setRptLoading] = React.useState(false);
+  const [rptDateFrom, setRptDateFrom] = React.useState('');
+  const [rptDateTo, setRptDateTo] = React.useState('');
+  const [rptFilter, setRptFilter] = React.useState('');
+
+  const tables = [
+    {id:'student_attendance', l:'📋 مضمون وار حاضری', cols:['date','teacher_name','subject_name','class','student_id','status']},
+    {id:'daily_attendance', l:'🕐 یومیہ حاضری (نشست)', cols:['date','slot','marked_by_name','student_id','status']},
+    {id:'teacher_attendance', l:'👨‍🏫 اساتذہ حاضری', cols:['date','teacher_id','teacher_name','status','approved','approved_by']},
+    {id:'daily_reports', l:'📝 یومیہ رپورٹس', cols:['date','teacher_name','subject_name','class','target_page','actual_page','complete']},
+    {id:'thursday_tests', l:'✍️ جمعرات امتحانات', cols:['date','examiner_name','subject_name','class','excellent','good','weak','fail','average']},
+    {id:'hifz_progress', l:'📖 حفظ پیشرفت', cols:['date','student_name','paras','soorah','aayat','qari_id']},
+  ];
+  const curTable = tables.find(t=>t.id===rptType);
+
+  const fetchReport = async () => {
+    if (!cfg.supabase_url || !cfg.supabase_key) { flash('⚠️ Supabase سیٹ نہیں'); return; }
+    setRptLoading(true);
+    try {
+      let url = cfg.supabase_url + '/rest/v1/' + rptType + '?select=*&order=created_at.desc&limit=500';
+      if (rptDateFrom) url += '&date=gte.' + rptDateFrom;
+      if (rptDateTo) url += '&date=lte.' + rptDateTo;
+      const r = await fetch(url, { headers: { 'apikey': cfg.supabase_key } });
+      const d = await r.json();
+      setRptData(Array.isArray(d) ? d : []);
+    } catch(e) { flash('❌ ' + e.message); setRptData([]); }
+    setRptLoading(false);
+  };
+
+  const filtered = rptData && rptFilter
+    ? rptData.filter(row => JSON.stringify(row).toLowerCase().includes(rptFilter.toLowerCase()))
+    : rptData;
+
+  const exportCSV = () => {
+    if (!filtered || !filtered.length) { flash('⚠️ خالی'); return; }
+    const cols = curTable ? curTable.cols : Object.keys(filtered[0]);
+    const header = cols.join(',');
+    const rows = filtered.map(r => cols.map(c => '"'+(String(r[c]||'')).replace(/"/g,'""')+'"').join(','));
+    const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = rptType + '_' + (rptDateFrom||'all') + '.csv';
+    a.click(); URL.revokeObjectURL(url);
+    flash('✅ ڈاؤنلوڈ');
+  };
+
+  return React.createElement('div', null,
+    React.createElement(Ttl, {icon:'📥', text:'رپورٹس / ایکسپورٹ'}),
+
+    // Table selector
+    React.createElement('div', {style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}},
+      tables.map(t => React.createElement('div', {key:t.id, onClick:()=>{setRptType(t.id);setRptData(null);setRptFilter('');},
+        style:{padding:'6px 12px',borderRadius:10,fontSize:11,fontWeight:700,cursor:'pointer',
+          background:rptType===t.id?'#1a2780':'#f0f0f0',color:rptType===t.id?'#fff':'#333'}}, t.l))
+    ),
+
+    // Date filters
+    React.createElement('div', {style:{display:'flex',gap:8,marginBottom:10,alignItems:'center'}},
+      React.createElement('input', {type:'date',value:rptDateFrom,onChange:e=>setRptDateFrom(e.target.value),
+        style:{flex:1,padding:'6px 10px',borderRadius:8,border:'1px solid #ddd',fontSize:11}}),
+      React.createElement('span', {style:{fontSize:11,color:'#999'}}, '→'),
+      React.createElement('input', {type:'date',value:rptDateTo,onChange:e=>setRptDateTo(e.target.value),
+        style:{flex:1,padding:'6px 10px',borderRadius:8,border:'1px solid #ddd',fontSize:11}}),
+      React.createElement(Btn, {small:true,color:'#1a2780',onClick:fetchReport}, rptLoading ? '⏳' : '🔍 لوڈ')
+    ),
+
+    // Search
+    rptData && React.createElement('input', {
+      value:rptFilter, onChange:e=>setRptFilter(e.target.value),
+      placeholder:'🔍 تلاش کریں...',
+      style:{width:'100%',padding:'8px 12px',borderRadius:10,border:'1px solid #ddd',fontSize:12,marginBottom:10,direction:'rtl'}
+    }),
+
+    // Results count + export
+    rptData && React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
+      React.createElement('span', {style:{fontSize:11,color:'#666'}},
+        (filtered?filtered.length:0) + ' نتائج' + (rptFilter ? ' (فلٹر شدہ)' : '')),
+      React.createElement(Btn, {small:true,color:'#10b981',onClick:exportCSV}, '📥 CSV ڈاؤنلوڈ')
+    ),
+
+    // Data table
+    filtered && filtered.length > 0 && React.createElement('div', {style:{overflowX:'auto',borderRadius:10,border:'1px solid #e0e0e0'}},
+      React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',fontSize:10,direction:'ltr',textAlign:'center'}},
+        React.createElement('thead', null,
+          React.createElement('tr', null,
+            (curTable?curTable.cols:Object.keys(filtered[0])).map(c =>
+              React.createElement('th', {key:c, style:{background:'#1a2780',color:'#fff',padding:'8px 6px',fontSize:10,fontWeight:700,whiteSpace:'nowrap'}}, c)
+            )
+          )
+        ),
+        React.createElement('tbody', null,
+          filtered.slice(0,100).map((row,i) =>
+            React.createElement('tr', {key:i, style:{background:i%2===0?'#fff':'#f5f7ff'}},
+              (curTable?curTable.cols:Object.keys(filtered[0])).map(c => {
+                const v = String(row[c]||'');
+                let bg = 'transparent';
+                if (v==='P'||v==='present'||v==='ہاں') bg='#c8e6c9';
+                else if (v==='A'||v==='absent') bg='#ffcdd2';
+                else if (v==='L'||v==='leave'||v==='جزوی') bg='#fff9c4';
+                return React.createElement('td', {key:c, style:{padding:'6px',borderBottom:'1px solid #eee',background:bg,whiteSpace:'nowrap'}}, v);
+              })
+            )
+          )
+        )
+      )
+    ),
+
+    filtered && filtered.length > 100 && React.createElement('div', {style:{textAlign:'center',padding:8,fontSize:11,color:'#999'}},
+      'صرف پہلے 100 دکھائے گئے — مکمل ڈیٹا CSV میں ڈاؤنلوڈ کریں'),
+
+    filtered && filtered.length === 0 && React.createElement('div', {style:{textAlign:'center',padding:20,color:'#999',fontSize:12}}, 'کوئی ڈیٹا نہیں'),
+
+    !rptData && React.createElement('div', {style:{textAlign:'center',padding:30,color:'#bbb',fontSize:12}},
+      '📅 تاریخ منتخب کریں اور 🔍 لوڈ دبائیں')
+  );
+})(), admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
