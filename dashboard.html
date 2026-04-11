@@ -2,68 +2,113 @@
 <html dir="rtl" lang="ur">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c1a2e">
 <title>ڈیش بورڈ — ادارہ تحقیقات اسلامی</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   --dk:#0c1a2e;--dk2:#132640;--dk3:#1a3350;
   --gd:#d4a017;--gd2:#f4c430;
   --gr:#34a853;--rd:#ea4335;--yl:#fbbc04;--bl:#4285f4;
   --wh:#fff;--lg:#f4f6f8;
 }
-body{font-family:'Noto Sans Arabic',sans-serif;background:var(--dk);color:var(--wh);min-height:100vh;direction:rtl}
-.container{max-width:1200px;margin:0 auto;padding:12px}
-.header{background:linear-gradient(135deg,var(--dk2),var(--dk3));border-radius:16px;padding:20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
-.header h1{font-size:22px;color:var(--gd);font-weight:800}
-.header .sub{font-size:11px;color:#8a9ab5}
-.header .live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gr)}
+body{font-family:'Noto Sans Arabic',sans-serif;background:var(--dk);color:var(--wh);min-height:100vh;direction:rtl;
+  -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
+.container{max-width:1200px;margin:0 auto;padding:10px}
+.header{background:linear-gradient(135deg,var(--dk2),var(--dk3));border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.header h1{font-size:18px;color:var(--gd);font-weight:800}
+.header .sub{font-size:10px;color:#8a9ab5}
+.header .live{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--gr)}
 .header .live .dot{width:8px;height:8px;border-radius:50%;background:var(--gr);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px}
-.tab{padding:8px 16px;border-radius:20px;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.2s}
+
+/* Tabs — horizontal scroll on mobile */
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;
+  -webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 16px;border-radius:20px;border:none;font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:.2s;flex-shrink:0;scroll-snap-align:start;
+  min-height:44px;display:flex;align-items:center}
 .tab.active{background:var(--gd);color:var(--dk)}
 .tab:not(.active){background:var(--dk3);color:#8a9ab5}
 .tab:hover:not(.active){background:#1f3d5e}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px}
-.card{background:var(--dk2);border-radius:14px;padding:16px;border:1px solid #1f3d5e}
-.card .num{font-size:28px;font-weight:800;color:var(--gd)}
-.card .lbl{font-size:10px;color:#8a9ab5;margin-top:4px}
+
+/* Grid — 2 cols on mobile, 4 on desktop */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.card{background:var(--dk2);border-radius:14px;padding:14px;border:1px solid #1f3d5e}
+.card .num{font-size:24px;font-weight:800;color:var(--gd)}
+.card .lbl{font-size:9px;color:#8a9ab5;margin-top:3px}
 .card.gr .num{color:var(--gr)}.card.rd .num{color:var(--rd)}.card.yl .num{color:var(--yl)}.card.bl .num{color:var(--bl)}
-.section{background:var(--dk2);border-radius:14px;padding:16px;margin-bottom:16px;border:1px solid #1f3d5e}
-.section h2{font-size:15px;font-weight:800;color:var(--gd);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+
+.section{background:var(--dk2);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid #1f3d5e}
+.section h2{font-size:14px;font-weight:800;color:var(--gd);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+
+/* Tables — horizontal scroll */
 .tbl{width:100%;border-collapse:collapse;font-size:11px}
-.tbl th{background:var(--dk3);color:var(--gd);padding:10px 8px;text-align:center;font-weight:700;position:sticky;top:0}
-.tbl td{padding:8px;text-align:center;border-bottom:1px solid #1a3350}
+.tbl th{background:var(--dk3);color:var(--gd);padding:10px 6px;text-align:center;font-weight:700;position:sticky;top:0;white-space:nowrap}
+.tbl td{padding:8px 6px;text-align:center;border-bottom:1px solid #1a3350;white-space:nowrap}
 .tbl tr:hover td{background:#1a3350}
-.badge{display:inline-block;padding:2px 10px;border-radius:8px;font-size:10px;font-weight:700}
+.scroll-table{max-height:400px;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:8px;font-size:10px;font-weight:700}
 .badge.p{background:#34a85322;color:var(--gr)}.badge.a{background:#ea433522;color:var(--rd)}
 .badge.l{background:#fbbc0422;color:var(--yl)}.badge.late{background:#ff980022;color:#ff9800}
 .badge.approved{background:#34a85322;color:var(--gr)}.badge.pending{background:#ff980022;color:#ff9800}
-.btn{padding:8px 16px;border-radius:10px;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:.2s}
+
+/* Buttons — min 44px touch target */
+.btn{padding:10px 18px;border-radius:12px;border:none;font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;transition:.2s;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
 .btn-gd{background:var(--gd);color:var(--dk)}.btn-gd:hover{background:var(--gd2)}
 .btn-gr{background:var(--gr);color:#fff}.btn-rd{background:var(--rd);color:#fff}
 .btn-bl{background:var(--bl);color:#fff}
-.btn-sm{padding:4px 10px;font-size:10px}
-.call-btn{background:var(--gr);color:#fff;border:none;padding:4px 12px;border-radius:8px;font-family:inherit;font-size:10px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
-.filter-bar select,.filter-bar input{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:6px 10px;border-radius:8px;font-family:inherit;font-size:11px}
+.btn-sm{padding:6px 12px;font-size:10px;min-height:36px}
+
+/* Call button — prominent on mobile */
+.call-btn{background:var(--gr);color:#fff;border:none;padding:8px 14px;border-radius:10px;
+  font-family:inherit;font-size:11px;cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;gap:4px;min-height:36px}
+
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.filter-bar select,.filter-bar input{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);
+  padding:8px 10px;border-radius:10px;font-family:inherit;font-size:11px;min-height:40px}
 .filter-bar input[type=date]{direction:ltr;text-align:center}
-.search{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:8px 14px;border-radius:10px;font-family:inherit;font-size:12px;width:100%;margin-bottom:10px}
-.current-period{background:linear-gradient(135deg,#1a5276,#1a2780);border-radius:14px;padding:16px;margin-bottom:16px;border:2px solid var(--gd)}
-.current-period h2{color:var(--gd);font-size:15px;margin-bottom:10px}
-.period-card{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px}
-.period-card .teacher{font-weight:700;font-size:12px}.period-card .subject{font-size:11px;color:#8a9ab5}
-.class-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:700}
+.search{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:12px;
+  font-family:inherit;font-size:12px;width:100%;margin-bottom:10px;min-height:44px}
+
+.current-period{background:linear-gradient(135deg,#1a5276,#1a2780);border-radius:14px;padding:14px;margin-bottom:12px;border:2px solid var(--gd)}
+.current-period h2{color:var(--gd);font-size:14px;margin-bottom:10px}
+.period-card{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px;min-height:48px}
+.period-card .teacher{font-weight:700;font-size:12px}.period-card .subject{font-size:10px;color:#8a9ab5}
+.class-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700}
 .oola{background:#fdebd033;color:#f39c12}.sania{background:#d6eaf833;color:#3498db}
 .salisa{background:#e8daef33;color:#9b59b6}.rabia{background:#d1f2eb33;color:#1abc9c}
 .khamisa{background:#fcf3cf33;color:#f1c40f}.fazilat{background:#fadbd833;color:#e74c3c}
 .hifz{background:#eaecee33;color:#95a5a6}
-.scroll-table{max-height:400px;overflow-y:auto}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gd);color:var(--dk);padding:10px 24px;border-radius:12px;font-weight:700;font-size:12px;z-index:999;display:none}
+
+/* Task items — big touch targets */
+.task-item{background:var(--dk);border:1px solid #1f3d5e;border-radius:14px;padding:14px;margin-bottom:8px;
+  display:flex;align-items:flex-start;gap:12px;min-height:60px;transition:.2s}
+.task-item:active{transform:scale(0.98)}
+.task-icon{font-size:24px;flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;cursor:pointer}
+.task-done{background:#34a85315;border-color:#34a85344}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gd);color:var(--dk);
+  padding:12px 28px;border-radius:14px;font-weight:700;font-size:13px;z-index:999;display:none;
+  box-shadow:0 4px 20px rgba(0,0,0,.4)}
 .loading{text-align:center;padding:40px;color:#8a9ab5;font-size:13px}
-@media(max-width:600px){.grid{grid-template-columns:repeat(2,1fr)}.container{padding:8px}}
+
+/* Desktop */
+@media(min-width:768px){
+  .grid{grid-template-columns:repeat(4,1fr)}
+  .header h1{font-size:22px}
+  .card .num{font-size:28px}
+  .container{padding:16px}
+}
 </style>
 </head>
 <body>
@@ -116,8 +161,7 @@ let DATA = {};
 async function loadAll() {
   try {
     const [teachers,subjects,students,periods,assignments,
-           tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary,
-           adminTasks,adminScores] = await Promise.all([
+           tAttToday,sAttToday,dAttToday,reportsToday] = await Promise.all([
       sb('teachers','select=*&order=id'),
       sb('subjects','select=*&order=id'),
       sb('students','select=*&order=name'),
@@ -127,10 +171,12 @@ async function loadAll() {
       sb('student_attendance','select=*&date=eq.'+TODAY+'&order=created_at.desc&limit=500'),
       sb('daily_attendance','select=*&date=eq.'+TODAY+'&order=created_at.desc&limit=500'),
       sb('daily_reports','select=*&date=eq.'+TODAY),
-      sb('teacher_leave_summary','select=*'),
-      sb('admin_tasks','select=*&date=eq.'+TODAY),
-      sb('admin_daily_score','select=*&limit=14&order=date.desc'),
     ]);
+    // These may fail if tables are new/empty — load separately
+    let leaveSummary=[],adminTasks=[],adminScores=[];
+    try { leaveSummary = await sb('teacher_leave_summary','select=*'); } catch(e) { console.warn('leave_summary:',e); }
+    try { adminTasks = await sb('admin_tasks','select=*&date=eq.'+TODAY); } catch(e) { console.warn('admin_tasks:',e); }
+    try { adminScores = await sb('admin_daily_score','select=*&limit=14&order=date.desc'); } catch(e) { console.warn('admin_scores:',e); }
     DATA = {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary,adminTasks,adminScores};
     return DATA;
   } catch(e) {
@@ -307,7 +353,9 @@ function render() {
   // TAB: ADMIN ACCOUNTABILITY
   // ═══════════════════════════════════════════
   if (activeTab === 'admin') {
-    const {adminTasks,adminScores} = DATA;
+    try {
+    const adminTasks = DATA.adminTasks || [];
+    const adminScores = DATA.adminScores || [];
 
     // Define daily tasks — some auto-verified from data
     const activeTeacherIds = teachers.filter(t=>!['T7','T8','T9'].includes(t.id)).map(t=>t.id);
@@ -430,8 +478,8 @@ function render() {
       const bg = isDone ? '#34a85315' : 'var(--dk)';
       const border = isDone ? '1px solid #34a85344' : '1px solid #1f3d5e';
 
-      html += `<div style="background:${bg};border:${border};border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:20px;cursor:${t.auto?'default':'pointer'};flex-shrink:0"
+      html += `<div class="task-item ${isDone?'task-done':''}">
+        <div class="task-icon"
           ${!t.auto && !isDone ? `onclick="markTask('${t.id}','${t.name.replace(/'/g,'')}')"` : ''}>${icon}</div>
         <div style="flex:1">
           <div style="font-weight:700;font-size:12px;color:${isDone?'var(--gr)':'var(--wh)'};${isDone?'text-decoration:line-through':''}">${t.name}</div>
@@ -479,6 +527,13 @@ function render() {
         </div>`;
       });
       html += '</div>';
+    }
+    } catch(err) {
+      console.error('Admin tab error:', err);
+      html += `<div class="section" style="border:2px solid var(--rd)"><h2>❌ خرابی</h2>
+        <div style="font-size:11px;color:var(--rd)">${err.message}</div>
+        <div style="font-size:10px;color:#8a9ab5;margin-top:8px">Console (F12) میں تفصیل دیکھیں</div>
+      </div>`;
     }
   }
 
