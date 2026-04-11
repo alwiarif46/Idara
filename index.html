@@ -1509,6 +1509,20 @@ function App() {
     }
   }, []);
 
+  // Auto-sync all students to Google Sheets (once per day)
+  useEffect(() => {
+    if (loading || !cfg || !cfg.script_url || !students.length) return;
+    const today = new Date().toISOString().split('T')[0];
+    const lastSync = localStorage.getItem('iri-students-synced');
+    if (lastSync === today) return;
+    const body = JSON.stringify({ type: 'bulk_students', students: students });
+    const encoded = encodeURIComponent(body);
+    fetch(cfg.script_url + '?data=' + encoded)
+      .then(r => r.json())
+      .then(d => { if (d.success) localStorage.setItem('iri-students-synced', today); })
+      .catch(() => {});
+  }, [loading, cfg && cfg.script_url, students.length]);
+
   // Watch daily attendance for 3x absent and fire notification
   useEffect(() => {
     if (!CL.length) return;

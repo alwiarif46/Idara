@@ -316,6 +316,7 @@ function _process(payload) {
       case 'teacher_attendance': result=_handleTeacherAttendance(payload); break;
       case 'student_upsert':     result=_handleStudentUpsert(payload); break;
       case 'save_config':        result=_handleSaveConfig(payload); break;
+      case 'bulk_students':    result=_handleBulkStudents(payload); break;
       default: result={success:false,error:'UNKNOWN_TYPE: '+payload.type};
     }
   } finally { lock.releaseLock(); }
@@ -420,6 +421,21 @@ function _handleSaveConfig(pl) {
     if (rows3.length) sh3.getRange(2,1,rows3.length,rows3[0].length).setValues(rows3);
   }
   return {success:true};
+}
+
+function _handleBulkStudents(pl) {
+  if (!pl.students||!pl.students.length) return {success:false,error:'NO_STUDENTS'};
+  var ss=SpreadsheetApp.openById(ADMIN_ID), sheet=_getTab(ss,'ADMIN_Students'), ist=_ist();
+  var rows=pl.students.map(function(s){
+    var h=s.hifz||{};
+    return [s.id||'',s.n||s.name||'',s.parent||'',s.phone||'',s.residence||'',
+      s.c||s.class_id||'',s.qari||'',s.status||'active',
+      h.paras||0,h.soorah||'',h.aayat||0,h.daur_para||'',ist];
+  });
+  if (sheet.getLastRow()>1) sheet.deleteRows(2,sheet.getLastRow()-1);
+  if (rows.length) sheet.getRange(2,1,rows.length,rows[0].length).setValues(rows);
+  _ensureFilter(sheet);
+  return {success:true, students_written:rows.length};
 }
 
 function _getConfig(tid) {
