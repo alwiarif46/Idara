@@ -1506,12 +1506,6 @@ function App() {
     }
   }, []);
 
-  // Watch daily attendance for 3x absent
-  useEffect(() => {
-    const todayDt = new Date().toISOString().split('T')[0];
-    checkAbsentAlerts(dAttend, todayDt);
-  }, [dAttend, checkAbsentAlerts]);
-
   // Check for 3x absent students and fire notification
   const checkAbsentAlerts = useCallback((dData, todayDt) => {
     const allSlots = ['fajr','salam','zuhr','asr','maghrib','isha'];
@@ -1557,6 +1551,12 @@ function App() {
       setAlerts([]);
     }
   }, [students, CL]);
+
+  // Watch daily attendance for 3x absent
+  useEffect(() => {
+    const todayDt = new Date().toISOString().split('T')[0];
+    checkAbsentAlerts(dAttend, todayDt);
+  }, [dAttend, checkAbsentAlerts]);
 
   // Fetch prayer times from Aladhan API
   useEffect(() => {
