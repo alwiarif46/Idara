@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ur">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ڈیش بورڈ — ادارہ تحقیقات اسلامی</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --dk:#0c1a2e;--dk2:#132640;--dk3:#1a3350;
+  --gd:#d4a017;--gd2:#f4c430;
+  --gr:#34a853;--rd:#ea4335;--yl:#fbbc04;--bl:#4285f4;
+  --wh:#fff;--lg:#f4f6f8;
+}
+body{font-family:'Noto Sans Arabic',sans-serif;background:var(--dk);color:var(--wh);min-height:100vh;direction:rtl}
+.container{max-width:1200px;margin:0 auto;padding:12px}
+.header{background:linear-gradient(135deg,var(--dk2),var(--dk3));border-radius:16px;padding:20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header h1{font-size:22px;color:var(--gd);font-weight:800}
+.header .sub{font-size:11px;color:#8a9ab5}
+.header .live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gr)}
+.header .live .dot{width:8px;height:8px;border-radius:50%;background:var(--gr);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px}
+.tab{padding:8px 16px;border-radius:20px;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.2s}
+.tab.active{background:var(--gd);color:var(--dk)}
+.tab:not(.active){background:var(--dk3);color:#8a9ab5}
+.tab:hover:not(.active){background:#1f3d5e}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px}
+.card{background:var(--dk2);border-radius:14px;padding:16px;border:1px solid #1f3d5e}
+.card .num{font-size:28px;font-weight:800;color:var(--gd)}
+.card .lbl{font-size:10px;color:#8a9ab5;margin-top:4px}
+.card.gr .num{color:var(--gr)}.card.rd .num{color:var(--rd)}.card.yl .num{color:var(--yl)}.card.bl .num{color:var(--bl)}
+.section{background:var(--dk2);border-radius:14px;padding:16px;margin-bottom:16px;border:1px solid #1f3d5e}
+.section h2{font-size:15px;font-weight:800;color:var(--gd);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{background:var(--dk3);color:var(--gd);padding:10px 8px;text-align:center;font-weight:700;position:sticky;top:0}
+.tbl td{padding:8px;text-align:center;border-bottom:1px solid #1a3350}
+.tbl tr:hover td{background:#1a3350}
+.badge{display:inline-block;padding:2px 10px;border-radius:8px;font-size:10px;font-weight:700}
+.badge.p{background:#34a85322;color:var(--gr)}.badge.a{background:#ea433522;color:var(--rd)}
+.badge.l{background:#fbbc0422;color:var(--yl)}.badge.late{background:#ff980022;color:#ff9800}
+.badge.approved{background:#34a85322;color:var(--gr)}.badge.pending{background:#ff980022;color:#ff9800}
+.btn{padding:8px 16px;border-radius:10px;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:.2s}
+.btn-gd{background:var(--gd);color:var(--dk)}.btn-gd:hover{background:var(--gd2)}
+.btn-gr{background:var(--gr);color:#fff}.btn-rd{background:var(--rd);color:#fff}
+.btn-bl{background:var(--bl);color:#fff}
+.btn-sm{padding:4px 10px;font-size:10px}
+.call-btn{background:var(--gr);color:#fff;border:none;padding:4px 12px;border-radius:8px;font-family:inherit;font-size:10px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-bar select,.filter-bar input{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:6px 10px;border-radius:8px;font-family:inherit;font-size:11px}
+.filter-bar input[type=date]{direction:ltr;text-align:center}
+.search{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:8px 14px;border-radius:10px;font-family:inherit;font-size:12px;width:100%;margin-bottom:10px}
+.current-period{background:linear-gradient(135deg,#1a5276,#1a2780);border-radius:14px;padding:16px;margin-bottom:16px;border:2px solid var(--gd)}
+.current-period h2{color:var(--gd);font-size:15px;margin-bottom:10px}
+.period-card{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px}
+.period-card .teacher{font-weight:700;font-size:12px}.period-card .subject{font-size:11px;color:#8a9ab5}
+.class-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:700}
+.oola{background:#fdebd033;color:#f39c12}.sania{background:#d6eaf833;color:#3498db}
+.salisa{background:#e8daef33;color:#9b59b6}.rabia{background:#d1f2eb33;color:#1abc9c}
+.khamisa{background:#fcf3cf33;color:#f1c40f}.fazilat{background:#fadbd833;color:#e74c3c}
+.hifz{background:#eaecee33;color:#95a5a6}
+.scroll-table{max-height:400px;overflow-y:auto}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gd);color:var(--dk);padding:10px 24px;border-radius:12px;font-weight:700;font-size:12px;z-index:999;display:none}
+.loading{text-align:center;padding:40px;color:#8a9ab5;font-size:13px}
+@media(max-width:600px){.grid{grid-template-columns:repeat(2,1fr)}.container{padding:8px}}
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="loading">⏳ لوڈ ہو رہا ہے...</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const SB_URL = 'https://mhhifytmrlyksfrjacvi.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oaGlmeXRtcmx5a3NmcmphY3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTExNTAsImV4cCI6MjA4OTc2NzE1MH0.RIkSQq1Q7qLO_tVqklGV_KZabcKYfqqBFd7SLKpBE_Y';
+const PRINCIPAL_PHONE = '';  // Set principal phone number here
+const CLASS_UR = {oola:'اولیٰ',sania:'ثانیہ',salisa:'ثالثہ',rabia:'رابعہ',khamisa:'خامسہ',fazilat:'فضیلت',hifz:'حفظ'};
+const TODAY = new Date().toISOString().split('T')[0];
+
+// ═══════════════════════════════════════════
+// SUPABASE HELPERS
+// ═══════════════════════════════════════════
+const headers = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+async function sb(table, params='') {
+  const r = await fetch(SB_URL+'/rest/v1/'+table+'?'+params, {headers:{'apikey':SB_KEY}});
+  if (!r.ok) throw new Error(r.status+' '+r.statusText);
+  return r.json();
+}
+async function sbPatch(table, filter, data) {
+  const r = await fetch(SB_URL+'/rest/v1/'+table+'?'+filter, {
+    method:'PATCH', headers:{...headers,'Prefer':'return=minimal'}, body:JSON.stringify(data)
+  });
+  return r.ok;
+}
+function toast(msg) {
+  const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';
+  setTimeout(()=>t.style.display='none',3000);
+}
+function now() {
+  const d=new Date();
+  return d.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+}
+function todayIST() {
+  return new Date().toLocaleDateString('ur-PK',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Kolkata'});
+}
+
+// ═══════════════════════════════════════════
+// LOAD ALL DATA
+// ═══════════════════════════════════════════
+let DATA = {};
+async function loadAll() {
+  try {
+    const [teachers,subjects,students,periods,assignments,
+           tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary] = await Promise.all([
+      sb('teachers','select=*&order=id'),
+      sb('subjects','select=*&order=id'),
+      sb('students','select=*&order=name'),
+      sb('periods','select=*&order=id'),
+      sb('assignments','select=*&order=period_id'),
+      sb('teacher_attendance','select=*&date=eq.'+TODAY),
+      sb('student_attendance','select=*&date=eq.'+TODAY+'&order=created_at.desc&limit=500'),
+      sb('daily_attendance','select=*&date=eq.'+TODAY+'&order=created_at.desc&limit=500'),
+      sb('daily_reports','select=*&date=eq.'+TODAY),
+      sb('teacher_leave_summary','select=*'),
+    ]);
+    DATA = {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary};
+    return DATA;
+  } catch(e) {
+    document.getElementById('app').innerHTML = '<div class="loading">❌ Supabase سے رابطہ ناکام<br><small>'+e.message+'</small></div>';
+    throw e;
+  }
+}
+
+// ═══════════════════════════════════════════
+// CURRENT PERIOD CALCULATION
+// ═══════════════════════════════════════════
+function getCurrentPeriod(periods) {
+  const t = now();
+  for (const p of periods) {
+    if (p.type === 'break') continue;
+    // Convert times like "10:00" to comparable format
+    const s = p.start_time.padStart(5,'0');
+    const e = p.end_time.padStart(5,'0');
+    if (t >= s && t < e) return p;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+let activeTab = 'overview';
+
+function render() {
+  const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
+  const curPeriod = getCurrentPeriod(periods);
+
+  // Compute stats
+  const tPresent = tAttToday.filter(r=>r.status==='present').length;
+  const tAbsent = tAttToday.filter(r=>r.status==='absent'||r.status==='leave').length;
+  const sPresent = sAttToday.filter(r=>r.status==='P').length;
+  const sAbsent = sAttToday.filter(r=>r.status==='A').length;
+  const rComplete = reportsToday.filter(r=>r.complete==='ہاں').length;
+  const rPartial = reportsToday.filter(r=>r.complete==='جزوی').length;
+
+  let html = '';
+
+  // ── HEADER ──
+  html += `
+  <div class="header">
+    <div>
+      <h1>📊 ادارہ تحقیقات اسلامی</h1>
+      <div class="sub">${todayIST()} • ${now()} IST</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="live"><span class="dot"></span> زندہ</div>
+      <button class="btn btn-gd btn-sm" onclick="refresh()">🔄 تازہ</button>
+      ${PRINCIPAL_PHONE ? `<a href="tel:${PRINCIPAL_PHONE}" class="call-btn">📞 پرنسپل</a>` : ''}
+    </div>
+  </div>`;
+
+  // ── TABS ──
+  const tabList = [
+    {id:'overview',l:'📊 جائزہ'},
+    {id:'tAttend',l:'👨‍🏫 اساتذہ حاضری'},
+    {id:'sAttend',l:'👥 طلبا حاضری'},
+    {id:'reports',l:'📝 رپورٹس'},
+    {id:'export',l:'📥 ایکسپورٹ'},
+  ];
+  html += '<div class="tabs">';
+  tabList.forEach(t => {
+    html += `<button class="tab ${activeTab===t.id?'active':''}" onclick="switchTab('${t.id}')">${t.l}</button>`;
+  });
+  html += '</div>';
+
+  // ═══════════════════════════════════════════
+  // TAB: OVERVIEW
+  // ═══════════════════════════════════════════
+  if (activeTab === 'overview') {
+
+    // Scorecards
+    html += '<div class="grid">';
+    html += `<div class="card gr"><div class="num">${tPresent}</div><div class="lbl">اساتذہ حاضر</div></div>`;
+    html += `<div class="card rd"><div class="num">${tAbsent}</div><div class="lbl">اساتذہ غائب/رخصت</div></div>`;
+    html += `<div class="card bl"><div class="num">${sPresent}</div><div class="lbl">طلبا حاضر</div></div>`;
+    html += `<div class="card rd"><div class="num">${sAbsent}</div><div class="lbl">طلبا غائب</div></div>`;
+    html += `<div class="card gr"><div class="num">${rComplete}</div><div class="lbl">مکمل رپورٹس</div></div>`;
+    html += `<div class="card yl"><div class="num">${rPartial}</div><div class="lbl">جزوی رپورٹس</div></div>`;
+    html += `<div class="card bl"><div class="num">${students.length}</div><div class="lbl">کل طلبا</div></div>`;
+    html += `<div class="card"><div class="num">${subjects.length}</div><div class="lbl">کل مضامین</div></div>`;
+    html += '</div>';
+
+    // Current Period
+    html += '<div class="current-period">';
+    html += `<h2>🕐 ابھی — ${curPeriod ? 'پیریڈ '+curPeriod.id+' ('+curPeriod.start_time+'–'+curPeriod.end_time+')' : 'کوئی پیریڈ نہیں'}</h2>`;
+    if (curPeriod) {
+      const curAssignments = assignments.filter(a => a.period_id === curPeriod.id);
+      if (curAssignments.length) {
+        curAssignments.forEach(a => {
+          const t = teachers.find(x=>x.id===a.teacher_id);
+          const s = subjects.find(x=>x.id===a.subject_id);
+          const tAtt = tAttToday.find(x=>x.teacher_id===a.teacher_id);
+          const isAbsent = tAtt && (tAtt.status==='absent'||tAtt.status==='leave');
+          html += `<div class="period-card" style="${isAbsent?'border:2px solid var(--rd);opacity:.7':''}">
+            <div>
+              <div class="teacher">${t?t.name:a.teacher_id} ${isAbsent?'<span class="badge a">غائب</span>':''}</div>
+              <div class="subject">${s?s.name:a.subject_id}</div>
+            </div>
+            <span class="class-badge ${s?s.class:''}">${s?CLASS_UR[s.class]||s.class:''}</span>
+          </div>`;
+        });
+      } else {
+        html += '<div style="color:#8a9ab5;font-size:12px">اس پیریڈ میں کوئی تفویض نہیں</div>';
+      }
+    } else {
+      html += '<div style="color:#8a9ab5;font-size:12px">ابھی تدریسی وقت نہیں — ';
+      const nextP = periods.find(p=>p.type!=='break'&&p.start_time.padStart(5,'0')>now());
+      if (nextP) html += 'اگلا پیریڈ: '+nextP.start_time;
+      else html += 'آج کے پیریڈ ختم';
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // Absent Teachers Today
+    const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
+    if (absentTeachers.length) {
+      html += '<div class="section"><h2>⚠️ آج غائب/رخصت اساتذہ</h2>';
+      absentTeachers.forEach(r => {
+        const t = teachers.find(x=>x.id===r.teacher_id);
+        const tAssignments = assignments.filter(a=>a.teacher_id===r.teacher_id).map(a => {
+          const s = subjects.find(x=>x.id===a.subject_id);
+          return s ? `P${a.period_id} ${s.name}` : `P${a.period_id}`;
+        });
+        html += `<div class="period-card" style="border-right:4px solid var(--rd)">
+          <div>
+            <div class="teacher">${t?t.name:r.teacher_id} <span class="badge ${r.status==='absent'?'a':'l'}">${r.status==='absent'?'غائب':'رخصت'}</span></div>
+            <div class="subject">متاثر: ${tAssignments.join(' • ')}</div>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+
+    // Class-wise Absent Students
+    const absentStudents = sAttToday.filter(r=>r.status==='A');
+    if (absentStudents.length) {
+      html += '<div class="section"><h2>❌ غائب طلبا — درجہ وار</h2>';
+      const byClass = {};
+      absentStudents.forEach(r => {
+        const cls = r.class || 'unknown';
+        if (!byClass[cls]) byClass[cls] = [];
+        const st = students.find(s=>s.id===r.student_id);
+        byClass[cls].push({...r, studentObj: st});
+      });
+      Object.keys(byClass).forEach(cls => {
+        html += `<div style="margin-bottom:12px">
+          <div style="font-weight:700;font-size:12px;margin-bottom:6px">
+            <span class="class-badge ${cls}">${CLASS_UR[cls]||cls}</span> — ${byClass[cls].length} غائب
+          </div>`;
+        byClass[cls].forEach(r => {
+          const st = r.studentObj;
+          const phone = st && st.phone ? st.phone : '';
+          html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:var(--dk);border-radius:8px;margin-bottom:3px">
+            <span style="font-size:11px">${st?st.name:r.student_id}</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:9px;color:#8a9ab5">${r.subject_name||''}</span>
+              ${phone ? `<a href="tel:${phone}" class="call-btn" style="font-size:9px">📞 ولی</a>` : ''}
+            </div>
+          </div>`;
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // TAB: TEACHER ATTENDANCE
+  // ═══════════════════════════════════════════
+  if (activeTab === 'tAttend') {
+    html += '<div class="section"><h2>👨‍🏫 اساتذہ کی آج کی حاضری</h2>';
+
+    // Leave summary
+    html += '<div class="grid" style="margin-bottom:16px">';
+    teachers.forEach(t => {
+      const att = tAttToday.find(r=>r.teacher_id===t.id);
+      const ls = (DATA.leaveSummary||[]).find(r=>r.teacher_id===t.id);
+      const status = att ? att.status : '—';
+      const badgeCls = status==='present'?'p':status==='absent'?'a':status==='leave'?'l':status==='late'?'late':'';
+      const approved = att ? att.approved : false;
+      html += `<div class="card" style="border-right:4px solid ${status==='present'?'var(--gr)':status==='absent'?'var(--rd)':status==='leave'?'var(--bl)':'#555'}">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">${t.name}</div>
+        <div><span class="badge ${badgeCls}">${status==='present'?'حاضر':status==='absent'?'غائب':status==='leave'?'رخصت':status==='late'?'تاخیر':'نامعلوم'}</span>
+          ${att ? `<span class="badge ${approved?'approved':'pending'}" style="margin-right:4px">${approved?'✓ منظور':'⏳ زیر التوا'}</span>` : ''}
+        </div>
+        ${ls ? `<div style="font-size:9px;color:#8a9ab5;margin-top:6px">حاضر:${ls.present_days||0} رخصت:${ls.leave_days||0} غائب:${ls.absent_days||0} تاخیر:${ls.late_days||0}</div>` : ''}
+        ${att && !approved ? `<button class="btn btn-gr btn-sm" style="margin-top:6px" onclick="approveTeacher('${t.id}')">✅ منظور</button>` : ''}
+      </div>`;
+    });
+    html += '</div>';
+
+    // Approve All
+    const pending = tAttToday.filter(r=>!r.approved);
+    if (pending.length) {
+      html += `<button class="btn btn-gd" onclick="approveAll()">✅ سب منظور کریں (${pending.length})</button>`;
+    }
+    html += '</div>';
+  }
+
+  // ═══════════════════════════════════════════
+  // TAB: STUDENT ATTENDANCE
+  // ═══════════════════════════════════════════
+  if (activeTab === 'sAttend') {
+    html += '<div class="section"><h2>👥 آج طلبا کی حاضری</h2>';
+
+    // Class filter
+    html += '<div class="filter-bar">';
+    html += '<select id="sClassFilter" onchange="render()">';
+    html += '<option value="all">سب درجے</option>';
+    Object.keys(CLASS_UR).forEach(c => html += `<option value="${c}">${CLASS_UR[c]}</option>`);
+    html += '</select>';
+    html += '<select id="sStatusFilter" onchange="render()">';
+    html += '<option value="all">سب</option><option value="P">حاضر</option><option value="A">غائب</option><option value="L">رخصت</option>';
+    html += '</select>';
+    html += '<input type="search" id="sSearch" placeholder="🔍 نام تلاش..." oninput="render()" style="flex:1;min-width:120px">';
+    html += '</div>';
+
+    const classF = document.getElementById('sClassFilter')?.value || 'all';
+    const statusF = document.getElementById('sStatusFilter')?.value || 'all';
+    const searchF = (document.getElementById('sSearch')?.value || '').toLowerCase();
+
+    let filtered = sAttToday;
+    if (classF !== 'all') filtered = filtered.filter(r=>r.class===classF);
+    if (statusF !== 'all') filtered = filtered.filter(r=>r.status===statusF);
+    if (searchF) filtered = filtered.filter(r=>{
+      const st = students.find(s=>s.id===r.student_id);
+      return (st&&st.name.toLowerCase().includes(searchF)) || r.student_id.toLowerCase().includes(searchF);
+    });
+
+    // Summary
+    const fP = filtered.filter(r=>r.status==='P').length;
+    const fA = filtered.filter(r=>r.status==='A').length;
+    const fL = filtered.filter(r=>r.status==='L').length;
+    html += `<div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px">
+      <span style="color:var(--gr)">✅ حاضر: ${fP}</span>
+      <span style="color:var(--rd)">❌ غائب: ${fA}</span>
+      <span style="color:var(--yl)">📝 رخصت: ${fL}</span>
+      <span style="color:#8a9ab5">کل: ${filtered.length}</span>
+    </div>`;
+
+    html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
+    html += '<th>طالب علم</th><th>درجہ</th><th>مضمون</th><th>استاذ</th><th>حاضری</th><th>رابطہ</th>';
+    html += '</tr></thead><tbody>';
+    filtered.slice(0,200).forEach(r => {
+      const st = students.find(s=>s.id===r.student_id);
+      const phone = st && st.phone ? st.phone : '';
+      html += `<tr>
+        <td style="font-weight:700">${st?st.name:r.student_id}</td>
+        <td><span class="class-badge ${r.class||''}">${CLASS_UR[r.class]||r.class||''}</span></td>
+        <td>${r.subject_name||''}</td>
+        <td>${r.teacher_name||''}</td>
+        <td><span class="badge ${r.status.toLowerCase()}">${r.status==='P'?'حاضر':r.status==='A'?'غائب':'رخصت'}</span></td>
+        <td>${phone?`<a href="tel:${phone}" class="call-btn">📞</a>`:''}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    if (filtered.length > 200) html += '<div style="text-align:center;padding:8px;color:#8a9ab5;font-size:10px">200 دکھائے — CSV ڈاؤنلوڈ کریں</div>';
+    html += '</div>';
+  }
+
+  // ═══════════════════════════════════════════
+  // TAB: DAILY REPORTS
+  // ═══════════════════════════════════════════
+  if (activeTab === 'reports') {
+    html += '<div class="section"><h2>📝 آج کی یومیہ رپورٹس</h2>';
+    if (reportsToday.length) {
+      html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
+      html += '<th>استاذ</th><th>مضمون</th><th>درجہ</th><th>ہدف</th><th>اصل</th><th>فرق</th><th>مکمل</th>';
+      html += '</tr></thead><tbody>';
+      reportsToday.forEach(r => {
+        const diff = (r.actual_page||0) - (r.target_page||0);
+        const diffColor = diff >= 0 ? 'var(--gr)' : diff >= -3 ? 'var(--yl)' : 'var(--rd)';
+        html += `<tr>
+          <td>${r.teacher_name||r.teacher_id}</td>
+          <td>${r.subject_name||r.subject_id}</td>
+          <td><span class="class-badge ${r.class||''}">${CLASS_UR[r.class]||r.class||''}</span></td>
+          <td>${r.target_page||''}</td>
+          <td style="font-weight:700">${r.actual_page||''}</td>
+          <td style="color:${diffColor};font-weight:700">${diff>0?'+':''}${diff}</td>
+          <td><span class="badge ${r.complete==='ہاں'?'p':r.complete==='جزوی'?'l':'a'}">${r.complete||''}</span></td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div style="text-align:center;padding:30px;color:#8a9ab5">آج ابھی تک کوئی رپورٹ نہیں</div>';
+    }
+    html += '</div>';
+  }
+
+  // ═══════════════════════════════════════════
+  // TAB: EXPORT
+  // ═══════════════════════════════════════════
+  if (activeTab === 'export') {
+    html += '<div class="section"><h2>📥 ڈیٹا ایکسپورٹ</h2>';
+    html += '<div class="filter-bar">';
+    html += '<input type="date" id="expFrom" value="'+TODAY+'">';
+    html += '<span style="color:#8a9ab5">→</span>';
+    html += '<input type="date" id="expTo" value="'+TODAY+'">';
+    html += '</div>';
+    const exports = [
+      {id:'student_attendance',l:'📋 مضمون وار حاضری',cols:'date,teacher_name,subject_name,class,student_id,status,created_at'},
+      {id:'daily_attendance',l:'🕐 یومیہ حاضری',cols:'date,slot,marked_by_name,student_id,status,created_at'},
+      {id:'teacher_attendance',l:'👨‍🏫 اساتذہ حاضری',cols:'date,teacher_id,teacher_name,status,approved,approved_by,created_at'},
+      {id:'daily_reports',l:'📝 رپورٹس',cols:'date,teacher_name,subject_name,class,target_page,actual_page,complete,reason,created_at'},
+      {id:'thursday_tests',l:'✍️ امتحانات',cols:'date,examiner_name,subject_name,class,excellent,good,weak,fail,average,created_at'},
+      {id:'hifz_progress',l:'📖 حفظ',cols:'date,student_name,paras,soorah,aayat,qari_id,created_at'},
+      {id:'students',l:'👥 طلبا فہرست',cols:'id,name,parent,phone,residence,class,qari_id,status,hifz_paras'},
+    ];
+    html += '<div class="grid">';
+    exports.forEach(e => {
+      html += `<div class="card" style="cursor:pointer" onclick="exportCSV('${e.id}','${e.cols}')">
+        <div style="font-size:24px;margin-bottom:6px">📥</div>
+        <div style="font-weight:700;font-size:12px">${e.l}</div>
+        <div style="font-size:9px;color:#8a9ab5;margin-top:4px">CSV ڈاؤنلوڈ</div>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════
+function switchTab(id) { activeTab = id; render(); }
+
+async function refresh() {
+  toast('⏳ تازہ ہو رہا ہے...');
+  await loadAll();
+  render();
+  toast('✅ تازہ');
+}
+
+async function approveTeacher(tid) {
+  const ok = await sbPatch('teacher_attendance',
+    'date=eq.'+TODAY+'&teacher_id=eq.'+tid,
+    {approved:true, approved_by:'admin', approved_at:new Date().toISOString()}
+  );
+  if (ok) { toast('✅ منظور'); await loadAll(); render(); }
+  else toast('❌ ناکام');
+}
+
+async function approveAll() {
+  const ok = await sbPatch('teacher_attendance',
+    'date=eq.'+TODAY+'&approved=eq.false',
+    {approved:true, approved_by:'admin', approved_at:new Date().toISOString()}
+  );
+  if (ok) { toast('✅ سب منظور'); await loadAll(); render(); }
+  else toast('❌ ناکام');
+}
+
+async function exportCSV(table, colStr) {
+  const from = document.getElementById('expFrom')?.value || TODAY;
+  const to = document.getElementById('expTo')?.value || TODAY;
+  toast('⏳ لوڈ ہو رہا ہے...');
+  try {
+    let params = 'select='+colStr+'&order=created_at.desc&limit=5000';
+    if (table !== 'students') params += '&date=gte.'+from+'&date=lte.'+to;
+    const data = await sb(table, params);
+    if (!data.length) { toast('⚠️ خالی'); return; }
+    const cols = colStr.split(',');
+    const header = cols.join(',');
+    const rows = data.map(r => cols.map(c => '"'+(String(r[c]||'')).replace(/"/g,'""')+'"').join(','));
+    const csv = '\uFEFF'+header+'\n'+rows.join('\n');
+    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=table+'_'+from+'_to_'+to+'.csv';
+    a.click(); URL.revokeObjectURL(url);
+    toast('✅ ڈاؤنلوڈ — '+data.length+' سطریں');
+  } catch(e) { toast('❌ '+e.message); }
+}
+
+// ═══════════════════════════════════════════
+// INIT + AUTO-REFRESH
+// ═══════════════════════════════════════════
+(async () => {
+  await loadAll();
+  render();
+  // Auto-refresh every 60 seconds
+  setInterval(async () => {
+    try { await loadAll(); render(); } catch(e) {}
+  }, 60000);
+})();
+</script>
+</body>
+</html>
