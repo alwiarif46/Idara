@@ -1349,6 +1349,8 @@ function App() {
   const [err, setErr] = useState('');
   const [tab, setTab] = useState('home');
   const [toast, setToast] = useState('');
+  const [prayerTimes, setPrayerTimes] = useState(null);
+  const [hijriDate, setHijriDate] = useState(null);
   const [admSub, setAdmSub] = useState(null);
   const [syncSt, setSyncSt] = useState(null);
   const [loginEmail, setLoginEmail] = useState('');
@@ -1494,6 +1496,28 @@ function App() {
       setDAttendRaw(savedDA || {});
       setLoading(false);
     })();
+  }, []);
+
+  // Fetch prayer times from Aladhan API
+  useEffect(() => {
+    const fetchPrayer = async () => {
+      try {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2,'0');
+        const mm = String(now.getMonth()+1).padStart(2,'0');
+        const yyyy = now.getFullYear();
+        const cached = localStorage.getItem('iri-prayer-'+dd+mm+yyyy);
+        if (cached) { const c = JSON.parse(cached); setPrayerTimes(c.timings); setHijriDate(c.hijri); return; }
+        const r = await fetch('https://api.aladhan.com/v1/timings/'+dd+'-'+mm+'-'+yyyy+'?latitude=33.7307&longitude=75.1504&method=1&school=1&tune=0,-1,0,-1,0,2,0,0,0');
+        const d = await r.json();
+        if (d.code === 200) {
+          setPrayerTimes(d.data.timings);
+          setHijriDate(d.data.date.hijri);
+          localStorage.setItem('iri-prayer-'+dd+mm+yyyy, JSON.stringify({timings:d.data.timings, hijri:d.data.date.hijri}));
+        }
+      } catch(e) { console.log('Prayer API error:', e); }
+    };
+    fetchPrayer();
   }, []);
 
   // Load Nastaliq font
@@ -2472,7 +2496,62 @@ function App() {
       fontSize: 9,
       color: '#f59e0b'
     }
-  }, "\uD83D\uDCCB \u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646\u0627\u062A: ", thuMap.length, " \u06C1\u0641\u062A\u06D2 \u2022 ", myThu.length > 0 ? myThu[0].myAsg.length : 0, " \u067E\u06CC\u0631\u06CC\u0688/\u06C1\u0641\u062A\u06C1")), isQari && /*#__PURE__*/React.createElement("div", null,
+  }, "\uD83D\uDCCB \u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646\u0627\u062A: ", thuMap.length, " \u06C1\u0641\u062A\u06D2 \u2022 ", myThu.length > 0 ? myThu[0].myAsg.length : 0, " \u067E\u06CC\u0631\u06CC\u0688/\u06C1\u0641\u062A\u06C1")),
+
+  // ── Prayer Times Card ──
+  prayerTimes && (() => {
+    const pt = prayerTimes;
+    const prayers = [
+      {id:'Fajr',n:'\u0641\u062C\u0631',ic:'\uD83C\uDF19',t:pt.Fajr},
+      {id:'Sunrise',n:'\u0637\u0644\u0648\u0639',ic:'\uD83C\uDF05',t:pt.Sunrise},
+      {id:'Dhuhr',n:'\u0638\u06C1\u0631',ic:'\u2600\uFE0F',t:pt.Dhuhr},
+      {id:'Asr',n:'\u0639\u0635\u0631',ic:'\uD83C\uDF24',t:pt.Asr},
+      {id:'Maghrib',n:'\u0645\u063A\u0631\u0628',ic:'\uD83C\uDF07',t:pt.Maghrib},
+      {id:'Isha',n:'\u0639\u0634\u0627\u0621',ic:'\uD83C\uDF19',t:pt.Isha}
+    ];
+    const now = new Date();
+    const nowMin = now.getHours()*60 + now.getMinutes();
+    const toMin = ts => { const p=ts.split(':'); return parseInt(p[0])*60+parseInt(p[1]); };
+    let nextIdx = prayers.findIndex(p => toMin(p.t) > nowMin);
+    if (nextIdx === -1) nextIdx = 0;
+    const nextP = prayers[nextIdx];
+    const diff = toMin(nextP.t) - nowMin;
+    const diffH = Math.floor(Math.abs(diff)/60);
+    const diffM = Math.abs(diff)%60;
+    const countdown = diff > 0 ? (diffH > 0 ? diffH+' \u06AF\u06BE\u0646\u0679\u06C1 ' : '')+diffM+' \u0645\u0646\u0679 \u0628\u0627\u0642\u06CC' : '\u0627\u0628\u06BE\u06CC';
+    return React.createElement('div', {style:{marginBottom:12}},
+      // Hijri date
+      hijriDate && React.createElement('div', {style:{textAlign:'center',fontSize:10,color:'#9ca3af',marginBottom:6}},
+        hijriDate.day+' '+hijriDate.month.ar+' '+hijriDate.year+' \u06C1\u062C\u0631\u06CC'),
+      // Next prayer highlight card
+      React.createElement('div', {style:{background:'linear-gradient(135deg,'+ST.dk+',#1a3a5c)',borderRadius:14,padding:'14px 16px',marginBottom:8,textAlign:'center'}},
+        React.createElement('div', {style:{fontSize:9,color:'#9ca3af'}},'\u25C4 \u0627\u06AF\u0644\u06CC \u0646\u0645\u0627\u0632'),
+        React.createElement('div', {style:{fontSize:22,fontWeight:800,color:ST.gd,margin:'4px 0'}},nextP.ic+' '+nextP.n+'  '+nextP.t),
+        React.createElement('div', {style:{fontSize:11,color:'#a3e635'}},countdown)
+      ),
+      // 2x3 grid of mini cards
+      React.createElement('div', {style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5}},
+        prayers.map((p,pi) => {
+          const passed = toMin(p.t) <= nowMin;
+          const isNext = pi === nextIdx;
+          return React.createElement('div', {key:p.id, style:{
+            background: isNext ? ST.dk : '#fff',
+            borderRadius:10, padding:'8px 6px', textAlign:'center',
+            boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
+            opacity: passed && !isNext ? 0.5 : 1,
+            border: isNext ? 'none' : '1px solid #f0ebe0'
+          }},
+            React.createElement('div',{style:{fontSize:14}},p.ic),
+            React.createElement('div',{style:{fontSize:11,fontWeight:700,color:isNext?ST.gd:'#333',marginTop:2}},p.n),
+            React.createElement('div',{style:{fontSize:13,fontWeight:800,color:isNext?'#a3e635':'#555',marginTop:1,direction:'ltr'}},p.t),
+            passed && !isNext ? React.createElement('div',{style:{fontSize:8,color:'#aaa'}},'\u2713') : null
+          );
+        })
+      )
+    );
+  })(),
+
+  isQari && /*#__PURE__*/React.createElement("div", null,
       /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:'#9ca3af',marginBottom:8}},
         students.filter(s=>s.qari===user.id&&s.status!=='left').length, " طالب علم"),
       students.filter(s=>s.qari===user.id&&s.status!=='left').map((s,i)=>{
