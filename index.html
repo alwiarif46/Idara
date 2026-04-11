@@ -2778,7 +2778,115 @@ function App() {
       students.filter(s=>s.qari===user.id&&s.status!=='left').length>0&&
         React.createElement(Btn, {full:true, small:true, color:'#1a3a5c', style:{marginTop:10},
           onClick:()=>syncAttendance('hifz')}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713')
-    ), !isAd && !isQari && React.createElement('div', {
+    ), !isAd && !isQari && (() => {
+      // ── Teacher Self-Attendance ──
+      const todayDt = new Date().toISOString().split('T')[0];
+      const myAttKey = 'iri-myatt-' + todayDt;
+      const [myAtt, setMyAtt] = React.useState(localStorage.getItem(myAttKey) || '');
+      const [myLeaves, setMyLeaves] = React.useState(null);
+      const [coverageAlert, setCoverageAlert] = React.useState(null);
+
+      // Fetch leave count + coverage alert on mount
+      React.useEffect(() => {
+        if (!cfg.supabase_url || !cfg.supabase_key) return;
+        // My leave count
+        fetch(cfg.supabase_url + '/rest/v1/teacher_leave_summary?teacher_id=eq.' + user.id, {
+          headers: { 'apikey': cfg.supabase_key }
+        }).then(r=>r.json()).then(d => {
+          if (d && d.length) setMyLeaves(d[0]);
+        }).catch(()=>{});
+        // Coverage: who is absent/leave today?
+        fetch(cfg.supabase_url + '/rest/v1/teacher_attendance?date=eq.' + todayDt + '&status=in.(absent,leave)', {
+          headers: { 'apikey': cfg.supabase_key }
+        }).then(r=>r.json()).then(d => {
+          if (d && d.length) {
+            const alerts = d.filter(r => r.teacher_id !== user.id).map(r => {
+              const t = teachers.find(x=>x.id===r.teacher_id);
+              const tName = t ? t.n : r.teacher_id;
+              const periods = assignments.filter(a=>a.t===r.teacher_id).map(a => {
+                const sub = subjects.find(s=>s.id===a.sub);
+                const per = periods.find(p=>p.id===a.p);
+                return sub ? ('P'+a.p+' '+sub.n) : ('P'+a.p);
+              });
+              return { name: tName, status: r.status, periods: periods };
+            });
+            if (alerts.length) setCoverageAlert(alerts);
+          }
+        }).catch(()=>{});
+      }, []);
+
+      const stOpts = [
+        {id:'present',l:'حاضر',ic:'✅',c:'#34a853'},
+        {id:'late',l:'تاخیر',ic:'⏰',c:'#fbbc04'},
+        {id:'leave',l:'رخصت',ic:'📝',c:'#4285f4'},
+        {id:'absent',l:'غائب',ic:'❌',c:'#ea4335'}
+      ];
+      const markSelf = async (st) => {
+        setMyAtt(st);
+        localStorage.setItem(myAttKey, st);
+        const pl = {date:todayDt, attendance:{[user.id]:st}, teacher_id:user.id};
+        const r = await syncPost('teacher_attendance', pl);
+        // If absent/leave — create notification for others
+        if ((st === 'absent' || st === 'leave') && cfg.supabase_url) {
+          const myPeriods = assignments.filter(a=>a.t===user.id).map(a => {
+            const sub = subjects.find(s=>s.id===a.sub);
+            return sub ? ('P'+a.p+' '+sub.n) : ('P'+a.p);
+          });
+          const msg = user.n + ' آج ' + (st==='absent'?'غائب':'رخصت پر') + ' — متاثر پیریڈ: ' + myPeriods.join('، ');
+          await sbPost('notifications', {
+            date: todayDt, type: 'coverage', teacher_id: user.id,
+            teacher_name: user.n, message: msg, affected_periods: myPeriods.join(', ')
+          }, 'date,teacher_id');
+        }
+        if (r && r.success) flash('✅ ' + stOpts.find(s=>s.id===st).l + (st!=='present'?' — منظوری زیر التوا':''));
+      };
+
+      return React.createElement('div', null,
+        // Coverage Alert Banner
+        coverageAlert && React.createElement('div', {
+          style:{background:'#fff3e0',border:'2px solid #ff9800',borderRadius:14,padding:'12px 14px',marginBottom:10}
+        },
+          React.createElement('div', {style:{fontSize:13,fontWeight:800,color:'#e65100',marginBottom:6}}, '⚠️ آج کی ترتیبات درکار'),
+          coverageAlert.map((a,i) => React.createElement('div', {key:i, style:{marginBottom:6}},
+            React.createElement('div', {style:{fontSize:12,fontWeight:700,color:'#bf360c'}},
+              (a.status==='absent'?'❌':'📝') + ' ' + a.name + ' ' + (a.status==='absent'?'غائب':'رخصت پر')),
+            React.createElement('div', {style:{fontSize:10,color:'#795548',marginTop:2}},
+              '🔄 پیریڈ: ' + a.periods.join(' • '))
+          ))
+        ),
+
+        // Self Attendance Card
+        React.createElement('div', {
+          style:{background:'#fff',borderRadius:14,padding:'14px 16px',marginBottom:10,
+            border:myAtt?'2px solid '+(stOpts.find(s=>s.id===myAtt)||{c:'#ccc'}).c:'2px solid #e0e0e0'}
+        },
+          React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+            React.createElement('div', {style:{fontSize:13,fontWeight:800}}, '👨‍🏫 میری حاضری'),
+            myAtt && React.createElement('div', {style:{fontSize:10,padding:'3px 10px',borderRadius:8,fontWeight:700,
+              background:(stOpts.find(s=>s.id===myAtt)||{c:'#ccc'}).c+'22',
+              color:(stOpts.find(s=>s.id===myAtt)||{c:'#ccc'}).c}},
+              (stOpts.find(s=>s.id===myAtt)||{}).l + (myAtt!=='present'?' ⏳ زیر التوا':''))
+          ),
+          // Status buttons
+          React.createElement('div', {style:{display:'flex',gap:6}},
+            stOpts.map(st => React.createElement('button', {key:st.id,
+              onClick: () => markSelf(st.id),
+              style:{flex:1,padding:'10px 4px',borderRadius:10,border:myAtt===st.id?'2px solid '+st.c:'2px solid #eee',
+                background:myAtt===st.id?st.c+'22':'#fafafa',cursor:'pointer',textAlign:'center',
+                fontFamily:'inherit',fontSize:11,fontWeight:700,color:myAtt===st.id?st.c:'#666'}
+            }, st.ic + '\n' + st.l))
+          ),
+          // Leave counter
+          myLeaves && React.createElement('div', {style:{display:'flex',gap:8,marginTop:10,justifyContent:'center'}},
+            React.createElement('span', {style:{fontSize:9,color:'#34a853',fontWeight:700}}, '✅ حاضر: ' + (myLeaves.present_days||0)),
+            React.createElement('span', {style:{fontSize:9,color:'#fbbc04',fontWeight:700}}, '⏰ تاخیر: ' + (myLeaves.late_days||0)),
+            React.createElement('span', {style:{fontSize:9,color:'#4285f4',fontWeight:700}}, '📝 رخصت: ' + (myLeaves.leave_days||0)),
+            React.createElement('span', {style:{fontSize:9,color:'#ea4335',fontWeight:700}}, '❌ غائب: ' + (myLeaves.absent_days||0))
+          )
+        )
+      );
+    })(),
+    !isAd && !isQari && React.createElement('div', {
       onClick: () => setTab('dattend'),
       style: {
         background: 'linear-gradient(135deg, #1a5276, #1a2780)',
