@@ -459,6 +459,20 @@ function render() {
     const todayScore = Math.round(doneCount / dailyTasks.length * 100);
     const scoreColor = todayScore >= 80 ? 'var(--gr)' : todayScore >= 50 ? 'var(--yl)' : 'var(--rd)';
 
+    // ── Auto-persist ALL tasks (auto + manual) so admin_daily_score view stays accurate ──
+    (async () => {
+      try {
+        const rows = dailyTasks.map(t => {
+          const isDone = (t.auto && t.done) || (t.autoCheck) || (taskStatus[t.id] && taskStatus[t.id].completed);
+          return {date:TODAY, task_id:t.id, task_name:t.name, completed:!!isDone, completed_at: isDone ? (taskStatus[t.id]?.completed_at || new Date().toISOString()) : null};
+        });
+        await fetch(SB_URL+'/rest/v1/admin_tasks?on_conflict=date,task_id', {
+          method:'POST', headers:{...headers,'Prefer':'resolution=merge-duplicates'},
+          body: JSON.stringify(rows)
+        });
+      } catch(e) { console.warn('auto-persist tasks:', e); }
+    })();
+
     // ── Score Header ──
     html += `<div class="section" style="text-align:center;border:2px solid ${scoreColor}">
       <div style="font-size:56px;font-weight:800;color:${scoreColor}">${todayScore}%</div>
