@@ -1631,8 +1631,10 @@ function App() {
     setTimeout(() => setToast(''), 2500);
   }, []);
   // ── Supabase REST helper ──
-  const sbPost = async (table, rows) => {
-    const r = await fetch(cfg.supabase_url + '/rest/v1/' + table, {
+  const sbPost = async (table, rows, conflictCols) => {
+    let url = cfg.supabase_url + '/rest/v1/' + table;
+    if (conflictCols) url += '?on_conflict=' + conflictCols;
+    const r = await fetch(url, {
       method: 'POST',
       headers: {
         'apikey': cfg.supabase_key,
@@ -1672,7 +1674,7 @@ function App() {
             period_id: e.period || null, target_page: e.target_page, actual_page: e.actual_page,
             complete: e.complete || '', reason: e.reason_code || ''
           }));
-          await sbPost('daily_reports', rows);
+          await sbPost('daily_reports', rows, 'date,teacher_id,subject_id');
           break;
         }
         case 'thursday_test': {
@@ -1686,7 +1688,7 @@ function App() {
             fail: b.fail||0, absent: b.absent||0, average: b.average||0,
             notes: b.notes || '', suggestions: b.suggestions || ''
           }));
-          await sbPost('thursday_tests', rows);
+          await sbPost('thursday_tests', rows, 'date,examiner_id,subject_id');
           break;
         }
         case 'hifz_progress': {
@@ -1694,7 +1696,7 @@ function App() {
             date: payload.date, student_id: payload.student_id, student_name: payload.student_name || '',
             paras: payload.paras||0, soorah: payload.soorah||'', aayat: payload.aayat||0,
             daur_para: payload.daur_para||'', qari_id: payload.qari_id||'', notes: payload.notes||''
-          });
+          }, 'date,student_id');
           break;
         }
         case 'student_attendance': {
@@ -1704,7 +1706,7 @@ function App() {
             subject_id: payload.subject_id||'', subject_name: payload.subject_name||'',
             class: payload.class_id||'', student_id: sid, status: att[sid]
           }));
-          await sbPost('student_attendance', rows);
+          await sbPost('student_attendance', rows, 'date,teacher_id,subject_id,student_id');
           break;
         }
         case 'daily_attendance': {
@@ -1713,7 +1715,7 @@ function App() {
             date: payload.date, slot: payload.slot||'', marked_by: payload.marked_by||'',
             marked_by_name: payload.marked_by_name||'', student_id: sid, status: att2[sid]
           }));
-          await sbPost('daily_attendance', rows);
+          await sbPost('daily_attendance', rows, 'date,slot,student_id');
           break;
         }
         case 'teacher_attendance': {
@@ -1722,7 +1724,7 @@ function App() {
             date: payload.date, teacher_id: tid, teacher_name: '',
             status: ta[tid], marked_by: payload.teacher_id||'admin', approved: false
           }));
-          await sbPost('teacher_attendance', rows);
+          await sbPost('teacher_attendance', rows, 'date,teacher_id');
           break;
         }
         case 'student_upsert': {
@@ -1733,7 +1735,7 @@ function App() {
             phone: s.phone||'', residence: s.residence||'',
             class: s.c||s.class_id||'', qari_id: s.qari||null, status: s.status||'active',
             hifz_paras: h.paras||0, hifz_soorah: h.soorah||'', hifz_aayat: h.aayat||0, hifz_daur: h.daur_para||''
-          });
+          }, 'id');
           break;
         }
         case 'bulk_students': {
@@ -1746,7 +1748,7 @@ function App() {
               hifz_paras: h.paras||0, hifz_soorah: h.soorah||'', hifz_aayat: h.aayat||0, hifz_daur: h.daur_para||''
             };
           });
-          await sbPost('students', rows);
+          await sbPost('students', rows, 'id');
           break;
         }
         default:
