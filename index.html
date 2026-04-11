@@ -1351,6 +1351,7 @@ function App() {
   const [toast, setToast] = useState('');
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [hijriDate, setHijriDate] = useState(null);
+  const [alerts, setAlerts] = useState([]);
   const [admSub, setAdmSub] = useState(null);
   const [syncSt, setSyncSt] = useState(null);
   const [loginEmail, setLoginEmail] = useState('');
@@ -1497,6 +1498,65 @@ function App() {
       setLoading(false);
     })();
   }, []);
+
+  // Request notification permission
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Watch daily attendance for 3x absent
+  useEffect(() => {
+    const todayDt = new Date().toISOString().split('T')[0];
+    checkAbsentAlerts(dAttend, todayDt);
+  }, [dAttend, checkAbsentAlerts]);
+
+  // Check for 3x absent students and fire notification
+  const checkAbsentAlerts = useCallback((dData, todayDt) => {
+    const allSlots = ['fajr','salam','zuhr','asr','maghrib','isha'];
+    const allStudents = students.filter(s => s.status !== 'left');
+    const newAlerts = [];
+    allStudents.forEach(s => {
+      let absentCount = 0;
+      allSlots.forEach(slot => {
+        const key = slot + '_' + todayDt;
+        const slotData = dData[key] || {};
+        if (slotData[s.id] === 'A') absentCount++;
+      });
+      if (absentCount >= 3) {
+        const cls = CL.find(c => c.id === s.c);
+        newAlerts.push({ id: s.id, name: s.n, cls: cls ? cls.n : s.c, count: absentCount, date: todayDt });
+      }
+    });
+    if (newAlerts.length > 0) {
+      setAlerts(newAlerts);
+      // Browser notification with sound
+      newAlerts.forEach(a => {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('\u26A0\uFE0F ' + a.name + ' \u2014 ' + a.count + ' \u0628\u0627\u0631 \u063A\u0627\u0626\u0628', {
+            body: a.cls + ' \u2022 ' + a.id + ' \u2022 ' + a.date,
+            tag: 'absent-' + a.id + '-' + a.date,
+            requireInteraction: true
+          });
+        }
+      });
+      // Play alert sound
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 800; osc.type = 'sine';
+        gain.gain.value = 0.3;
+        osc.start(); osc.stop(ctx.currentTime + 0.15);
+        setTimeout(() => { const o2 = ctx.createOscillator(); o2.connect(gain); o2.frequency.value = 1000; o2.type = 'sine'; o2.start(); o2.stop(ctx.currentTime + 0.15); }, 200);
+        setTimeout(() => { const o3 = ctx.createOscillator(); o3.connect(gain); o3.frequency.value = 1200; o3.type = 'sine'; o3.start(); o3.stop(ctx.currentTime + 0.2); }, 400);
+      } catch(e) {}
+    } else {
+      setAlerts([]);
+    }
+  }, [students, CL]);
 
   // Fetch prayer times from Aladhan API
   useEffect(() => {
@@ -2354,13 +2414,13 @@ function App() {
     isAd = user && user.role === 'admin',
     isQari = user && user.role === 'qari';
   const tabs = [
-    {id:'home',ic:'������',l:'ہوم'},
-    ...(!isQari?[{id:'report',ic:'������',l:'رپورٹ'}]:[]),
-    ...(isEx?[{id:'thu',ic:'������',l:'امتحان'}]:[]),
-    ...(!isQari?[{id:'tt',ic:'������',l:'اوقات'}]:[]),
-    {id:'dattend',ic:'✅',l:'حاضری'},
-    ...([{id:'students',ic:'������',l:'طلبا'}]),
-    ...(isAd?[{id:'adm',ic:'⚙️',l:'ایڈمن'}]:[])
+        {id:'home',ic:'\u2302',l:'\u06C1\u0648\u0645'},
+    ...(!isQari?[{id:'report',ic:'\u270E',l:'\u0631\u067E\u0648\u0631\u0679'}]:[]),
+    ...(isEx?[{id:'thu',ic:'\u270D',l:'\u0627\u0645\u062A\u062D\u0627\u0646'}]:[]),
+    ...(!isQari?[{id:'tt',ic:'\u25F7',l:'\u0627\u0648\u0642\u0627\u062A'}]:[]),
+    {id:'dattend',ic:'\u2713',l:'\u062D\u0627\u0636\u0631\u06CC'},
+    ...([{id:'students',ic:'\u2666',l:'\u0637\u0644\u0628\u0627'}]),
+    ...(isAd?[{id:'adm',ic:'\u2699',l:'\u0627\u06CC\u0688\u0645\u0646'}]:[])
   ];
   const goHome = () => { setTab('home'); setAdmSub(null); setShowForm(null); };
 
@@ -2550,6 +2610,19 @@ function App() {
       )
     );
   })(),
+
+  // ── Absent Alerts ──
+  alerts.length > 0 && React.createElement('div', {style:{marginBottom:12}},
+    alerts.map(a => React.createElement('div', {key:a.id,
+      style:{background:'#fef2f2',border:'1.5px solid #fca5a5',borderRadius:10,padding:'10px 14px',marginBottom:6,
+        display:'flex',alignItems:'center',gap:10}},
+      React.createElement('div', {style:{width:32,height:32,borderRadius:8,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:14,fontWeight:800,flexShrink:0}}, a.count),
+      React.createElement('div', {style:{flex:1}},
+        React.createElement('div', {style:{fontSize:13,fontWeight:800,color:'#991b1b'}}, '\u26A0 '+a.name),
+        React.createElement('div', {style:{fontSize:10,color:'#b91c1c',marginTop:2}}, a.cls+' \u2022 '+a.count+' \u0628\u0627\u0631 \u063A\u0627\u0626\u0628 \u0622\u062C')
+      )
+    ))
+  ),
 
   isQari && /*#__PURE__*/React.createElement("div", null,
       /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:'#9ca3af',marginBottom:8}},
