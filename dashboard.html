@@ -400,31 +400,35 @@ function render() {
         id: 'coverage_arrange',
         name: '🔄 غائب اساتذہ کا بندوبست',
         auto: false,
-        autoCheck: absentTeachers.length === 0,
-        detail: absentTeachers.length === 0
+        autoCheck: tAttToday.length > 0 && absentTeachers.length === 0,
+        detail: tAttToday.length === 0
+          ? '⏳ ابھی حاضری ڈیٹا نہیں آیا'
+          : absentTeachers.length === 0
           ? 'آج سب حاضر — بندوبست کی ضرورت نہیں'
           : `${absentTeachers.length} غائب: ${absentTeachers.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id);return t?t.name:r.teacher_id;}).join('، ')}`,
-        severity: absentTeachers.length === 0 ? 'gr' : 'yl'
+        severity: tAttToday.length === 0 ? 'bl' : absentTeachers.length === 0 ? 'gr' : 'yl'
       },
       {
         id: 'call_parents',
         name: '📞 غائب طلبا کے والدین کو اطلاع',
         auto: false,
-        autoCheck: absentStudents.length === 0,
-        detail: absentStudents.length === 0
+        autoCheck: sAttToday.length > 0 && absentStudents.length === 0,
+        detail: sAttToday.length === 0
+          ? '⏳ ابھی طلبا حاضری ڈیٹا نہیں آیا'
+          : absentStudents.length === 0
           ? 'آج کوئی طالب علم غائب نہیں'
           : `${absentStudents.length} طلبا غائب — والدین کو فون کریں`,
-        severity: absentStudents.length === 0 ? 'gr' : 'yl'
+        severity: sAttToday.length === 0 ? 'bl' : absentStudents.length === 0 ? 'gr' : 'yl'
       },
       {
         id: 'review_progress',
         name: '📊 نصاب پیشرفت جائزہ لیں',
         auto: false,
-        autoCheck: behindSubjects.length === 0,
+        autoCheck: reportsToday.length > 0 && behindSubjects.length === 0,
         detail: behindSubjects.length === 0
           ? (reportsToday.length > 0 ? 'سب مضامین ہدف پر' : 'ابھی رپورٹس نہیں آئیں')
           : `⚠️ ${behindSubjects.length} مضامین ہدف سے پیچھے`,
-        severity: behindSubjects.length === 0 ? 'gr' : 'yl'
+        severity: reportsToday.length === 0 ? 'bl' : behindSubjects.length === 0 ? 'gr' : 'yl'
       },
       {
         id: 'hifz_check',
@@ -492,9 +496,11 @@ function render() {
       const bg = isDone ? '#34a85315' : 'var(--dk)';
       const border = isDone ? '1px solid #34a85344' : '1px solid #1f3d5e';
 
+      const canClick = !t.auto && !t.autoCheck;
+
       html += `<div class="task-item ${isDone?'task-done':''}">
-        <div class="task-icon"
-          ${!t.auto && !isDone ? `onclick="markTask('${t.id}','${t.name.replace(/'/g,'')}')"` : ''}>${icon}</div>
+        <div class="task-icon" style="${canClick?'cursor:pointer':''}"
+          ${canClick ? `onclick="markTask('${t.id}','${t.name.replace(/'/g,'')}',${isDone})"` : ''}>${icon}</div>
         <div style="flex:1">
           <div style="font-weight:700;font-size:12px;color:${isDone?'var(--gr)':'var(--wh)'};${isDone?'text-decoration:line-through':''}">${t.name}</div>
           <div style="font-size:10px;color:${t.severity==='rd'?'var(--rd)':t.severity==='yl'?'var(--yl)':'#8a9ab5'};margin-top:3px">${t.detail}</div>
@@ -737,13 +743,14 @@ async function approveAll() {
   else toast('❌ ناکام');
 }
 
-async function markTask(taskId, taskName) {
+async function markTask(taskId, taskName, currentlyDone) {
   try {
+    const newState = !currentlyDone;
     const r = await fetch(SB_URL+'/rest/v1/admin_tasks?on_conflict=date,task_id', {
       method:'POST', headers:{...headers,'Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify({date:TODAY, task_id:taskId, task_name:taskName, completed:true, completed_at:new Date().toISOString()})
+      body: JSON.stringify({date:TODAY, task_id:taskId, task_name:taskName, completed:newState, completed_at:newState?new Date().toISOString():null})
     });
-    if (r.ok) { toast('✅ مکمل'); await loadAll(); render(); }
+    if (r.ok) { toast(newState?'✅ مکمل':'↩️ واپس'); await loadAll(); render(); }
     else toast('❌ ناکام');
   } catch(e) { toast('❌ '+e.message); }
 }
