@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="theme-color" content="#0c2e2e">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="Imam Azam College — Academic Management App">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
 <title>My Idara — ادارہ تحقیقات اسلامی</title>
@@ -3065,7 +3067,7 @@ function App() {
     style: {
       marginTop: 4
     }
-  }, a.behindSyllabus > 0 ? '\u0646\u0635\u0627\u0628 \u0633\u06D2 ' + a.behindSyllabus + ' \u0635\u0641\u062D\u0627\u062A \u067E\u06CC\u0686\u06BE\u06D2' : a.behindSyllabus < 0 ? '\u0646\u0635\u0627\u0628 \u0633\u06D2 ' + -a.behindSyllabus + ' \u0635\u0641\u062D\u0627\u062A \u0622\u06AF\u06D2' : '\u0646\u0635\u0627\u0628 \u06A9\u06D2 \u0628\u0631\u0627\u0628\u0631'))), isAd && adminItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
+  }, a.behindSyllabus > 0 ? '\u0646\u0635\u0627\u0628 \u0633\u06D2 ' + a.behindSyllabus + ' \u0635\u0641\u062D\u0627\u062A \u067E\u06CC\u0686\u06BE\u06D2' : a.behindSyllabus < 0 ? '\u0646\u0635\u0627\u0628 \u0633\u06D2 ' + -a.behindSyllabus + ' \u0635\u0641\u062D\u0627\u062A \u0622\u06AF\u06D2' : '\u0646\u0635\u0627\u0628 \u06A9\u06D2 \u0628\u0631\u0627\u0628\u0631')))), isAd && adminItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     onClick: () => {
       if (it.k === 'students') { setTab('students'); setAdmSub(null); }
@@ -3387,7 +3389,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     );
   })()
 ), tab === 'tt' && React.createElement('div', null,
-    React.createElement(Ttl, {icon:'������', text:'نظام الاوقات'}),
+    React.createElement(Ttl, {icon:'\u25F7', text:'\u0646\u0638\u0627\u0645 \u0627\u0644\u0627\u0648\u0642\u0627\u062A'}),
 
     /* View toggle chips */
     React.createElement('div', {style:{display:'flex',gap:6,marginBottom:14}},
