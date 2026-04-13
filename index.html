@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="theme-color" content="#0c2e2e">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="Imam Azam College — Academic Management App">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
 <title>My Idara — ادارہ تحقیقات اسلامی</title>
@@ -1010,6 +1012,20 @@ function calcTD(cfg) {
   }
   return Math.min(Math.max(c, 1), cfg.teaching_days);
 }
+function calcTDTeacher(cfg, attendanceByDate) {
+  const st = new Date(cfg.term_start + 'T00:00:00'),
+    now = new Date();
+  let c = 0;
+  for (let d = new Date(st); d <= now; d.setDate(d.getDate() + 1)) {
+    const w = d.getDay();
+    const ds = d.toISOString().split('T')[0];
+    if (w === cfg.off_day || w === cfg.revision_day || (cfg.holidays || []).includes(ds)) continue;
+    const status = attendanceByDate && attendanceByDate[ds];
+    if (status === 'absent' || status === 'leave') continue;
+    c++;
+  }
+  return Math.min(Math.max(c, 1), cfg.teaching_days);
+}
 function genThursdays(cfg) {
   const st = new Date(cfg.term_start + 'T00:00:00'),
     en = new Date(cfg.term_end + 'T00:00:00');
@@ -1412,6 +1428,8 @@ function App() {
   const [myAtt, setMyAtt] = useState('');
   const [myLeaves, setMyLeaves] = useState(null);
   const [coverageAlert, setCoverageAlert] = useState(null);
+  const [teacherAttHist, setTeacherAttHist] = useState({});
+  const [syllabusTgtOpen, setSyllabusTgtOpen] = useState(null);
   // Reports states
   const [rptType, setRptType] = useState('student_attendance');
   const [rptData, setRptData] = useState(null);
@@ -1563,6 +1581,26 @@ function App() {
       }
     }).catch(()=>{});
   }, [loading, user && user.id]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!cfg || !cfg.supabase_url || !cfg.supabase_key || !user || user.role === 'admin' || user.role === 'qari') {
+      setTeacherAttHist({});
+      return;
+    }
+    const ts = (cfg.institution && cfg.institution.term_start) || '';
+    if (!ts) return;
+    const todayDt = new Date().toISOString().split('T')[0];
+    const url = cfg.supabase_url + '/rest/v1/teacher_attendance?teacher_id=eq.' + encodeURIComponent(user.id) + '&date=gte.' + ts + '&date=lte.' + todayDt + '&select=date,status';
+    fetch(url, { headers: { apikey: cfg.supabase_key } }).then(r => r.json()).then(rows => {
+      if (!Array.isArray(rows)) return;
+      const map = {};
+      rows.forEach(row => {
+        if (row && row.date) map[row.date] = row.status;
+      });
+      setTeacherAttHist(map);
+    }).catch(() => setTeacherAttHist({}));
+  }, [loading, cfg && cfg.supabase_url, cfg && cfg.supabase_key, cfg && cfg.institution && cfg.institution.term_start, user && user.id, user && user.role]);
 
   // Watch daily attendance for 3x absent and fire notification
   useEffect(() => {
@@ -1892,7 +1930,14 @@ function App() {
     admin_creds: adminCreds
   } = cfg;
   const tDay = calcTD(inst);
-  const cT = (s, tot) => s + Math.round(tot / inst.teaching_days * tDay);
+  const todayIsoForAtt = new Date().toISOString().split('T')[0];
+  const attByDate = Object.assign({}, teacherAttHist);
+  try {
+    const lsToday = localStorage.getItem('iri-myatt-' + todayIsoForAtt);
+    if (lsToday) attByDate[todayIsoForAtt] = lsToday;
+  } catch (e) {}
+  const tDayAdj = user && user.role !== 'admin' && user.role !== 'qari' ? calcTDTeacher(inst, attByDate) : tDay;
+  const cT = (s, tot, td) => s + Math.round(tot / inst.teaching_days * (td !== undefined && td !== null ? td : tDay));
   const gS = id => subjects.find(s => s.id === id);
   const cPer = periods.filter(p => p.type !== 'break');
   const examiners = teachers.filter(t => t.exam).map(t => t.id);
@@ -1909,11 +1954,15 @@ function App() {
     if (!sub) return null;
     const cls = gC(CL, sub.c),
       tot = sub.e - sub.s;
+    const targetSyllabus = cT(sub.s, tot, tDay),
+      target = cT(sub.s, tot, tDayAdj);
     return {
       ...a,
       sub,
       cls,
-      target: cT(sub.s, tot),
+      target,
+      targetSyllabus,
+      behindSyllabus: targetSyllabus - target,
       total: tot
     };
   }).filter(Boolean).sort((a, b) => a.p - b.p) : [];
@@ -1951,7 +2000,7 @@ function App() {
   });
   const dashData = subjects.map(s => {
     const tot = s.e - s.s,
-      target = cT(s.s, tot),
+      target = cT(s.s, tot, tDay),
       rep = reps[s.id],
       actual = rep && rep.actual ? parseInt(rep.actual) : null,
       variance = actual !== null ? actual - target : null,
@@ -2635,7 +2684,7 @@ function App() {
       color: ST.sg,
       fontSize: 9
     }
-  }, "\u062F\u0646 ", tDay, "/", inst.teaching_days, " ", syncSt === 'sending' ? '⏳' : syncSt === 'ok' ? '✓' : syncSt === 'error' ? '✗' : ''))), /*#__PURE__*/React.createElement("div", {
+  }, "\u062F\u0646 ", !isAd && !isQari ? tDayAdj : tDay, "/", inst.teaching_days, !isAd && !isQari && tDayAdj !== tDay ? ' \u00B7 \u062A\u0642\u0648\u06CC\u0645 ' + tDay : '', " ", syncSt === 'sending' ? '⏳' : syncSt === 'ok' ? '✓' : syncSt === 'error' ? '✗' : ''))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -2831,6 +2880,7 @@ function App() {
       const markSelf = async (st) => {
         setMyAtt(st);
         localStorage.setItem('iri-myatt-' + todayDt, st);
+        setTeacherAttHist(prev => Object.assign({}, prev, { [todayDt]: st }));
         const pl = {date:todayDt, attendance:{[user.id]:st}, teacher_id:user.id};
         const r = await syncPost('teacher_attendance', pl);
         if ((st === 'absent' || st === 'leave') && cfg.supabase_url) {
@@ -2928,14 +2978,15 @@ function App() {
       ),
       React.createElement('div', {style:{fontSize:24}}, '→')
     ),
-    !isAd && !isQari && myA.map((a, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
+    !isAd && !isQari && myA.map((a, i) => /*#__PURE__*/React.createElement(React.Fragment, {
+    key: a.sub.id
+  }, /*#__PURE__*/React.createElement("div", {
     onClick: () => setTab('report'),
     style: {
       background: '#fff',
-      borderRadius: 11,
+      borderRadius: syllabusTgtOpen === a.sub.id ? '11px 11px 0 0' : 11,
       padding: '11px 13px',
-      marginBottom: 5,
+      marginBottom: syllabusTgtOpen === a.sub.id ? 0 : 5,
       borderRight: `4px solid ${a.cls.a}`,
       display: 'flex',
       alignItems: 'center',
@@ -2954,11 +3005,35 @@ function App() {
     }
   }, a.cls.n, " \u2022 P", a.p)), /*#__PURE__*/React.createElement("div", {
     style: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 3
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 14,
       fontWeight: 800,
       color: a.cls.a
     }
-  }, "\u0635", a.target), /*#__PURE__*/React.createElement("div", {
+  }, "\u0635", a.target), /*#__PURE__*/React.createElement("button", {
+    type: 'button',
+    onClick: e => {
+      e.stopPropagation();
+      setSyllabusTgtOpen(prev => prev === a.sub.id ? null : a.sub.id);
+    },
+    style: {
+      fontSize: 8,
+      fontWeight: 700,
+      padding: '2px 7px',
+      borderRadius: 6,
+      border: '1px solid #d5d0c5',
+      background: syllabusTgtOpen === a.sub.id ? a.cls.c : '#faf8f3',
+      color: syllabusTgtOpen === a.sub.id ? a.cls.a : '#6b7c6b',
+      cursor: 'pointer',
+      fontFamily: 'inherit'
+    }
+  }, "\u062A\u0642\u0648\u06CC\u0645\u06CC \u06C1\u062F\u0641")), /*#__PURE__*/React.createElement("div", {
     style: {
       width: 22,
       height: 22,
@@ -2970,7 +3045,27 @@ function App() {
       color: '#fff',
       fontSize: 11
     }
-  }, r(a.sub.id).actual ? '✓' : ''))), isAd && adminItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
+  }, r(a.sub.id).actual ? '✓' : '')), syllabusTgtOpen === a.sub.id && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#faf8f3',
+      borderRadius: '0 0 11px 11px',
+      padding: '8px 12px 10px',
+      marginBottom: 5,
+      marginTop: 0,
+      borderRight: `4px solid ${a.cls.a}`,
+      fontSize: 10,
+      color: '#4a5a4a',
+      lineHeight: 1.5
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700
+    }
+  }, "\u0627\u0635\u0644 \u062A\u0642\u0648\u06CC\u0645\u06CC \u06C1\u062F\u0641: \u0635", a.targetSyllabus), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 4
+    }
+  }, a.behindSyllabus > 0 ? '\u0646\u0635\u0627\u0628 \u0633\u06D2 ' + a.behindSyllabus + ' \u0635\u0641\u062D\u0627\u062A \u067E\u06CC\u0686\u06BE\u06D2' : a.behindSyllabus < 0 ? '\u0646\u0635\u0627\u0628 \u0633\u06D2 ' + -a.behindSyllabus + ' \u0635\u0641\u062D\u0627\u062A \u0622\u06AF\u06D2' : '\u0646\u0635\u0627\u0628 \u06A9\u06D2 \u0628\u0631\u0627\u0628\u0631')))), isAd && adminItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     onClick: () => {
       if (it.k === 'students') { setTab('students'); setAdmSub(null); }
@@ -3061,6 +3156,16 @@ function App() {
               onChange:e=>upd(a.sub.id,'actual',e.target.value),placeholder:'\u2014',
               style:{width:'100%',padding:7,borderRadius:7,border:'1.5px solid #d5d0c5',fontSize:14,fontWeight:800,textAlign:'center',fontFamily:'inherit',outline:'none',background:'#faf8f3',boxSizing:'border-box'}}))
         ),
+        React.createElement('div',{style:{display:'flex',justifyContent:'center',marginBottom:syllabusTgtOpen===a.sub.id?6:2}},
+          React.createElement('button',{type:'button',
+            onClick:e=>{e.stopPropagation();setSyllabusTgtOpen(prev=>prev===a.sub.id?null:a.sub.id);},
+            style:{fontSize:9,fontWeight:700,padding:'4px 10px',borderRadius:8,border:'1px solid #d5d0c5',
+              background:syllabusTgtOpen===a.sub.id?a.cls.c:'#faf8f3',color:syllabusTgtOpen===a.sub.id?a.cls.a:'#6b7c6b',cursor:'pointer',fontFamily:'inherit'}},
+            '\u062A\u0642\u0648\u06CC\u0645\u06CC \u06C1\u062F\u0641 \u0648 \u0641\u0627\u0635\u0644\u06C1')),
+        syllabusTgtOpen===a.sub.id&&React.createElement('div',{style:{background:'#f5f2ea',borderRadius:8,padding:'8px 10px',marginBottom:8,fontSize:10,color:'#4a5a4a',lineHeight:1.5}},
+          React.createElement('div',{style:{fontWeight:700}},'\u0627\u0635\u0644 \u062A\u0642\u0648\u06CC\u0645\u06CC \u06C1\u062F\u0641: \u0635'+a.targetSyllabus),
+          React.createElement('div',{style:{marginTop:4}},
+            a.behindSyllabus>0?'\u0646\u0635\u0627\u0628 \u0633\u06D2 '+a.behindSyllabus+' \u0635\u0641\u062D\u0627\u062A \u067E\u06CC\u0686\u06BE\u06D2':a.behindSyllabus<0?'\u0646\u0635\u0627\u0628 \u0633\u06D2 '+(-a.behindSyllabus)+' \u0635\u0641\u062D\u0627\u062A \u0622\u06AF\u06D2':'\u0646\u0635\u0627\u0628 \u06A9\u06D2 \u0628\u0631\u0627\u0628\u0631')),
         React.createElement('div',{style:{display:'flex',gap:4,marginBottom:4}},
           ['\u06C1\u0627\u06BA','\u062C\u0632\u0648\u06CC','\u0646\u06C1\u06CC\u06BA'].map(o=>React.createElement('button',{key:o,
             onClick:()=>upd(a.sub.id,'complete',o),
@@ -3282,7 +3387,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     );
   })()
 ), tab === 'tt' && React.createElement('div', null,
-    React.createElement(Ttl, {icon:'������', text:'نظام الاوقات'}),
+    React.createElement(Ttl, {icon:'\u25F7', text:'\u0646\u0638\u0627\u0645 \u0627\u0644\u0627\u0648\u0642\u0627\u062A'}),
 
     /* View toggle chips */
     React.createElement('div', {style:{display:'flex',gap:6,marginBottom:14}},
@@ -3398,6 +3503,16 @@ tab === 'thu' && isEx && React.createElement('div', null,
                       style:{width:'100%',padding:7,borderRadius:7,border:'1.5px solid #d5d0c5',fontSize:14,fontWeight:800,textAlign:'center',fontFamily:'inherit',outline:'none',background:'#faf8f3'}})
                   )
                 ),
+                React.createElement('div',{style:{display:'flex',justifyContent:'center',marginBottom:syllabusTgtOpen===myAsg.sub.id?6:2}},
+                  React.createElement('button',{type:'button',
+                    onClick:e=>{e.stopPropagation();setSyllabusTgtOpen(prev=>prev===myAsg.sub.id?null:myAsg.sub.id);},
+                    style:{fontSize:9,fontWeight:700,padding:'4px 10px',borderRadius:8,border:'1px solid #d5d0c5',
+                      background:syllabusTgtOpen===myAsg.sub.id?myAsg.cls.c:'#faf8f3',color:syllabusTgtOpen===myAsg.sub.id?myAsg.cls.a:'#6b7c6b',cursor:'pointer',fontFamily:'inherit'}},
+                    '\u062A\u0642\u0648\u06CC\u0645\u06CC \u06C1\u062F\u0641 \u0648 \u0641\u0627\u0635\u0644\u06C1')),
+                syllabusTgtOpen===myAsg.sub.id&&React.createElement('div',{style:{background:'#f5f2ea',borderRadius:8,padding:'8px 10px',marginBottom:8,fontSize:10,color:'#4a5a4a',lineHeight:1.5}},
+                  React.createElement('div',{style:{fontWeight:700}},'\u0627\u0635\u0644 \u062A\u0642\u0648\u06CC\u0645\u06CC \u06C1\u062F\u0641: \u0635'+myAsg.targetSyllabus),
+                  React.createElement('div',{style:{marginTop:4}},
+                    myAsg.behindSyllabus>0?'\u0646\u0635\u0627\u0628 \u0633\u06D2 '+myAsg.behindSyllabus+' \u0635\u0641\u062D\u0627\u062A \u067E\u06CC\u0686\u06BE\u06D2':myAsg.behindSyllabus<0?'\u0646\u0635\u0627\u0628 \u0633\u06D2 '+(-myAsg.behindSyllabus)+' \u0635\u0641\u062D\u0627\u062A \u0622\u06AF\u06D2':'\u0646\u0635\u0627\u0628 \u06A9\u06D2 \u0628\u0631\u0627\u0628\u0631')),
                 React.createElement('div',{style:{display:'flex',gap:4,marginBottom:4}},
                   ['\u06C1\u0627\u06BA','\u062C\u0632\u0648\u06CC','\u0646\u06C1\u06CC\u06BA'].map(o=>React.createElement('button',{key:o,
                     onClick:()=>upd(myAsg.sub.id,'complete',o),
