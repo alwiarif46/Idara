@@ -125,6 +125,8 @@ const SB_URL = 'https://mhhifytmrlyksfrjacvi.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oaGlmeXRtcmx5a3NmcmphY3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTExNTAsImV4cCI6MjA4OTc2NzE1MH0.RIkSQq1Q7qLO_tVqklGV_KZabcKYfqqBFd7SLKpBE_Y';
 const PRINCIPAL_PHONE = '';  // Set principal phone number here
 const CLASS_UR = {oola:'اولیٰ',sania:'ثانیہ',salisa:'ثالثہ',rabia:'رابعہ',khamisa:'خامسہ',fazilat:'فضیلت',hifz:'حفظ'};
+/** Grade order for معائنہ cards (matches درجہ dropdown — not save-time order). */
+const CLASS_ORDER = Object.keys(CLASS_UR);
 const TODAY = new Date().toISOString().split('T')[0];
 
 // ═══════════════════════════════════════════
@@ -254,8 +256,24 @@ function parseVisitObservations(raw) {
   return out;
 }
 
+/** Legacy blob first; then each grade in CLASS_ORDER; unknown ids last. */
+function sortVisitObservationsForDisplay(visits) {
+  if (!visits || !visits.length) return [];
+  const legacy = visits.filter(v => v.legacy);
+  const rest = visits.filter(v => !v.legacy);
+  const rank = new Map(CLASS_ORDER.map((id, i) => [id, i]));
+  rest.sort((a, b) => {
+    const ar = rank.has(a.classId) ? rank.get(a.classId) : 999;
+    const br = rank.has(b.classId) ? rank.get(b.classId) : 999;
+    if (ar !== br) return ar - br;
+    return String(a.classId).localeCompare(String(b.classId));
+  });
+  return legacy.concat(rest);
+}
+
 function serializeVisitObservations(arr) {
-  return (arr || [])
+  const sorted = sortVisitObservationsForDisplay(arr || []);
+  return sorted
     .filter(v => v && v.classId && (v.text || '').trim())
     .map(v => VISIT_OBS_TAG + v.classId + ']]\n' + (v.text || '').trim() + '\n' + VISIT_OBS_CLOSE)
     .join('\n\n');
@@ -270,26 +288,65 @@ function classObsScoringOk(raw) {
   return visits.length > 0 && total >= 10;
 }
 
-function formatVisitObsCardsHtml(visits) {
-  if (!visits.length) {
-    return '<span style="color:#8a9ab5;font-size:11px">ابھی کوئی درجہ وار معائنہ نوٹ نہیں — اوپر درجہ منتخب کر کے نیچے تفصیل لکھیں</span>';
-  }
-  return visits.map(v => {
-    const title = v.legacy ? 'پرانا نوٹ' : (CLASS_UR[v.classId] || v.classId);
-    const bid = v.legacy ? '' : v.classId;
-    const delArg = v.legacy ? "''" : "'" + bid + "'";
-    const edArg = v.legacy ? "''" : "'" + bid + "'";
-    return `<div style="border:1px solid #1f3d5e;border-radius:10px;padding:10px;margin-bottom:8px;background:var(--dk)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+function formatVisitObsCardBody(v, omitGradeBadge) {
+  const title = v.legacy ? 'پرانا نوٹ' : (CLASS_UR[v.classId] || v.classId);
+  const bid = v.legacy ? '' : v.classId;
+  const delArg = v.legacy ? "''" : "'" + bid + "'";
+  const edCall = v.legacy ? "''" : "'" + bid + "'";
+  const head = omitGradeBadge && !v.legacy
+    ? `<div style="display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:6px">
+        <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${edCall})">\u062A\u062F\u0648\u06CC\u0646</button>
+        <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">\u062D\u0630\u0641</button>
+      </div>`
+    : `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
         <span class="class-badge ${bid}">${escHtml(title)}</span>
         <span style="display:flex;gap:4px;flex-shrink:0">
-          <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${v.legacy ? "''" : "'" + bid + "'"})">\u062A\u062F\u0648\u06CC\u0646</button>
+          <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${edCall})">\u062A\u062F\u0648\u06CC\u0646</button>
           <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">\u062D\u0630\u0641</button>
         </span>
-      </div>
-      <div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;max-height:160px;overflow-y:auto">${escHtml(v.text || '')}</div>
-    </div>`;
-  }).join('');
+      </div>`;
+  return `<div style="border:1px solid #1f3d5e;border-radius:10px;padding:10px;background:var(--dk)">${head}
+    <div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;max-height:160px;overflow-y:auto">${escHtml(v.text || '')}</div>
+  </div>`;
+}
+
+/** One row per grade in CLASS_ORDER: note under its درجہ heading (not random save order). */
+function formatVisitObsCardsHtml(visits) {
+  const sorted = sortVisitObservationsForDisplay(visits.slice());
+  const legacy = sorted.filter(v => v.legacy);
+  const byGrade = new Map(sorted.filter(v => !v.legacy).map(v => [v.classId, v]));
+  const known = new Set(CLASS_ORDER);
+  const extras = sorted.filter(v => !v.legacy && !known.has(v.classId));
+
+  if (!legacy.length && !byGrade.size && !extras.length) {
+    return '<span style="color:#8a9ab5;font-size:11px">ابھی کوئی درجہ وار معائنہ نوٹ نہیں — اوپر درجہ منتخب کر کے نیچے تفصیل لکھیں</span>';
+  }
+
+  const blocks = [];
+  legacy.forEach(v => {
+    blocks.push(`<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a9ab5;margin-bottom:6px">\u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646 (\u062F\u0631\u062C\u06D2 \u0648\u0627\u0631 \u0646\u06C1\u06CC\u06BA)</div>${formatVisitObsCardBody(v)}</div>`);
+  });
+
+  for (const cid of CLASS_ORDER) {
+    const v = byGrade.get(cid);
+    if (!v) continue;
+    const name = CLASS_UR[cid] || cid;
+    blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #243652">
+      <div style="font-weight:800;font-size:12px;color:var(--gd);margin-bottom:8px;display:flex;align-items:center;gap:8px"><span class="class-badge ${cid}">${escHtml(name)}</span></div>
+      ${formatVisitObsCardBody(v, true)}
+    </div>`);
+  }
+
+  extras.forEach(v => {
+    const name = CLASS_UR[v.classId] || v.classId;
+    const xid = v.classId;
+    blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #243652">
+      <div style="font-weight:800;font-size:12px;color:var(--gd);margin-bottom:8px"><span class="class-badge ${xid}">${escHtml(name)}</span></div>
+      ${formatVisitObsCardBody(v, true)}
+    </div>`);
+  });
+
+  return blocks.join('');
 }
 
 /** Teachers with an assignment today who have not submitted a daily_report for that subject; skips absent/leave. */
@@ -685,7 +742,7 @@ function render() {
       </div>
       <select id="acc_inspect_class_sel" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
         <option value="">— درجہ منتخب کریں —</option>
-        ${Object.keys(CLASS_UR).map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${CLASS_UR[cid]}</option>`).join('')}
+        ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${CLASS_UR[cid]}</option>`).join('')}
       </select>
       <div id="acc_inspect_preview" style="font-size:11px;line-height:1.65;color:var(--wh);background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;padding:12px;margin-bottom:8px;min-height:48px">
         <span style="color:#8a9ab5">درجہ منتخب کریں — موجودہ وقت کے پیریڈ، مضمون، آج کا ہدف/اصل، اور گزشتہ رپورٹ یہاں آئے گی</span>
@@ -701,7 +758,7 @@ function render() {
         <label style="font-size:12px;font-weight:700">\uD83D\uDC41\uFE0F \u06A9\u0644\u0627\u0633 \u0645\u0639\u0627\u0626\u0646\u06C1 \u2014 \u062F\u0631\u062C\u06C1 \u0648\u0627\u0631 (\u06C1\u0631 \u062F\u0631\u062C\u06D2 \u0627\u0644\u06AF \u0646\u0648\u0679)</label>
         <span id="acc_class_obs_score_hint" style="font-size:9px;color:#8a9ab5"></span>
       </div>
-      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px">\u0627\u0648\u067E\u0631 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA\u060C \u0633\u06CC\u0627\u0642 \u062F\u06CC\u06A9\u06BE\u06CC\u06BA\u060C \u067E\u06BE\u0631 \u06CC\u06C1\u0627\u06BA \u0645\u0639\u0627\u0626\u0646\u06C1 \u0644\u06A9\u06BE \u06A9\u0631 <strong>\u0645\u062D\u0641\u0648\u0638</strong> \u062F\u0628\u0627\u0626\u06CC\u06BA\u06D4 \u06C1\u0631 \u062F\u0631\u062C\u06D2 \u06A9\u0627 \u0627\u0644\u06AF \u06A9\u0627\u0631\u0688 \u0646\u06CC\u0686\u06D2 \u062F\u06A9\u06BE\u06D2 \u06AF\u0627\u06D4</div>
+      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px">\u0627\u0648\u067E\u0631 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA\u060C \u0633\u06CC\u0627\u0642 \u062F\u06CC\u06A9\u06BE\u06CC\u06BA\u060C \u067E\u06BE\u0631 \u06CC\u06C1\u0627\u06BA \u0645\u0639\u0627\u0626\u0646\u06C1 \u0644\u06A9\u06BE \u06A9\u0631 <strong>\u0645\u062D\u0641\u0648\u0638</strong> \u062F\u0628\u0627\u0626\u06CC\u06BA\u06D4 \u0646\u06CC\u0686\u06D2 \u06A9\u0627\u0631\u0688\u0632 \u062F\u0631\u062C\u0648\u06BA \u06A9\u06CC \u0645\u0639\u0645\u0648\u0644 \u062A\u0631\u062A\u06CC\u0628 \u0645\u06CC\u06BA \u0622\u0626\u06D2 \u06AF\u06D2 (\u0627\u0648\u0644\u06CC\u0670 \u2192 \u062B\u0627\u0646\u06CC\u06C1 \u2192 \u2026 \u2192 \u062D\u0641\u0638)\u060C \u0645\u062D\u0641\u0648\u0638 \u062F\u0631\u062C\u06D2 \u06C1\u06CC \u062F\u06A9\u06BE\u0627\u0626\u06CC \u062C\u0627\u062A\u06D2 \u06C1\u06CC\u06BA\u06D4</div>
       <textarea id="acc_visit_obs_input" rows="4" placeholder="\u0627\u0633 \u062F\u0631\u062C\u06D2 \u0645\u06CC\u06BA \u062A\u062F\u0631\u06CC\u0633\u060C \u0637\u0644\u0628\u0627 \u06A9\u06CC \u062A\u0648\u062C\u06C1\u060C \u0646\u0638\u0645 \u0648 \u0636\u0628\u0637..." style="${iS('margin-bottom:8px;')}"></textarea>
       <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">\uD83D\uDCBE \u0627\u0633 \u062F\u0631\u062C\u06D2 \u06A9\u0627 \u0645\u0639\u0627\u0626\u0646\u06C1 \u0646\u0648\u0679 \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA</button>
       <div id="acc_visits_list" style="margin-bottom:4px">${formatVisitObsCardsHtml(visits0)}</div>
