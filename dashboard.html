@@ -351,7 +351,44 @@ function sAttendGroupKey(r, assignments) {
   return pPart + '|' + (r.subject_id || '') + '|' + (r.teacher_id || '');
 }
 
+/** Before `innerHTML` rebuild: keep in-progress admin accountability fields (auto-refresh / loadAll). */
+function captureAdminAccDraft() {
+  const ta = document.getElementById('acc_class_visited');
+  if (!ta) return null;
+  const valueIds = ['acc_absent','acc_behind','acc_coverage','acc_inspect_class_sel','acc_class_visited','acc_visit_obs_input','acc_class_obs','acc_absent_actions','acc_syllabus','acc_hifz','acc_remarks'];
+  const values = {};
+  valueIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && 'value' in el) values[id] = el.value;
+  });
+  const checks = {};
+  ['acc_chk_parents','acc_chk_hifz','acc_chk_thu'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) checks[id] = !!el.checked;
+  });
+  return { values, checks };
+}
+
+function restoreAdminAccDraft(draft) {
+  if (!draft || !draft.values) return;
+  Object.keys(draft.values).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && 'value' in el) el.value = draft.values[id];
+  });
+  Object.keys(draft.checks || {}).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = draft.checks[id];
+  });
+}
+
+function initAdminInspectAfterDraftRestore() {
+  window.updateAccClassVisitedCounter && window.updateAccClassVisitedCounter();
+  window.refreshVisitsListUI && window.refreshVisitsListUI();
+  window.onInspectClassChange && window.onInspectClassChange({ preserveTextarea: true });
+}
+
 function render() {
+  const adminAccDraft = (activeTab === 'admin') ? captureAdminAccDraft() : null;
   const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
   const curPeriod = getCurrentPeriod(periods);
 
@@ -940,7 +977,14 @@ function render() {
   }
 
   document.getElementById('app').innerHTML = html;
-  if (activeTab === 'admin') initAdminInspectClassFromSaved();
+  if (activeTab === 'admin') {
+    if (adminAccDraft) {
+      restoreAdminAccDraft(adminAccDraft);
+      initAdminInspectAfterDraftRestore();
+    } else {
+      initAdminInspectClassFromSaved();
+    }
+  }
   if (activeTab === 'sAttend' && sAttendUi.search.length) {
     const inp = document.getElementById('sSearch');
     if (inp) {
@@ -1155,6 +1199,9 @@ window.onInspectClassChange = async function (opts) {
   const todayTxt = '\u0622\u062C: \u06C1\u062F\u0641 \u0635\u0641\u062D\u06C1 ' + tp + ' \u00B7 \u0627\u0635\u0644 ' + ap + (todayR && todayR.complete ? ' \u00B7 ' + todayR.complete : '');
   textLines.push(todayTxt);
   linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>\u0622\u062C</strong>: \u06C1\u062F\u0641 \u0635\u0641\u062D\u06C1 <strong>' + escHtml(String(tp)) + '</strong> \u00B7 \u0627\u0635\u0644 <strong>' + escHtml(String(ap)) + '</strong>' + (todayR && todayR.complete ? ' \u00B7 ' + escHtml(String(todayR.complete)) : '') + '</div>');
+  window._inspectClassSeq = (window._inspectClassSeq | 0) + 1;
+  const inspectRun = window._inspectClassSeq;
+  const taSnapshot = ta.value;
   let lastTxt = '';
   try {
     const lr = await sb('daily_reports', 'teacher_id=eq.' + encodeURIComponent(asg.teacher_id) + '&subject_id=eq.' + encodeURIComponent(asg.subject_id) + '&date=lt.' + TODAY + '&select=date,target_page,actual_page,complete&order=date.desc&limit=1');
@@ -1170,8 +1217,14 @@ window.onInspectClassChange = async function (opts) {
     linesHtml.push('<div style="margin-top:8px;color:#f97316">' + escHtml(lastTxt) + '</div>');
   }
   textLines.push(lastTxt);
+  if (inspectRun !== window._inspectClassSeq) return;
+  if (sel.value !== classId) return;
   prev.innerHTML = linesHtml.join('');
-  if (!preserveTa || !(ta.value || '').trim()) ta.value = textLines.join('\n');
+  if (!preserveTa) {
+    if (ta.value === taSnapshot) ta.value = textLines.join('\n');
+  } else if (!(ta.value || '').trim()) {
+    ta.value = textLines.join('\n');
+  }
   window.updateAccClassVisitedCounter();
   const obsInp = document.getElementById('acc_visit_obs_input');
   const store = document.getElementById('acc_class_obs');
