@@ -1352,6 +1352,38 @@ async function loadDAttend() {
 }
 async function saveDAttend(d) { try { await _stSave("iri-dattend", JSON.stringify(d)); } catch (e) {} }
 
+/** Class id for roster filters — app uses `c`, Supabase often uses `class` / `class_id`. */
+function studentClassId(s) {
+  if (!s) return '';
+  return String(s.c || s.class_id || s.class || '').trim();
+}
+/** Show in subject/period attendance lists (exclude only withdrawn). */
+function isStudentOnRoll(s) {
+  return s && s.status !== 'left';
+}
+/** Unify local + Supabase student row shapes into app shape. */
+function normalizeStudentRow(row) {
+  if (!row || !row.id) return null;
+  const hIn = row.hifz && typeof row.hifz === 'object' ? row.hifz : {};
+  const cid = String(row.c || row.class_id || row.class || '').trim();
+  return {
+    id: row.id,
+    n: row.n || row.name || '',
+    parent: row.parent || '',
+    phone: row.phone || '',
+    residence: row.residence || '',
+    c: cid,
+    qari: row.qari || row.qari_id || '',
+    status: row.status || 'active',
+    hifz: {
+      paras: hIn.paras != null ? hIn.paras : (Number(row.hifz_paras) || 0),
+      soorah: hIn.soorah != null ? hIn.soorah : (row.hifz_soorah || ''),
+      aayat: hIn.aayat != null ? hIn.aayat : (Number(row.hifz_aayat) || 0),
+      daur_para: hIn.daur_para != null ? hIn.daur_para : (row.hifz_daur || '')
+    }
+  };
+}
+
 // ═══════════════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════════════
@@ -1525,7 +1557,8 @@ function App() {
       }
       setRepsRaw(savedReps || {});
       setSyncQRaw(savedQ || []);
-      setStudentsRaw(savedStudents || DEFAULTS.students || []);
+      const initialStud = (savedStudents && savedStudents.length ? savedStudents : (DEFAULTS.students || []));
+      setStudentsRaw(initialStud.map(normalizeStudentRow).filter(Boolean));
       setHifzLogsRaw(savedHifz || {});
       setSAttendRaw(savedSA || {});
       setTAttendRaw(savedTA || {});
@@ -1551,6 +1584,33 @@ function App() {
       .then(d => { if (d && d.success) localStorage.setItem('iri-students-synced', today); })
       .catch(() => {});
   }, [loading, cfg && cfg.supabase_url, students.length]);
+
+  // Merge students from Supabase (rows created in DB / other clients)
+  useEffect(() => {
+    if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(cfg.supabase_url + '/rest/v1/students?select=*&order=name', { headers: { apikey: cfg.supabase_key } });
+        const rows = await r.json();
+        if (cancelled || !Array.isArray(rows)) return;
+        const remote = rows.map(normalizeStudentRow).filter(Boolean);
+        setStudents(prev => {
+          const byId = {};
+          (prev || []).forEach(s => {
+            if (s && s.id) byId[s.id] = normalizeStudentRow(s) || s;
+          });
+          remote.forEach(s => {
+            if (s && s.id) byId[s.id] = { ...(byId[s.id] || {}), ...s };
+          });
+          return Object.values(byId).sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur'));
+        });
+      } catch (e) {
+        console.warn('[students] supabase fetch', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [loading, cfg && cfg.supabase_url, cfg && cfg.supabase_key]);
 
   // Load self-attendance + leave count + coverage alerts
   useEffect(() => {
@@ -3114,7 +3174,7 @@ function App() {
     const todayDt = new Date().toISOString().split('T')[0];
     const aKey = a.sub.c + '_' + todayDt;
     const aData = sAttend[aKey] || {};
-    const clsStudents = students.filter(s => s.c === a.sub.c && s.status === 'active');
+    const clsStudents = students.filter(s => studentClassId(s) === a.sub.c && isStudentOnRoll(s));
     const pCt = clsStudents.filter(s => aData[s.id] === 'P').length;
     const aCt = clsStudents.filter(s => aData[s.id] === 'A').length;
     const lCt = clsStudents.filter(s => aData[s.id] === 'L').length;
@@ -3451,7 +3511,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
           const todayDt = new Date().toISOString().split('T')[0];
           const aKey = myAsg.sub.c + '_' + todayDt;
           const aData = sAttend[aKey] || {};
-          const clsStudents = students.filter(s => s.c === myAsg.sub.c && s.status === 'active');
+          const clsStudents = students.filter(s => studentClassId(s) === myAsg.sub.c && isStudentOnRoll(s));
           const pCount = clsStudents.filter(s => aData[s.id] === 'P').length;
           const aCount = clsStudents.filter(s => aData[s.id] === 'A').length;
           const lCount = clsStudents.filter(s => aData[s.id] === 'L').length;
@@ -3644,8 +3704,8 @@ tab === 'thu' && isEx && React.createElement('div', null,
       const daData = dAttend[daKey] || {};
       const allStudents = students.filter(s => s.status !== 'left');
       const filtered = allStudents
-        .filter(s => dAttClass === 'all' || s.c === dAttClass)
-        .filter(s => !dAttSearch || s.n.includes(dAttSearch) || s.id.includes(dAttSearch));
+        .filter(s => dAttClass === 'all' || studentClassId(s) === dAttClass)
+        .filter(s => !dAttSearch || (s.n && s.n.includes(dAttSearch)) || String(s.id).includes(dAttSearch));
       const pCt = filtered.filter(s => daData[s.id] === 'P').length;
       const aCt = filtered.filter(s => daData[s.id] === 'A').length;
       const lCt = filtered.filter(s => daData[s.id] === 'L').length;
@@ -3762,14 +3822,14 @@ tab === 'thu' && isEx && React.createElement('div', null,
 
     students
       .filter(s => {
-        if (studFilter==='hifz') return s.c==='hifz';
+        if (studFilter==='hifz') return studentClassId(s)==='hifz';
         if (studFilter==='active') return s.status==='active';
         if (studFilter==='completed') return s.status==='completed';
         return true;
       })
-      .filter(s => !studSearch || s.n.includes(studSearch) || (s.parent||'').includes(studSearch))
-      .filter(s => !ttClass || s.c === ttClass)
-      .filter(s => { if (isQari) return s.qari===user.id; if (isAd) return true; const myClasses = new Set(myA.map(a=>a.sub.c)); return myClasses.has(s.c); })
+      .filter(s => !studSearch || (s.n && s.n.includes(studSearch)) || (s.parent||'').includes(studSearch))
+      .filter(s => !ttClass || studentClassId(s) === ttClass)
+      .filter(s => { if (isQari) return s.qari===user.id; if (isAd) return true; const myClasses = new Set(myA.map(a=>a.sub.c)); return myClasses.has(studentClassId(s)); })
       .map((s, i) => {
         const qariT = teachers.find(t => t.id===s.qari);
         const logEntries = Object.entries(hifzLogs).filter(([k]) => k.startsWith(s.id+'_')).sort((a,b)=>b[0].localeCompare(a[0]));
