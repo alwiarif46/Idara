@@ -323,6 +323,11 @@ function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, sub
 // RENDER
 // ═══════════════════════════════════════════
 let activeTab = 'overview';
+/**
+ * Internal tab id for ذمہ داریاں on **this** page (`dashboard.html` — principal / Supabase dashboard).
+ * Not a screen inside the teacher PWA (`index.html`); the id is historical only.
+ */
+const TAB_ACCOUNTABILITY = 'admin';
 /** Student attendance tab filters — `var` so inline onchange/oninput can see it */
 var sAttendUi = { class: 'all', status: 'all', search: '' };
 
@@ -351,8 +356,8 @@ function sAttendGroupKey(r, assignments) {
   return pPart + '|' + (r.subject_id || '') + '|' + (r.teacher_id || '');
 }
 
-/** Before `innerHTML` rebuild: keep in-progress admin accountability fields (auto-refresh / loadAll). */
-function captureAdminAccDraft() {
+/** Before `innerHTML` rebuild: unsaved جوابدہی fields on the principal dashboard (auto-refresh / loadAll). */
+function captureAccountabilityDraft() {
   const ta = document.getElementById('acc_class_visited');
   if (!ta) return null;
   const valueIds = ['acc_absent','acc_behind','acc_coverage','acc_inspect_class_sel','acc_class_visited','acc_visit_obs_input','acc_class_obs','acc_absent_actions','acc_syllabus','acc_hifz','acc_remarks'];
@@ -369,7 +374,7 @@ function captureAdminAccDraft() {
   return { values, checks };
 }
 
-function restoreAdminAccDraft(draft) {
+function restoreAccountabilityDraft(draft) {
   if (!draft || !draft.values) return;
   Object.keys(draft.values).forEach(id => {
     const el = document.getElementById(id);
@@ -381,14 +386,14 @@ function restoreAdminAccDraft(draft) {
   });
 }
 
-function initAdminInspectAfterDraftRestore() {
+function initAccountabilityAfterDraftRestore() {
   window.updateAccClassVisitedCounter && window.updateAccClassVisitedCounter();
   window.refreshVisitsListUI && window.refreshVisitsListUI();
   window.onInspectClassChange && window.onInspectClassChange({ preserveTextarea: true });
 }
 
 function render() {
-  const adminAccDraft = (activeTab === 'admin') ? captureAdminAccDraft() : null;
+  const accountabilityDraft = (activeTab === TAB_ACCOUNTABILITY) ? captureAccountabilityDraft() : null;
   const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
   const curPeriod = getCurrentPeriod(periods);
 
@@ -419,7 +424,7 @@ function render() {
   // ── TABS ──
   const tabList = [
     {id:'overview',l:'📊 جائزہ'},
-    {id:'admin',l:'📋 ذمہ داریاں'},
+    {id:TAB_ACCOUNTABILITY,l:'📋 ذمہ داریاں'},
     {id:'tAttend',l:'👨‍🏫 اساتذہ حاضری'},
     {id:'sAttend',l:'👥 طلبا حاضری'},
     {id:'reports',l:'📝 رپورٹس'},
@@ -561,7 +566,7 @@ function render() {
   // ═══════════════════════════════════════════
   // TAB: ADMIN ACCOUNTABILITY — ذمہ داریاں
   // ═══════════════════════════════════════════
-  if (activeTab === 'admin') {
+  if (activeTab === TAB_ACCOUNTABILITY) {
     try {
     const rpt = DATA.adminReport || {};
     const adminScores = DATA.adminScores || [];
@@ -977,10 +982,10 @@ function render() {
   }
 
   document.getElementById('app').innerHTML = html;
-  if (activeTab === 'admin') {
-    if (adminAccDraft) {
-      restoreAdminAccDraft(adminAccDraft);
-      initAdminInspectAfterDraftRestore();
+  if (activeTab === TAB_ACCOUNTABILITY) {
+    if (accountabilityDraft) {
+      restoreAccountabilityDraft(accountabilityDraft);
+      initAccountabilityAfterDraftRestore();
     } else {
       initAdminInspectClassFromSaved();
     }
