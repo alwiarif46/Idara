@@ -240,6 +240,58 @@ function resolveClassInspectionSlot(periods, assignments, subjects, classId) {
   return null;
 }
 
+const VISIT_OBS_TAG = '[[VISIT_OBS class=';
+const VISIT_OBS_CLOSE = '[[/VISIT_OBS]]';
+
+function parseVisitObservations(raw) {
+  const s = typeof raw === 'string' ? raw : '';
+  if (!s.trim()) return [];
+  if (s.indexOf(VISIT_OBS_TAG) === -1) return [{ classId: '', text: s.trim(), legacy: true }];
+  const out = [];
+  const re = /\[\[VISIT_OBS class=([a-zA-Z0-9_]+)\]\]([\s\S]*?)\[\[\/VISIT_OBS\]\]/g;
+  let m;
+  while ((m = re.exec(s))) out.push({ classId: m[1], text: (m[2] || '').trim() });
+  return out;
+}
+
+function serializeVisitObservations(arr) {
+  return (arr || [])
+    .filter(v => v && v.classId && (v.text || '').trim())
+    .map(v => VISIT_OBS_TAG + v.classId + ']]\n' + (v.text || '').trim() + '\n' + VISIT_OBS_CLOSE)
+    .join('\n\n');
+}
+
+function classObsScoringOk(raw) {
+  const s = (raw || '').trim();
+  if (!s) return false;
+  if (s.indexOf(VISIT_OBS_TAG) === -1) return s.length >= 10;
+  const visits = parseVisitObservations(raw);
+  const total = visits.reduce((a, v) => a + ((v.text || '').trim().length), 0);
+  return visits.length > 0 && total >= 10;
+}
+
+function formatVisitObsCardsHtml(visits) {
+  if (!visits.length) {
+    return '<span style="color:#8a9ab5;font-size:11px">ابھی کوئی درجہ وار معائنہ نوٹ نہیں — اوپر درجہ منتخب کر کے نیچے تفصیل لکھیں</span>';
+  }
+  return visits.map(v => {
+    const title = v.legacy ? 'پرانا نوٹ' : (CLASS_UR[v.classId] || v.classId);
+    const bid = v.legacy ? '' : v.classId;
+    const delArg = v.legacy ? "''" : "'" + bid + "'";
+    const edArg = v.legacy ? "''" : "'" + bid + "'";
+    return `<div style="border:1px solid #1f3d5e;border-radius:10px;padding:10px;margin-bottom:8px;background:var(--dk)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+        <span class="class-badge ${bid}">${escHtml(title)}</span>
+        <span style="display:flex;gap:4px;flex-shrink:0">
+          <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${v.legacy ? "''" : "'" + bid + "'"})">\u062A\u062F\u0648\u06CC\u0646</button>
+          <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">\u062D\u0630\u0641</button>
+        </span>
+      </div>
+      <div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;max-height:160px;overflow-y:auto">${escHtml(v.text || '')}</div>
+    </div>`;
+  }).join('');
+}
+
 /** Teachers with an assignment today who have not submitted a daily_report for that subject; skips absent/leave. */
 function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, subjects) {
   const submitted = new Set((reportsToday || []).map(r => (r.teacher_id || '') + '|' + (r.subject_id || '')));
@@ -497,7 +549,7 @@ function render() {
     if (rpt.absent_students_entered != null) filled++;
     if (rpt.behind_subjects_entered != null) filled++;
     if (rpt.coverage_details) filled++;
-    if ((rpt.class_visited||'').length >= 3 && (rpt.class_observations||'').length >= 10) filled++;
+    if ((rpt.class_visited||'').length >= 3 && classObsScoringOk(rpt.class_observations)) filled++;
     if ((rpt.absent_actions||'').length >= 10) filled++;
     if ((rpt.syllabus_notes||'').length >= 10) filled++;
     if ((rpt.hifz_notes||'').length >= 10) filled++;
@@ -600,8 +652,21 @@ function render() {
       <textarea id="acc_class_visited" rows="4" placeholder="ضرورت ہو تو یہاں ترمیم کریں" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter()" style="${iS('resize:vertical;')}"></textarea>
     </div>`;
 
+    const coRaw = typeof rpt.class_observations === 'string' ? rpt.class_observations : '';
+    const visits0 = parseVisitObservations(coRaw);
+    html += `<div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1f3d5e">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+        <label style="font-size:12px;font-weight:700">\uD83D\uDC41\uFE0F \u06A9\u0644\u0627\u0633 \u0645\u0639\u0627\u0626\u0646\u06C1 \u2014 \u062F\u0631\u062C\u06C1 \u0648\u0627\u0631 (\u06C1\u0631 \u062F\u0631\u062C\u06D2 \u0627\u0644\u06AF \u0646\u0648\u0679)</label>
+        <span id="acc_class_obs_score_hint" style="font-size:9px;color:#8a9ab5"></span>
+      </div>
+      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px">\u0627\u0648\u067E\u0631 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA\u060C \u0633\u06CC\u0627\u0642 \u062F\u06CC\u06A9\u06BE\u06CC\u06BA\u060C \u067E\u06BE\u0631 \u06CC\u06C1\u0627\u06BA \u0645\u0639\u0627\u0626\u0646\u06C1 \u0644\u06A9\u06BE \u06A9\u0631 <strong>\u0645\u062D\u0641\u0648\u0638</strong> \u062F\u0628\u0627\u0626\u06CC\u06BA\u06D4 \u06C1\u0631 \u062F\u0631\u062C\u06D2 \u06A9\u0627 \u0627\u0644\u06AF \u06A9\u0627\u0631\u0688 \u0646\u06CC\u0686\u06D2 \u062F\u06A9\u06BE\u06D2 \u06AF\u0627\u06D4</div>
+      <textarea id="acc_visit_obs_input" rows="4" placeholder="\u0627\u0633 \u062F\u0631\u062C\u06D2 \u0645\u06CC\u06BA \u062A\u062F\u0631\u06CC\u0633\u060C \u0637\u0644\u0628\u0627 \u06A9\u06CC \u062A\u0648\u062C\u06C1\u060C \u0646\u0638\u0645 \u0648 \u0636\u0628\u0637..." style="${iS('margin-bottom:8px;')}"></textarea>
+      <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">\uD83D\uDCBE \u0627\u0633 \u062F\u0631\u062C\u06D2 \u06A9\u0627 \u0645\u0639\u0627\u0626\u0646\u06C1 \u0646\u0648\u0679 \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA</button>
+      <div id="acc_visits_list" style="margin-bottom:4px">${formatVisitObsCardsHtml(visits0)}</div>
+      <textarea id="acc_class_obs" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(coRaw)}</textarea>
+    </div>`;
+
     const descFields = [
-      {id:'acc_class_obs', label:'👁️ کلاس معائنہ — کیا دیکھا؟', field:'class_observations', ph:'اساتذہ کی تدریس، طلبا کی توجہ، نظم و ضبط...', rows:3, min:10},
       {id:'acc_absent_actions', label:'📞 غائب طلبا — کیا اقدام کیا؟', field:'absent_actions', ph:'کن والدین کو فون کیا، کیا جواب ملا...', rows:3, min:10},
       {id:'acc_syllabus', label:'📚 نصاب پیشرفت نوٹس', field:'syllabus_notes', ph:'کون سے مضامین پیچھے ہیں، کیا منصوبہ ہے...', rows:3, min:10},
       {id:'acc_hifz', label:'📖 حفظ اپڈیٹ — قاری صاحبان سے', field:'hifz_notes', ph:'کس طالب علم نے کتنا حفظ کیا، کوئی مسئلہ...', rows:3, min:10},
@@ -970,7 +1035,72 @@ window.initAdminInspectClassFromSaved = function () {
   const sel = document.getElementById('acc_inspect_class_sel');
   const m = v.match(/^\[([a-zA-Z0-9_]+)\]/);
   if (sel && m) sel.value = m[1];
+  const obs = document.getElementById('acc_class_obs');
+  if (obs) obs.value = (DATA.adminReport && typeof DATA.adminReport.class_observations === 'string' && DATA.adminReport.class_observations) || '';
+  window.refreshVisitsListUI && window.refreshVisitsListUI();
   window.onInspectClassChange({ preserveTextarea: !!(v && v.trim()) });
+};
+
+window.refreshVisitsListUI = function () {
+  const el = document.getElementById('acc_visits_list');
+  const store = document.getElementById('acc_class_obs');
+  const hint = document.getElementById('acc_class_obs_score_hint');
+  if (!store) return;
+  const visits = parseVisitObservations(store.value);
+  if (el) el.innerHTML = formatVisitObsCardsHtml(visits);
+  const tot = visits.reduce((a, v) => a + ((v.text || '').trim().length), 0);
+  if (hint) {
+    hint.textContent = visits.length
+      ? tot + ' حرف' + (classObsScoringOk(store.value) ? ' \u2713' : ' (10+ کل)')
+      : '';
+  }
+};
+
+window.saveClassVisitObservation = function () {
+  const sel = document.getElementById('acc_inspect_class_sel');
+  const obsInp = document.getElementById('acc_visit_obs_input');
+  const store = document.getElementById('acc_class_obs');
+  if (!sel || !obsInp || !store) return;
+  const classId = sel.value;
+  const text = (obsInp.value || '').trim();
+  if (!classId) { toast('\u26A0 \u067E\u06C1\u0644\u06D2 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA'); return; }
+  if (text.length < 5) { toast('\u26A0 \u06A9\u0645 \u0627\u0632 \u06A9\u0645 5 \u062D\u0631\u0648\u0641'); return; }
+  let visits = parseVisitObservations(store.value);
+  if (visits.some(v => v.legacy)) visits = [];
+  const idx = visits.findIndex(v => v.classId === classId);
+  const entry = { classId, text };
+  if (idx >= 0) visits[idx] = entry; else visits.push(entry);
+  store.value = serializeVisitObservations(visits);
+  toast('\u2713 \u0645\u062D\u0641\u0648\u0638');
+  window.refreshVisitsListUI();
+};
+
+window.editClassVisitObs = function (classId) {
+  const sel = document.getElementById('acc_inspect_class_sel');
+  if (!sel) return;
+  if (!classId) {
+    const obsInp = document.getElementById('acc_visit_obs_input');
+    const store = document.getElementById('acc_class_obs');
+    if (obsInp && store) obsInp.value = (store.value || '').trim();
+    sel.value = '';
+    toast('\u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646: \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631 \u06A9\u06D2 \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA');
+    return;
+  }
+  sel.value = classId;
+  window.onInspectClassChange({ preserveTextarea: true });
+};
+
+window.removeClassVisitObs = function (classId) {
+  const store = document.getElementById('acc_class_obs');
+  if (!store) return;
+  if (!classId) store.value = '';
+  else {
+    let visits = parseVisitObservations(store.value).filter(v => v.classId !== classId);
+    visits = visits.filter(v => !v.legacy);
+    store.value = serializeVisitObservations(visits);
+  }
+  window.refreshVisitsListUI();
+  toast('\u062D\u0630\u0641');
 };
 
 window.onInspectClassChange = async function (opts) {
@@ -983,6 +1113,8 @@ window.onInspectClassChange = async function (opts) {
   if (!classId) {
     prev.innerHTML = '<span style="color:#8a9ab5">\u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA \u2014 \u0645\u0648\u062C\u0648\u062F\u06C1 \u0648\u0642\u062A \u06A9\u06D2 \u067E\u06CC\u0631\u06CC\u0688\u060C \u0645\u0636\u0645\u0648\u0646\u060C \u0622\u062C \u06A9\u0627 \u06C1\u062F\u0641/\u0627\u0635\u0644\u060C \u0627\u0648\u0631 \u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679 \u06CC\u06C1\u0627\u06BA \u0622\u0626\u06D2 \u06AF\u06CC</span>';
     if (!preserveTa) ta.value = '';
+    const oi = document.getElementById('acc_visit_obs_input');
+    if (oi) oi.value = '';
     window.updateAccClassVisitedCounter();
     return;
   }
@@ -999,6 +1131,13 @@ window.onInspectClassChange = async function (opts) {
     prev.innerHTML = linesHtml.join('');
     if (!preserveTa || !(ta.value || '').trim()) ta.value = textLines.join('\n');
     window.updateAccClassVisitedCounter();
+    const obsInp0 = document.getElementById('acc_visit_obs_input');
+    const store0 = document.getElementById('acc_class_obs');
+    if (obsInp0 && store0) {
+      const vs0 = parseVisitObservations(store0.value).filter(v => !v.legacy);
+      const ex0 = vs0.find(x => x.classId === classId);
+      obsInp0.value = ex0 ? ex0.text : '';
+    }
     return;
   }
   const { period, assignment: asg, when } = slot;
@@ -1034,6 +1173,17 @@ window.onInspectClassChange = async function (opts) {
   prev.innerHTML = linesHtml.join('');
   if (!preserveTa || !(ta.value || '').trim()) ta.value = textLines.join('\n');
   window.updateAccClassVisitedCounter();
+  const obsInp = document.getElementById('acc_visit_obs_input');
+  const store = document.getElementById('acc_class_obs');
+  if (obsInp && store) {
+    if (classId) {
+      const vs = parseVisitObservations(store.value).filter(v => !v.legacy);
+      const ex = vs.find(x => x.classId === classId);
+      obsInp.value = ex ? ex.text : '';
+    } else {
+      obsInp.value = '';
+    }
+  }
 };
 
 // ═══════════════════════════════════════════
