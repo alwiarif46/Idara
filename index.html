@@ -1585,33 +1585,6 @@ function App() {
       .catch(() => {});
   }, [loading, cfg && cfg.supabase_url, students.length]);
 
-  // Merge students from Supabase (rows created in DB / other clients)
-  useEffect(() => {
-    if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch(cfg.supabase_url + '/rest/v1/students?select=*&order=name', { headers: { apikey: cfg.supabase_key } });
-        const rows = await r.json();
-        if (cancelled || !Array.isArray(rows)) return;
-        const remote = rows.map(normalizeStudentRow).filter(Boolean);
-        setStudents(prev => {
-          const byId = {};
-          (prev || []).forEach(s => {
-            if (s && s.id) byId[s.id] = normalizeStudentRow(s) || s;
-          });
-          remote.forEach(s => {
-            if (s && s.id) byId[s.id] = { ...(byId[s.id] || {}), ...s };
-          });
-          return Object.values(byId).sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur'));
-        });
-      } catch (e) {
-        console.warn('[students] supabase fetch', e);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [loading, cfg && cfg.supabase_url, cfg && cfg.supabase_key]);
-
   // Load self-attendance + leave count + coverage alerts
   useEffect(() => {
     if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key || !user) return;
@@ -1788,6 +1761,47 @@ function App() {
     });
     if (!r.ok) { const e = await r.text(); throw new Error(e); }
     return { success: true };
+  };
+
+  const refreshStudentsFromDb = useCallback(async () => {
+    if (!cfg || !cfg.supabase_url || !cfg.supabase_key) return false;
+    try {
+      const r = await fetch(cfg.supabase_url + '/rest/v1/students?select=*&order=name', { headers: { apikey: cfg.supabase_key } });
+      const rows = await r.json();
+      if (!Array.isArray(rows)) return false;
+      const remote = rows.map(normalizeStudentRow).filter(Boolean);
+      setStudents(prev => {
+        const byId = {};
+        (prev || []).forEach(s => {
+          if (s && s.id) byId[s.id] = normalizeStudentRow(s) || s;
+        });
+        remote.forEach(s => {
+          if (s && s.id) byId[s.id] = { ...(byId[s.id] || {}), ...s };
+        });
+        return Object.values(byId).sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur'));
+      });
+      return true;
+    } catch (e) {
+      console.warn('[students] supabase fetch', e);
+      return false;
+    }
+  }, [cfg && cfg.supabase_url, cfg && cfg.supabase_key, setStudents]);
+
+  useEffect(() => {
+    if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
+    refreshStudentsFromDb();
+  }, [loading, cfg && cfg.supabase_url, cfg && cfg.supabase_key, refreshStudentsFromDb]);
+
+  const deleteStudentRemote = async studentId => {
+    if (!cfg || !cfg.supabase_url || !cfg.supabase_key) throw new Error('⚠');
+    const r = await fetch(cfg.supabase_url + '/rest/v1/students?id=eq.' + encodeURIComponent(studentId), {
+      method: 'DELETE',
+      headers: { apikey: cfg.supabase_key, Authorization: 'Bearer ' + cfg.supabase_key }
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(t || r.statusText);
+    }
   };
 
   const syncPost = async (type, payload) => {
@@ -3801,8 +3815,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
       React.createElement('button',{onClick:()=>setTtClass(''),
         style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
           background:!ttClass?ST.dk:'#e5e0d5',color:!ttClass?ST.gd:'#555'}},'\u0633\u0628'),
-      (isAd ? CL : CL.filter(cl => { const myClasses = new Set(myA.map(a=>a.sub.c)); return myClasses.has(cl.id) || cl.id==='hifz'; }))
-        .map(cl=>React.createElement('button',{key:cl.id,onClick:()=>setTtClass(ttClass===cl.id?'':cl.id),
+      CL.map(cl=>React.createElement('button',{key:cl.id,onClick:()=>setTtClass(ttClass===cl.id?'':cl.id),
           style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
             background:ttClass===cl.id?cl.a:'#e5e0d5',color:ttClass===cl.id?'#fff':cl.a}},cl.n))
     ),
@@ -3814,33 +3827,51 @@ tab === 'thu' && isEx && React.createElement('div', null,
         direction:'rtl',fontFamily:ST.f,marginBottom:10,boxSizing:'border-box'}
     }),
 
+    isAd && cfg && cfg.supabase_url && /*#__PURE__*/React.createElement("button", {
+      type: 'button',
+      onClick: async () => {
+        flash('⏳ ڈیٹابیس...');
+        const ok = await refreshStudentsFromDb();
+        flash(ok ? '✓ ڈیٹابیس سے فہرست تازہ' : '⚠ تازہ کاری ناکام');
+      },
+      style:{width:'100%',padding:'8px',borderRadius:10,border:'1px solid '+ST.dk,background:'#faf8f3',
+        cursor:'pointer',fontSize:11,fontWeight:700,marginBottom:8,fontFamily:ST.f,color:ST.dk}
+    }, "🔄 ڈیٹابیس سے تمام طلبا لوڈ کریں"),
+
     user && /*#__PURE__*/React.createElement("button", {
       onClick: () => { const prefixMap={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'}; const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id); const px=prefixMap[defClass]||'ST'; const clsStuds=students.filter(s=>s.id.startsWith(px)); const maxNum=clsStuds.reduce((mx,s)=>{const n=parseInt(s.id.slice(2));return n>mx?n:mx;},0); const newId=px+String(maxNum+1).padStart(2,'0'); setNewStud(p=>({...p,id:newId,c:defClass})); setShowStudForm(true); },
       style:{width:'100%',padding:'9px',borderRadius:10,border:'2px dashed #aaa',background:'none',
         cursor:'pointer',fontSize:12,color:'#555',marginBottom:10,fontFamily:ST.f}
     }, "+ نیا طالب علم"),
 
-    students
-      .filter(s => {
-        if (studFilter==='hifz') return studentClassId(s)==='hifz';
-        if (studFilter==='active') return s.status==='active';
-        if (studFilter==='completed') return s.status==='completed';
-        return true;
-      })
-      .filter(s => !studSearch || (s.n && s.n.includes(studSearch)) || (s.parent||'').includes(studSearch))
-      .filter(s => !ttClass || studentClassId(s) === ttClass)
-      .filter(s => { if (isQari) return s.qari===user.id; if (isAd) return true; const myClasses = new Set(myA.map(a=>a.sub.c)); return myClasses.has(studentClassId(s)); })
-      .map((s, i) => {
+    (() => {
+      const studRows = students
+        .filter(s => {
+          if (studFilter === 'hifz') return studentClassId(s) === 'hifz';
+          if (studFilter === 'active') return !s.status || s.status === '' || s.status === 'active';
+          if (studFilter === 'completed') return s.status === 'completed';
+          return true;
+        })
+        .filter(s => {
+          const q = (studSearch || '').trim().toLowerCase();
+          if (!q) return true;
+          return ((s.n || '').toLowerCase().includes(q)) || ((s.parent || '').toLowerCase().includes(q)) || String(s.id).toLowerCase().includes(q);
+        })
+        .filter(s => !ttClass || studentClassId(s) === ttClass)
+        .filter(s => (isQari ? s.qari === user.id : true));
+      const cards = studRows.map((s, i) => {
         const qariT = teachers.find(t => t.id===s.qari);
         const logEntries = Object.entries(hifzLogs).filter(([k]) => k.startsWith(s.id+'_')).sort((a,b)=>b[0].localeCompare(a[0]));
         const lastLog = logEntries.length ? JSON.parse(logEntries[0][1]) : null;
         const paras = lastLog ? lastLog.paras : (s.hifz ? s.hifz.paras : 0);
         const pct = Math.round((paras/30)*100);
-        return /*#__PURE__*/React.createElement(Card, {key:s.id, style:{marginBottom:8, cursor: s.c==='hifz' ? 'pointer' : 'default'},
-            onClick: () => { if (s.c==='hifz') setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}}); }},
+        const isHifzCls = studentClassId(s) === 'hifz';
+        return /*#__PURE__*/React.createElement(Card, {key:s.id, style:{marginBottom:8, cursor: isHifzCls ? 'pointer' : 'default'},
+            onClick: () => { if (isHifzCls) setHifzEntry({sid:s.id,studentName:s.n,data:{paras,soorah:lastLog?.soorah||'',aayat:lastLog?.aayat||0,daur_para:lastLog?.daur_para||'',notes:lastLog?.notes||''}}); }},
           /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
             /*#__PURE__*/React.createElement("div", {style:{flex:1}},
               /*#__PURE__*/React.createElement("div", {style:{fontSize:14,fontWeight:800}}, s.n),
+              /*#__PURE__*/React.createElement("div", {style:{fontSize:9,color:'#9ca3af',marginTop:2}}, studentClassId(s) ? ((gC(CL, studentClassId(s)) || {}).n || studentClassId(s)) : '—', ' · ', s.id),
               s.parent && /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#777',marginTop:2}}, "والد: ", s.parent),
               s.phone && /*#__PURE__*/React.createElement("a", {href:'tel:'+s.phone, style:{fontSize:10,color:ST.dk,textDecoration:'none',display:'block',marginTop:1}}, "📞 ", s.phone),
               s.residence && /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:'#999',marginTop:1}}, "📍 ", s.residence)
@@ -3853,12 +3884,23 @@ tab === 'thu' && isEx && React.createElement('div', null,
               }),
 
               isAd && /*#__PURE__*/React.createElement("button", {
-                onClick: () => { setStudents(prev=>prev.filter(st=>st.id!==s.id)); flash('✓ حذف'); },
+                type: 'button',
+                onClick: async (e) => {
+                  e.stopPropagation();
+                  if (!window.confirm('اس طالب علم کو حذف کریں؟ ڈیٹابیس سے بھی ہٹ جائے گا۔')) return;
+                  try {
+                    if (cfg && cfg.supabase_url) await deleteStudentRemote(s.id);
+                    setStudents(prev => prev.filter(st => st.id !== s.id));
+                    flash('✓ حذف');
+                  } catch (err) {
+                    flash('❌ حذف ناکام: ' + (err.message || String(err)));
+                  }
+                },
                 style:{fontSize:10,padding:'3px 8px',borderRadius:8,border:'none',background:'#fee2e2',color:'#dc2626',cursor:'pointer'}
               }, "🗑")
             )
           ),
-          s.c==='hifz' && /*#__PURE__*/React.createElement("div", {style:{marginTop:8}},
+          isHifzCls && /*#__PURE__*/React.createElement("div", {style:{marginTop:8}},
             /*#__PURE__*/React.createElement("div", {style:{display:'flex',justifyContent:'space-between',fontSize:10,color:'#555',marginBottom:3}},
               /*#__PURE__*/React.createElement("span", null, paras, "/30 پارے (", pct, "%)"),
               lastLog && /*#__PURE__*/React.createElement("span", null, lastLog.soorah||'—'),
@@ -3872,10 +3914,13 @@ tab === 'thu' && isEx && React.createElement('div', null,
             )
           )
         );
-      }),
-
-    students.filter(s=>isQari?s.qari===user.id:true).length===0 &&
-      /*#__PURE__*/React.createElement("div", {style:{textAlign:'center',color:'#9ca3af',padding:40,fontSize:13}}, "کوئی طالب علم نہیں"),
+      });
+      const empty = studRows.length === 0 && user
+        ? /*#__PURE__*/React.createElement("div", {style:{textAlign:'center',color:'#9ca3af',padding:40,fontSize:13}},
+            students.length === 0 ? 'کوئی طالب علم نہیں — اوپر ڈیٹابیس سے لوڈ بٹن دبائیں' : 'اس فلٹر کے مطابق کوئی طالب علم نہیں')
+        : null;
+      return /*#__PURE__*/React.createElement(React.Fragment, null, cards, empty);
+    })(),
 
     /* Hifz Entry Modal */
     hifzEntry && /*#__PURE__*/React.createElement("div", {
