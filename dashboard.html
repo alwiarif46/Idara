@@ -201,6 +201,45 @@ function getCurrentPeriod(periods) {
   return null;
 }
 
+function escHtml(t) {
+  return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function subjectClassId(sub) {
+  return (sub && (sub.class || sub.class_id || '')) || '';
+}
+
+function findAssignmentForClassPeriod(assignments, subjects, classId, periodId) {
+  if (periodId == null) return null;
+  return (assignments || []).find(a => {
+    if (Number(a.period_id) !== Number(periodId)) return false;
+    const sub = subjects.find(s => s.id === a.subject_id);
+    return sub && subjectClassId(sub) === classId;
+  }) || null;
+}
+
+/** First timetable slot (by period id) that has an assignment for this class */
+function firstAssignmentForClass(assignments, subjects, periods, classId) {
+  const teaching = (periods || []).filter(p => p.type !== 'break').sort((a, b) => Number(a.id) - Number(b.id));
+  for (const p of teaching) {
+    const asg = findAssignmentForClassPeriod(assignments, subjects, classId, p.id);
+    if (asg) return { period: p, assignment: asg };
+  }
+  return null;
+}
+
+/** Prefer current period’s lesson for this class; else first slot of the day for that class */
+function resolveClassInspectionSlot(periods, assignments, subjects, classId) {
+  const cur = getCurrentPeriod(periods || []);
+  if (cur) {
+    const asg = findAssignmentForClassPeriod(assignments, subjects, classId, cur.id);
+    if (asg) return { period: cur, assignment: asg, when: 'current' };
+  }
+  const fb = firstAssignmentForClass(assignments, subjects, periods, classId);
+  if (fb) return { ...fb, when: 'scheduled' };
+  return null;
+}
+
 /** Teachers with an assignment today who have not submitted a daily_report for that subject; skips absent/leave. */
 function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, subjects) {
   const submitted = new Set((reportsToday || []).map(r => (r.teacher_id || '') + '|' + (r.subject_id || '')));
@@ -542,8 +581,26 @@ function render() {
     html += '<div class="section"><h2>📝 تفصیلی رپورٹ — لازمی</h2>';
     html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">کم از کم 10 حروف — خالی چھوڑنے سے سکور کم ہوگا</div>';
 
+    const savedVisited = (typeof rpt.class_visited === 'string' ? rpt.class_visited : '') || '';
+    const savedClassMatch = savedVisited.match(/^\[([a-zA-Z0-9_]+)\]/);
+    const savedClassSel = savedClassMatch ? savedClassMatch[1] : '';
+    html += `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <label style="font-size:12px;font-weight:700">📍 کون سی کلاس دیکھی؟</label>
+        <span id="acc_class_visited_cnt" style="font-size:9px;color:#8a9ab5"></span>
+      </div>
+      <select id="acc_inspect_class_sel" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
+        <option value="">— درجہ منتخب کریں —</option>
+        ${Object.keys(CLASS_UR).map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${CLASS_UR[cid]}</option>`).join('')}
+      </select>
+      <div id="acc_inspect_preview" style="font-size:11px;line-height:1.65;color:var(--wh);background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;padding:12px;margin-bottom:8px;min-height:48px">
+        <span style="color:#8a9ab5">درجہ منتخب کریں — موجودہ وقت کے پیریڈ، مضمون، آج کا ہدف/اصل، اور گزشتہ رپورٹ یہاں آئے گی</span>
+      </div>
+      <div style="font-size:9px;color:#8a9ab5;margin-bottom:4px">ذیلی متن محفوظ ہوتا ہے (کم از کم 3 حروف)</div>
+      <textarea id="acc_class_visited" rows="4" placeholder="ضرورت ہو تو یہاں ترمیم کریں" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter()" style="${iS('resize:vertical;')}"></textarea>
+    </div>`;
+
     const descFields = [
-      {id:'acc_class_visited', label:'📍 کون سی کلاس دیکھی؟', field:'class_visited', ph:'مثلاً: الرابعة، الثالثة', rows:1, min:3},
       {id:'acc_class_obs', label:'👁️ کلاس معائنہ — کیا دیکھا؟', field:'class_observations', ph:'اساتذہ کی تدریس، طلبا کی توجہ، نظم و ضبط...', rows:3, min:10},
       {id:'acc_absent_actions', label:'📞 غائب طلبا — کیا اقدام کیا؟', field:'absent_actions', ph:'کن والدین کو فون کیا، کیا جواب ملا...', rows:3, min:10},
       {id:'acc_syllabus', label:'📚 نصاب پیشرفت نوٹس', field:'syllabus_notes', ph:'کون سے مضامین پیچھے ہیں، کیا منصوبہ ہے...', rows:3, min:10},
@@ -818,6 +875,7 @@ function render() {
   }
 
   document.getElementById('app').innerHTML = html;
+  if (activeTab === 'admin') initAdminInspectClassFromSaved();
   if (activeTab === 'sAttend' && sAttendUi.search.length) {
     const inp = document.getElementById('sSearch');
     if (inp) {
@@ -891,6 +949,92 @@ async function exportCSV(table, colStr) {
     toast('✅ ڈاؤنلوڈ — '+data.length+' سطریں');
   } catch(e) { toast('❌ '+e.message); }
 }
+
+// ═══════════════════════════════════════════
+// ADMIN TAB — class inspection dropdown + preview
+// ═══════════════════════════════════════════
+window.updateAccClassVisitedCounter = function () {
+  const ta = document.getElementById('acc_class_visited');
+  const cnt = document.getElementById('acc_class_visited_cnt');
+  if (!ta || !cnt) return;
+  const n = (ta.value || '').length;
+  cnt.textContent = n + '/3' + (n >= 3 ? ' \u2713' : '');
+};
+
+window.initAdminInspectClassFromSaved = function () {
+  const ta = document.getElementById('acc_class_visited');
+  if (!ta) return;
+  const v = (DATA.adminReport && typeof DATA.adminReport.class_visited === 'string' && DATA.adminReport.class_visited) || '';
+  ta.value = v;
+  window.updateAccClassVisitedCounter();
+  const sel = document.getElementById('acc_inspect_class_sel');
+  const m = v.match(/^\[([a-zA-Z0-9_]+)\]/);
+  if (sel && m) sel.value = m[1];
+  window.onInspectClassChange({ preserveTextarea: !!(v && v.trim()) });
+};
+
+window.onInspectClassChange = async function (opts) {
+  const preserveTa = opts && opts.preserveTextarea;
+  const sel = document.getElementById('acc_inspect_class_sel');
+  const ta = document.getElementById('acc_class_visited');
+  const prev = document.getElementById('acc_inspect_preview');
+  if (!sel || !ta || !prev) return;
+  const classId = sel.value;
+  if (!classId) {
+    prev.innerHTML = '<span style="color:#8a9ab5">\u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA \u2014 \u0645\u0648\u062C\u0648\u062F\u06C1 \u0648\u0642\u062A \u06A9\u06D2 \u067E\u06CC\u0631\u06CC\u0688\u060C \u0645\u0636\u0645\u0648\u0646\u060C \u0622\u062C \u06A9\u0627 \u06C1\u062F\u0641/\u0627\u0635\u0644\u060C \u0627\u0648\u0631 \u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679 \u06CC\u06C1\u0627\u06BA \u0622\u0626\u06D2 \u06AF\u06CC</span>';
+    if (!preserveTa) ta.value = '';
+    window.updateAccClassVisitedCounter();
+    return;
+  }
+  const { periods, assignments, subjects, teachers, reportsToday } = DATA;
+  const slot = resolveClassInspectionSlot(periods, assignments, subjects, classId);
+  const textLines = [];
+  const linesHtml = [];
+  textLines.push('[' + classId + '] ' + (CLASS_UR[classId] || classId));
+  linesHtml.push('<div style="font-weight:800;color:var(--gd)">' + escHtml(CLASS_UR[classId] || classId) + '</div>');
+  if (!slot) {
+    const msg = '\u0627\u0633 \u062F\u0631\u062C\u06D2 \u06A9\u06D2 \u0644\u06CC\u06D2 \u0622\u062C \u06A9\u06CC \u062A\u0641\u0648\u06CC\u0636 \u0646\u06C1\u06CC\u06BA \u0645\u0644\u06CC';
+    textLines.push(msg);
+    linesHtml.push('<div style="margin-top:6px;color:#fdba74">' + escHtml(msg) + '</div>');
+    prev.innerHTML = linesHtml.join('');
+    if (!preserveTa || !(ta.value || '').trim()) ta.value = textLines.join('\n');
+    window.updateAccClassVisitedCounter();
+    return;
+  }
+  const { period, assignment: asg, when } = slot;
+  const sub = subjects.find(s => s.id === asg.subject_id);
+  const tm = teachers.find(t => t.id === asg.teacher_id);
+  const head = when === 'current' ? '\u0645\u0648\u062C\u0648\u062F\u06C1 \u0648\u0642\u062A \u2014 \u067E\u06CC\u0631\u06CC\u0688 ' + period.id : '\u062C\u062F\u0648\u0644 \u2014 \u067E\u06CC\u0631\u06CC\u0688 ' + period.id;
+  const line2 = head + ' (' + period.start_time + '\u2013' + period.end_time + '): ' + (sub ? sub.name : asg.subject_id) + ' \u2014 \u0627\u0633\u062A\u0627\u0630: ' + (tm ? tm.name : asg.teacher_id);
+  textLines.push(line2);
+  linesHtml.push('<div style="font-weight:800;color:var(--gd);margin-top:6px">' + escHtml(head) + '</div>');
+  linesHtml.push('<div>' + escHtml((sub ? sub.name : asg.subject_id) + ' \u2014 ' + (tm ? tm.name : asg.teacher_id)) + '</div>');
+  linesHtml.push('<div style="font-size:10px;color:#8a9ab5">' + escHtml(period.start_time + '\u2013' + period.end_time) + '</div>');
+  const todayR = (reportsToday || []).find(r => r.teacher_id === asg.teacher_id && r.subject_id === asg.subject_id);
+  const tp = todayR && todayR.target_page != null ? todayR.target_page : '\u2014';
+  const ap = todayR && todayR.actual_page != null ? todayR.actual_page : '\u2014';
+  const todayTxt = '\u0622\u062C: \u06C1\u062F\u0641 \u0635\u0641\u062D\u06C1 ' + tp + ' \u00B7 \u0627\u0635\u0644 ' + ap + (todayR && todayR.complete ? ' \u00B7 ' + todayR.complete : '');
+  textLines.push(todayTxt);
+  linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>\u0622\u062C</strong>: \u06C1\u062F\u0641 \u0635\u0641\u062D\u06C1 <strong>' + escHtml(String(tp)) + '</strong> \u00B7 \u0627\u0635\u0644 <strong>' + escHtml(String(ap)) + '</strong>' + (todayR && todayR.complete ? ' \u00B7 ' + escHtml(String(todayR.complete)) : '') + '</div>');
+  let lastTxt = '';
+  try {
+    const lr = await sb('daily_reports', 'teacher_id=eq.' + encodeURIComponent(asg.teacher_id) + '&subject_id=eq.' + encodeURIComponent(asg.subject_id) + '&date=lt.' + TODAY + '&select=date,target_page,actual_page,complete&order=date.desc&limit=1');
+    if (lr && lr[0]) {
+      lastTxt = '\u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679 (' + lr[0].date + '): \u06C1\u062F\u0641 ' + (lr[0].target_page != null ? lr[0].target_page : '\u2014') + ' \u00B7 \u0627\u0635\u0644 ' + (lr[0].actual_page != null ? lr[0].actual_page : '\u2014');
+      linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>\u06AF\u0632\u0634\u062A\u06C1</strong> (' + escHtml(String(lr[0].date)) + '): \u06C1\u062F\u0641 ' + escHtml(String(lr[0].target_page != null ? lr[0].target_page : '\u2014')) + ' \u00B7 \u0627\u0635\u0644 ' + escHtml(String(lr[0].actual_page != null ? lr[0].actual_page : '\u2014')) + '</div>');
+    } else {
+      lastTxt = '\u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679: \u06A9\u0648\u0626\u06CC \u067E\u0631\u0627\u0646\u06CC \u0627\u0646\u062F\u0631\u0627\u062C \u0646\u06C1\u06CC\u06BA';
+      linesHtml.push('<div style="margin-top:8px;font-size:10px;color:#8a9ab5">' + escHtml(lastTxt) + '</div>');
+    }
+  } catch (e) {
+    lastTxt = '\u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679: \u0644\u0648\u0688 \u0646\u0627\u06A9\u0627\u0645';
+    linesHtml.push('<div style="margin-top:8px;color:#f97316">' + escHtml(lastTxt) + '</div>');
+  }
+  textLines.push(lastTxt);
+  prev.innerHTML = linesHtml.join('');
+  if (!preserveTa || !(ta.value || '').trim()) ta.value = textLines.join('\n');
+  window.updateAccClassVisitedCounter();
+};
 
 // ═══════════════════════════════════════════
 // SUBMIT ACCOUNTABILITY REPORT
