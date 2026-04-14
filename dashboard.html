@@ -201,6 +201,33 @@ function getCurrentPeriod(periods) {
   return null;
 }
 
+/** Teachers with an assignment today who have not submitted a daily_report for that subject; skips absent/leave. */
+function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, subjects) {
+  const submitted = new Set((reportsToday || []).map(r => (r.teacher_id || '') + '|' + (r.subject_id || '')));
+  const skipT = new Set();
+  (tAttToday || []).forEach(r => {
+    if (r && (r.status === 'absent' || r.status === 'leave')) skipT.add(r.teacher_id);
+  });
+  const miss = [];
+  const seen = new Set();
+  for (const a of assignments || []) {
+    const tid = a.teacher_id;
+    const sid = a.subject_id;
+    if (!tid || !sid) continue;
+    if (skipT.has(tid)) continue;
+    const k = tid + '|' + sid;
+    if (submitted.has(k)) continue;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const te = teachers.find(x => x.id === tid);
+    const su = subjects.find(x => x.id === sid);
+    if (!su) continue;
+    miss.push({ k, tname: te ? te.name : tid, subn: su.name || sid, cls: su.class, p: a.period_id });
+  }
+  miss.sort((x, y) => (x.tname + x.subn).localeCompare(y.tname + y.subn, 'ur'));
+  return miss;
+}
+
 // ═══════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════
@@ -296,6 +323,32 @@ function render() {
       html += '</div>';
     }
     html += '</div>';
+
+    // Pending daily reports (by subject) — between current period and absent teachers
+    const pendingRep = pendingDailyReports(assignments, reportsToday, tAttToday, teachers, subjects);
+    {
+      const hasPending = pendingRep.length > 0;
+      const border = hasPending ? '1.5px solid #fdba74' : '1.5px solid #34a85355';
+      const bg = hasPending ? 'linear-gradient(135deg,#3d2608,#1a3350)' : 'linear-gradient(135deg,#0d3d2e,#1a3350)';
+      html += `<div class="section" style="background:${bg};border:${border}">`;
+      html += `<h2>${hasPending ? '📝 آج کی رپورٹس باقی' : '✓ آج سب رپورٹس موصول'}</h2>`;
+      if (hasPending) {
+        html += '<div style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch">';
+        pendingRep.forEach(pr => {
+          const clsUr = CLASS_UR[pr.cls] || pr.cls || '';
+          html += `<div class="period-card" style="border-right:4px solid #f97316;margin-bottom:6px">
+            <div>
+              <div class="teacher">${pr.tname}</div>
+              <div class="subject">${pr.subn}${clsUr ? ' • ' + clsUr : ''} · پیریڈ ${pr.p}</div>
+            </div>
+          </div>`;
+        });
+        html += '</div>';
+      } else {
+        html += '<div style="color:#8a9ab5;font-size:12px">تمام تفویض شدہ مضامین کے لیے آج کی روزانہ رپورٹس جمع ہیں (غائب/رخصت اساتذہ شمار نہیں)۔</div>';
+      }
+      html += '</div>';
+    }
 
     // Absent Teachers Today
     const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
