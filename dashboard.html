@@ -232,6 +232,33 @@ function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, sub
 // RENDER
 // ═══════════════════════════════════════════
 let activeTab = 'overview';
+/** Student attendance tab filters — `var` so inline onchange/oninput can see it */
+var sAttendUi = { class: 'all', status: 'all', search: '' };
+
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function sAttendRowClass(r, students) {
+  const c = r.class;
+  if (c != null && String(c).trim() !== '') return String(c).trim();
+  const st = students.find(x => x.id === r.student_id);
+  return st && st.class ? String(st.class).trim() : '';
+}
+
+function sAttendInferPeriod(r, assignments) {
+  const raw = r.period_id;
+  if (raw != null && raw !== '' && !Number.isNaN(Number(raw))) return Number(raw);
+  const a = (assignments || []).find(x => x.teacher_id === r.teacher_id && x.subject_id === r.subject_id);
+  if (a && a.period_id != null && a.period_id !== '' && !Number.isNaN(Number(a.period_id))) return Number(a.period_id);
+  return null;
+}
+
+function sAttendGroupKey(r, assignments) {
+  const p = sAttendInferPeriod(r, assignments);
+  const pPart = p == null ? 'null' : String(p);
+  return pPart + '|' + (r.subject_id || '') + '|' + (r.teacher_id || '');
+}
 
 function render() {
   const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
@@ -627,58 +654,107 @@ function render() {
   if (activeTab === 'sAttend') {
     html += '<div class="section"><h2>👥 آج طلبا کی حاضری</h2>';
 
-    // Class filter
     html += '<div class="filter-bar">';
-    html += '<select id="sClassFilter" onchange="render()">';
-    html += '<option value="all">سب درجے</option>';
-    Object.keys(CLASS_UR).forEach(c => html += `<option value="${c}">${CLASS_UR[c]}</option>`);
+    html += '<select id="sClassFilter" onchange="sAttendUi.class=this.value;render();">';
+    html += `<option value="all"${sAttendUi.class === 'all' ? ' selected' : ''}>سب درجے</option>`;
+    Object.keys(CLASS_UR).forEach(c => {
+      html += `<option value="${c}"${sAttendUi.class === c ? ' selected' : ''}>${CLASS_UR[c]}</option>`;
+    });
     html += '</select>';
-    html += '<select id="sStatusFilter" onchange="render()">';
-    html += '<option value="all">سب</option><option value="P">حاضر</option><option value="A">غائب</option><option value="L">رخصت</option>';
+    html += '<select id="sStatusFilter" onchange="sAttendUi.status=this.value;render();">';
+    html += `<option value="all"${sAttendUi.status === 'all' ? ' selected' : ''}>سب</option>`;
+    html += `<option value="P"${sAttendUi.status === 'P' ? ' selected' : ''}>حاضر</option>`;
+    html += `<option value="A"${sAttendUi.status === 'A' ? ' selected' : ''}>غائب</option>`;
+    html += `<option value="L"${sAttendUi.status === 'L' ? ' selected' : ''}>رخصت</option>`;
     html += '</select>';
-    html += '<input type="search" id="sSearch" placeholder="🔍 نام تلاش..." oninput="render()" style="flex:1;min-width:120px">';
+    html += `<input type="search" id="sSearch" placeholder="🔍 نام تلاش..." value="${escAttr(sAttendUi.search)}" oninput="sAttendUi.search=this.value;render();" style="flex:1;min-width:120px">`;
     html += '</div>';
 
-    const classF = document.getElementById('sClassFilter')?.value || 'all';
-    const statusF = document.getElementById('sStatusFilter')?.value || 'all';
-    const searchF = (document.getElementById('sSearch')?.value || '').toLowerCase();
+    const classF = sAttendUi.class;
+    const statusF = sAttendUi.status;
+    const searchF = (sAttendUi.search || '').toLowerCase().trim();
 
-    let filtered = sAttToday;
-    if (classF !== 'all') filtered = filtered.filter(r=>r.class===classF);
-    if (statusF !== 'all') filtered = filtered.filter(r=>r.status===statusF);
-    if (searchF) filtered = filtered.filter(r=>{
-      const st = students.find(s=>s.id===r.student_id);
-      return (st&&st.name.toLowerCase().includes(searchF)) || r.student_id.toLowerCase().includes(searchF);
+    let filtered = sAttToday.slice();
+    if (classF !== 'all') filtered = filtered.filter(r => sAttendRowClass(r, students) === classF);
+    if (statusF !== 'all') filtered = filtered.filter(r => r.status === statusF);
+    if (searchF) {
+      filtered = filtered.filter(r => {
+        const st = students.find(s => s.id === r.student_id);
+        const nm = (st && st.name) ? st.name.toLowerCase() : '';
+        return nm.includes(searchF) || String(r.student_id).toLowerCase().includes(searchF);
+      });
+    }
+
+    filtered.sort((a, b) => {
+      const pa = sAttendInferPeriod(a, assignments);
+      const pb = sAttendInferPeriod(b, assignments);
+      const na = pa == null ? 1e6 : pa;
+      const nb = pb == null ? 1e6 : pb;
+      if (na !== nb) return na - nb;
+      const sCmp = (a.subject_name || '').localeCompare(b.subject_name || '', 'ur');
+      if (sCmp) return sCmp;
+      const tCmp = (a.teacher_name || '').localeCompare(b.teacher_name || '', 'ur');
+      if (tCmp) return tCmp;
+      const sta = students.find(s => s.id === a.student_id);
+      const stb = students.find(s => s.id === b.student_id);
+      return (sta && sta.name || '').localeCompare(stb && stb.name || '', 'ur');
     });
 
-    // Summary
-    const fP = filtered.filter(r=>r.status==='P').length;
-    const fA = filtered.filter(r=>r.status==='A').length;
-    const fL = filtered.filter(r=>r.status==='L').length;
-    html += `<div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px">
+    const groups = [];
+    let cur = null;
+    for (const r of filtered) {
+      const gk = sAttendGroupKey(r, assignments);
+      if (!cur || cur.gk !== gk) {
+        cur = {
+          gk,
+          pNum: sAttendInferPeriod(r, assignments),
+          subject_name: r.subject_name || '',
+          teacher_name: r.teacher_name || '',
+          rows: []
+        };
+        groups.push(cur);
+      }
+      cur.rows.push(r);
+    }
+
+    const fP = filtered.filter(r => r.status === 'P').length;
+    const fA = filtered.filter(r => r.status === 'A').length;
+    const fL = filtered.filter(r => r.status === 'L').length;
+    html += `<div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
       <span style="color:var(--gr)">✅ حاضر: ${fP}</span>
       <span style="color:var(--rd)">❌ غائب: ${fA}</span>
       <span style="color:var(--yl)">📝 رخصت: ${fL}</span>
       <span style="color:#8a9ab5">کل: ${filtered.length}</span>
+      ${classF !== 'all' ? `<span style="color:var(--gd)">درجہ: ${CLASS_UR[classF] || classF}</span>` : ''}
     </div>`;
 
-    html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
-    html += '<th>طالب علم</th><th>درجہ</th><th>مضمون</th><th>استاذ</th><th>حاضری</th><th>رابطہ</th>';
-    html += '</tr></thead><tbody>';
-    filtered.slice(0,200).forEach(r => {
-      const st = students.find(s=>s.id===r.student_id);
-      const phone = st && st.phone ? st.phone : '';
-      html += `<tr>
-        <td style="font-weight:700">${st?st.name:r.student_id}</td>
-        <td><span class="class-badge ${r.class||''}">${CLASS_UR[r.class]||r.class||''}</span></td>
-        <td>${r.subject_name||''}</td>
-        <td>${r.teacher_name||''}</td>
-        <td><span class="badge ${r.status.toLowerCase()}">${r.status==='P'?'حاضر':r.status==='A'?'غائب':'رخصت'}</span></td>
-        <td>${phone?`<a href="tel:${phone}" class="call-btn">📞</a>`:''}</td>
-      </tr>`;
-    });
-    html += '</tbody></table></div>';
-    if (filtered.length > 200) html += '<div style="text-align:center;padding:8px;color:#8a9ab5;font-size:10px">200 دکھائے — CSV ڈاؤنلوڈ کریں</div>';
+    if (!filtered.length) {
+      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">اس فلٹر کے لیے کوئی اندراج نہیں۔</div>';
+    } else {
+      groups.forEach(g => {
+        const pLabel = g.pNum == null ? 'پیریڈ ؟' : ('پیریڈ ' + g.pNum);
+        html += '<div style="margin-bottom:14px;border:1px solid #1f3d5e;border-radius:12px;overflow:hidden">';
+        html += `<div style="background:var(--dk3);padding:10px 12px;font-size:12px;font-weight:800;color:var(--gd)">
+          🕐 ${pLabel} — ${g.subject_name || '—'} — ${g.teacher_name || '—'}
+          <span style="font-weight:600;color:#8a9ab5;font-size:10px;margin-right:8px">(${g.rows.length})</span>
+        </div>`;
+        html += '<div class="scroll-table" style="max-height:260px"><table class="tbl"><thead><tr>';
+        html += '<th>طالب علم</th><th>درجہ</th><th>حاضری</th><th>رابطہ</th>';
+        html += '</tr></thead><tbody>';
+        g.rows.forEach(r => {
+          const st = students.find(s => s.id === r.student_id);
+          const phone = st && st.phone ? st.phone : '';
+          const rc = sAttendRowClass(r, students);
+          html += `<tr>
+            <td style="font-weight:700">${st ? st.name : r.student_id}</td>
+            <td><span class="class-badge ${rc}">${CLASS_UR[rc] || rc || ''}</span></td>
+            <td><span class="badge ${r.status.toLowerCase()}">${r.status === 'P' ? 'حاضر' : r.status === 'A' ? 'غائب' : 'رخصت'}</span></td>
+            <td>${phone ? `<a href="tel:${phone}" class="call-btn">📞</a>` : ''}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div></div>';
+      });
+    }
     html += '</div>';
   }
 
@@ -742,6 +818,14 @@ function render() {
   }
 
   document.getElementById('app').innerHTML = html;
+  if (activeTab === 'sAttend' && sAttendUi.search.length) {
+    const inp = document.getElementById('sSearch');
+    if (inp) {
+      inp.focus();
+      const L = sAttendUi.search.length;
+      try { inp.setSelectionRange(L, L); } catch (e) {}
+    }
+  }
 }
 
 // ═══════════════════════════════════════════
