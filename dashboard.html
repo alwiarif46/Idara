@@ -973,7 +973,7 @@ window.initHifzNotesBlockFromStore = function () {
 function captureAccountabilityDraft() {
   const ta = document.getElementById('acc_class_visited');
   if (!ta) return null;
-  const valueIds = ['acc_absent','acc_behind','acc_coverage','acc_inspect_class_sel','acc_class_visited','acc_class_obs','acc_absent_actions','acc_syllabus','acc_hifz','acc_remarks','acc_visit_narrative'];
+  const valueIds = ['acc_absent','acc_behind','acc_coverage','acc_inspect_class_sel','acc_class_visited','acc_class_obs','acc_absent_actions','acc_hifz','acc_remarks','acc_visit_narrative'];
   for (let i = 1; i <= VISIT_QA_REQUIRED; i++) {
     valueIds.push('acc_qa_who_type_' + i, 'acc_qa_who_id_' + i, 'acc_qa_question_' + i, 'acc_qa_answer_' + i);
   }
@@ -1214,13 +1214,12 @@ function render() {
     const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:rtl;min-height:44px;box-sizing:border-box;'+s;
 
     // Calculate score from filled fields
-    let filled = 0, total = 11;
+    let filled = 0, total = 10;
     if (rpt.absent_students_entered != null) filled++;
     if (rpt.behind_subjects_entered != null) filled++;
     if (rpt.coverage_details) filled++;
     if ((rpt.class_visited||'').length >= 3 && classObsScoringOk(rpt.class_observations)) filled++;
     if (absentActionsScoringOk(rpt.absent_actions || '', absentListDedup)) filled++;
-    if ((rpt.syllabus_notes||'').length >= 10) filled++;
     if (hifzNotesScoringOk(rpt.hifz_notes || '', hifzRoster)) filled++;
     if ((rpt.general_remarks||'').length >= 5) filled++;
     if (rpt.called_parents) filled++;
@@ -1475,11 +1474,11 @@ function render() {
       <textarea id="acc_hifz" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(hifzActRaw)}</textarea>
     </div>`;
 
+    html += hifzBlockHtml;
     const descFields = [
-      {id:'acc_syllabus', label:'📚 نصاب پیشرفت نوٹس', field:'syllabus_notes', ph:'کون سے مضامین پیچھے ہیں، کیا منصوبہ ہے...', rows:3, min:10},
       {id:'acc_remarks', label:'💬 عمومی ملاحظات', field:'general_remarks', ph:'آج کا کوئی خاص واقعہ، تجویز، شکایت...', rows:2, min:5},
     ];
-    descFields.forEach((f, fi) => {
+    descFields.forEach(f => {
       const val = rpt[f.field] || '';
       const ok = val.length >= f.min;
       html += `<div style="margin-bottom:14px">
@@ -1489,7 +1488,6 @@ function render() {
         </div>
         <textarea id="${f.id}" rows="${f.rows}" placeholder="${f.ph}" style="${iS('resize:vertical;')}">${val}</textarea>
       </div>`;
-      if (fi === 0) html += hifzBlockHtml;
     });
     html += '</div>';
 
@@ -2115,7 +2113,7 @@ async function submitAccountability() {
       class_visited: v('acc_class_visited')||null,
       class_observations: v('acc_class_obs')||null,
       absent_actions: v('acc_absent_actions')||null,
-      syllabus_notes: v('acc_syllabus')||null,
+      syllabus_notes: DATA.adminReport ? (DATA.adminReport.syllabus_notes ?? null) : null,
       hifz_notes: v('acc_hifz')||null,
       general_remarks: v('acc_remarks')||null,
       called_parents: ck('acc_chk_parents'),
