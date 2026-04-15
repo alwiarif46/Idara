@@ -1776,14 +1776,16 @@ function App() {
       if (!Array.isArray(rows)) return false;
       const remote = rows.map(normalizeStudentRow).filter(Boolean);
       setStudents(prev => {
-        const byId = {};
-        (prev || []).forEach(s => {
-          if (s && s.id) byId[s.id] = normalizeStudentRow(s) || s;
+        const prevById = {};
+        (prev || []).forEach(x => {
+          if (x && x.id) prevById[x.id] = x;
         });
-        remote.forEach(s => {
-          if (s && s.id) byId[s.id] = { ...(byId[s.id] || {}), ...s };
-        });
-        return Object.values(byId).sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur'));
+        const next = remote.map(s => {
+          if (!s || !s.id) return null;
+          const o = prevById[s.id];
+          return normalizeStudentRow(o ? { ...o, ...s } : s) || s;
+        }).filter(Boolean);
+        return next.sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur'));
       });
       return true;
     } catch (e) {
@@ -1796,6 +1798,29 @@ function App() {
     if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
     refreshStudentsFromDb();
   }, [loading, cfg && cfg.supabase_url, cfg && cfg.supabase_key, refreshStudentsFromDb]);
+
+  useEffect(() => {
+    if (loading || !user || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
+    if (tab !== 'report' && tab !== 'tt' && tab !== 'dattend' && tab !== 'students') return;
+    refreshStudentsFromDb();
+  }, [tab, loading, user, cfg && cfg.supabase_url, cfg && cfg.supabase_key, refreshStudentsFromDb]);
+
+  useEffect(() => {
+    if (loading || !user || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
+    const id = setInterval(() => {
+      refreshStudentsFromDb();
+    }, 90000);
+    return () => clearInterval(id);
+  }, [loading, user, cfg && cfg.supabase_url, cfg && cfg.supabase_key, refreshStudentsFromDb]);
+
+  useEffect(() => {
+    if (loading || !user || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') refreshStudentsFromDb();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [loading, user, cfg && cfg.supabase_url, cfg && cfg.supabase_key, refreshStudentsFromDb]);
 
   const deleteStudentRemote = async studentId => {
     if (!cfg || !cfg.supabase_url || !cfg.supabase_key) throw new Error('⚠');
