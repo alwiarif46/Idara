@@ -246,6 +246,8 @@ const VISIT_OBS_TAG = '[[VISIT_OBS class=';
 const VISIT_OBS_CLOSE = '[[/VISIT_OBS]]';
 /** Saved inside each VISIT_OBS block — English keys only (UI labels stay Urdu/ bilingual). */
 const VISIT_QA_REQUIRED = 3;
+/** Principal may log up to this many separate حفظ memory checks (قاری سے) per day. */
+const HIFZ_MEMORY_SLOTS = 4;
 
 function tryParseVisitJsonPayload(inner) {
   const t = (typeof inner === 'string' ? inner : '').trim();
@@ -811,6 +813,162 @@ window.initAbsentActionsBlockFromStore = function () {
   if (parsed || !((hid.value || '').trim()) || !n) window.syncAbsentActionsToHidden();
 };
 
+function hifzRosterStudents(students) {
+  const out = [];
+  for (const s of students || []) {
+    if (!s || !s.id) continue;
+    const st = String(s.status || 'active').toLowerCase();
+    if (st === 'inactive' || st === 'left') continue;
+    const cls = String(s.class || s.c || '').trim().toLowerCase();
+    if (cls !== 'hifz') continue;
+    out.push({
+      id: s.id,
+      name: s.name || s.id,
+      paras: s.hifz_paras != null && String(s.hifz_paras).trim() !== '' ? String(s.hifz_paras).trim() : ''
+    });
+  }
+  out.sort((a, b) => String(a.name).localeCompare(String(b.name), 'ur'));
+  return out;
+}
+
+function tryParseHifzNotesJson(raw) {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  if (!s.startsWith('{')) return null;
+  try {
+    const o = JSON.parse(s);
+    if (!o || o.v !== 1 || !Array.isArray(o.entries)) return null;
+    return o;
+  } catch (e) {
+    return null;
+  }
+}
+
+function hifzMemoryEntryValid(e) {
+  if (!e) return false;
+  const sid = String(e.studentId || '').trim();
+  const span = String(e.memorySpan || '').trim();
+  const prompt = String(e.promptAsked || '').trim();
+  const resp = String(e.studentResponse || '').trim();
+  const pos = String(e.progressWhere || '').trim();
+  const q = String(e.recallQuality || '').trim();
+  if (!sid || !span || prompt.length < 3 || resp.length < 2 || pos.length < 2 || !q) return false;
+  if (span === 'other' && prompt.length < 5) return false;
+  return true;
+}
+
+function hifzNotesScoringOk(raw, roster) {
+  if (!roster.length) return true;
+  const parsed = tryParseHifzNotesJson(raw);
+  if (!parsed) return typeof raw === 'string' && raw.trim().length >= 10;
+  return (parsed.entries || []).some(hifzMemoryEntryValid);
+}
+
+function hifzNotesHintText(raw, roster) {
+  if (!roster.length) return '\u2014 \u062D\u0641\u0638 \u0637\u0644\u0628\u0627 \u0641\u06C1\u0631\u0633\u062A \u0645\u06CC\u06BA \u0646\u06C1\u06CC\u06BA';
+  const parsed = tryParseHifzNotesJson(raw);
+  if (!parsed) {
+    const n = (typeof raw === 'string' ? raw.trim().length : 0);
+    return n + '/10 \u067E\u0631\u0627\u0646\u0627' + (n >= 10 ? ' \u2713' : '');
+  }
+  let ok = 0;
+  for (const e of parsed.entries || []) {
+    if (hifzMemoryEntryValid(e)) ok++;
+  }
+  return ok + ' \u0633\u0644\u0627\u0679 \u0645\u06A9\u0645\u0644' + (ok > 0 ? ' \u2713' : '');
+}
+
+window.syncHifzNotesToHidden = function () {
+  const hid = document.getElementById('acc_hifz');
+  const wrap = document.getElementById('acc_hifz_wrap');
+  if (!hid || !wrap) return;
+  const prevRaw = hid.value || '';
+  const prevParsed = tryParseHifzNotesJson(prevRaw);
+  const fromLegacy = prevRaw.trim() && !prevParsed ? prevRaw.trim() : (prevParsed && prevParsed.fromLegacyText ? prevParsed.fromLegacyText : '');
+  const entries = [];
+  for (let i = 0; i < HIFZ_MEMORY_SLOTS; i++) {
+    const sidEl = document.getElementById('acc_hf_sid_' + i);
+    const spanEl = document.getElementById('acc_hf_span_' + i);
+    const prEl = document.getElementById('acc_hf_prompt_' + i);
+    const rsEl = document.getElementById('acc_hf_resp_' + i);
+    const posEl = document.getElementById('acc_hf_pos_' + i);
+    const qEl = document.getElementById('acc_hf_quality_' + i);
+    const studentId = sidEl ? sidEl.value.trim() : '';
+    const memorySpan = spanEl ? spanEl.value.trim() : '';
+    const promptAsked = prEl ? String(prEl.value || '').trim() : '';
+    const studentResponse = rsEl ? String(rsEl.value || '').trim() : '';
+    const progressWhere = posEl ? String(posEl.value || '').trim() : '';
+    const recallQuality = qEl ? String(qEl.value || '').trim() : '';
+    let studentLabel = '';
+    if (studentId && sidEl) {
+      const opt = sidEl.options[sidEl.selectedIndex];
+      studentLabel = opt ? String(opt.textContent || '').trim() : '';
+    }
+    entries.push({
+      studentId,
+      studentLabel,
+      memorySpan,
+      promptAsked,
+      studentResponse,
+      progressWhere,
+      recallQuality
+    });
+  }
+  const payload = { v: 1, entries };
+  if (fromLegacy) payload.fromLegacyText = fromLegacy;
+  hid.value = JSON.stringify(payload);
+  const hint = document.getElementById('acc_hifz_actions_hint');
+  if (hint) {
+    const rosterLen = parseInt(wrap.getAttribute('data-hifz-roster-len') || '0', 10);
+    hint.textContent = hifzNotesHintText(hid.value, rosterLen > 0 ? [{ id: '_' }] : []);
+  }
+};
+
+window.initHifzNotesBlockFromStore = function () {
+  const hid = document.getElementById('acc_hifz');
+  const wrap = document.getElementById('acc_hifz_wrap');
+  if (!hid || !wrap) return;
+  const parsed = tryParseHifzNotesJson(hid.value);
+  const ent = parsed && parsed.entries ? parsed.entries.slice(0, HIFZ_MEMORY_SLOTS) : [];
+  const padded = ent.slice();
+  while (padded.length < HIFZ_MEMORY_SLOTS) padded.push({});
+  for (let i = 0; i < HIFZ_MEMORY_SLOTS; i++) {
+    const r = padded[i] || {};
+    const sidEl = document.getElementById('acc_hf_sid_' + i);
+    if (sidEl) {
+      if (r.studentId) ensureOptionInSelect(sidEl, r.studentId, r.studentLabel || r.studentId);
+      sidEl.value = r.studentId || '';
+    }
+    const spanEl = document.getElementById('acc_hf_span_' + i);
+    if (spanEl) {
+      const sp = String(r.memorySpan || '').trim();
+      spanEl.value = ['last_2_days', 'last_3_days', 'last_week', 'other'].includes(sp) ? sp : '';
+    }
+    const pr = document.getElementById('acc_hf_prompt_' + i);
+    if (pr) pr.value = r.promptAsked || '';
+    const rs = document.getElementById('acc_hf_resp_' + i);
+    if (rs) rs.value = r.studentResponse || '';
+    const pos = document.getElementById('acc_hf_pos_' + i);
+    if (pos) pos.value = r.progressWhere || '';
+    const q = document.getElementById('acc_hf_quality_' + i);
+    if (q) {
+      const rq = String(r.recallQuality || '').trim();
+      q.value = ['weak', 'adequate', 'strong'].includes(rq) ? rq : '';
+    }
+  }
+  const note = document.getElementById('acc_hifz_legacy_note');
+  if (note) {
+    if (!parsed && (hid.value || '').trim() && !(hid.value || '').trim().startsWith('{')) {
+      note.style.display = 'block';
+      const raw = (hid.value || '').trim();
+      note.textContent = raw.length > 800 ? raw.slice(0, 800) + '\u2026' : raw;
+    } else {
+      note.style.display = 'none';
+      note.textContent = '';
+    }
+  }
+  if (parsed || !((hid.value || '').trim())) window.syncHifzNotesToHidden();
+};
+
 /** Before `innerHTML` rebuild: unsaved جوابدہی fields on the principal dashboard (auto-refresh / loadAll). */
 function captureAccountabilityDraft() {
   const ta = document.getElementById('acc_class_visited');
@@ -850,11 +1008,15 @@ function initAccountabilityAfterDraftRestore() {
   window.onInspectClassChange && window.onInspectClassChange({ preserveTextarea: true, skipVisitQaReload: true });
   window.refreshAccVisitWhoOptions && window.refreshAccVisitWhoOptions();
   window.initAbsentActionsBlockFromStore && window.initAbsentActionsBlockFromStore();
+  window.initHifzNotesBlockFromStore && window.initHifzNotesBlockFromStore();
 }
 
 function render() {
   if (typeof window.syncAbsentActionsToHidden === 'function' && document.getElementById('acc_absent_actions_wrap')) {
     window.syncAbsentActionsToHidden();
+  }
+  if (typeof window.syncHifzNotesToHidden === 'function' && document.getElementById('acc_hifz_wrap')) {
+    window.syncHifzNotesToHidden();
   }
   const accountabilityDraft = (activeTab === TAB_ACCOUNTABILITY) ? captureAccountabilityDraft() : null;
   const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
@@ -1043,6 +1205,7 @@ function render() {
     const missingReports = teachersWhoShouldReport.filter(t=>!teachersWithReports.includes(t));
     const allReportsIn = missingReports.length === 0 && reportsToday.length > 0;
     const absentListDedup = dedupeAbsentStudentsToday(sAttToday, students);
+    const hifzRoster = hifzRosterStudents(students);
     const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
     const behindSubjects = reportsToday.filter(r=>(r.actual_page||0)<(r.target_page||0));
     const isThursday = new Date().getDay() === 4;
@@ -1058,7 +1221,7 @@ function render() {
     if ((rpt.class_visited||'').length >= 3 && classObsScoringOk(rpt.class_observations)) filled++;
     if (absentActionsScoringOk(rpt.absent_actions || '', absentListDedup)) filled++;
     if ((rpt.syllabus_notes||'').length >= 10) filled++;
-    if ((rpt.hifz_notes||'').length >= 10) filled++;
+    if (hifzNotesScoringOk(rpt.hifz_notes || '', hifzRoster)) filled++;
     if ((rpt.general_remarks||'').length >= 5) filled++;
     if (rpt.called_parents) filled++;
     if (rpt.checked_hifz) filled++;
@@ -1263,12 +1426,60 @@ function render() {
       <textarea id="acc_absent_actions" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(absentActRaw)}</textarea>
     </div>`;
 
+    const hifzActRaw = typeof rpt.hifz_notes === 'string' ? rpt.hifz_notes : '';
+    const hifzActOk = hifzNotesScoringOk(hifzActRaw, hifzRoster);
+    const hifzActHint = hifzNotesHintText(hifzActRaw, hifzRoster);
+    const hifzStudentOpts = hifzRoster.map(s => '<option value="' + escAttr(s.id) + '">' + escHtml(s.name) + '</option>').join('');
+    let hifzSlotsHtml = '';
+    if (!hifzRoster.length) {
+      hifzSlotsHtml = '<div style="font-size:11px;color:#8a9ab5;padding:10px;background:var(--dk);border-radius:10px;margin-bottom:10px">\u062D\u0641\u0638 \u062F\u0631\u062C\u06D2 \u06A9\u06D2 \u06A9\u0648\u0626\u06CC \u0637\u0627\u0644\u0628 \u0641\u06C1\u0631\u0633\u062A \u0645\u06CC\u06BA \u0646\u06C1\u06CC\u06BA \u2014 \u0627\u06AF\u0631 \u0637\u0644\u0628\u0627 \u0627\u0636\u0627\u0641\u06C1 \u06C1\u0648\u0626\u06D2 \u062A\u0648 \u0637\u0644\u0628\u0627 \u0679\u06CC\u0628 \u0645\u06CC\u06BA <code>class=hifz</code> \u0686\u06CC\u06A9 \u06A9\u0631\u06CC\u06BA\u06D4</div>';
+    } else {
+      for (let hi = 0; hi < HIFZ_MEMORY_SLOTS; hi++) {
+        hifzSlotsHtml += `<div style="margin-bottom:14px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
+          <div style="font-weight:800;font-size:11px;margin-bottom:8px;color:var(--gd)">\u062D\u0641\u0638 \u06CC\u0627\u062F \u2014 \u0633\u0644\u0627\u0679 ${hi + 1} / Hifz recall ${hi + 1}</div>
+          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">\u06AF\u0632\u0634\u062A\u06C1 2\u20133 \u062F\u0646 \u06CC\u0627 \u06C1\u0641\u062A\u06D2 \u06A9\u0627 \u0633\u0628\u0642 \u2014 \u0642\u0627\u0631\u06CC \u0633\u0648\u0644\u062A\u0627 \u06C1\u06D2\u060C \u0637\u0627\u0644\u0628 \u062C\u0648\u0627\u0628 \u062F\u06D2\u060C \u0645\u0648\u0642\u0641 \u0627\u0648\u0631 \u06CC\u0627\u062F \u06A9\u06CC \u0633\u0637\u062D\u06D4 Last few days\u2019 lesson recall (not new lesson teaching).</div>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0637\u0627\u0644\u0628 / Student (<span dir="ltr">studentId</span>)</label>
+          <select id="acc_hf_sid_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${hifzStudentOpts}</select>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u0645\u062F\u062A \u06A9\u06CC \u062A\u06A9\u0631\u0627\u0631\u061F / Recall window (<span dir="ltr">memorySpan</span>)</label>
+          <select id="acc_hf_span_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}">
+            <option value="">\u2014</option>
+            <option value="last_2_days">\u06AF\u0632\u0634\u062A\u06C1 2 \u062F\u0646 / Last 2 days</option>
+            <option value="last_3_days">\u06AF\u0632\u0634\u062A\u06C1 3 \u062F\u0646 / Last 3 days</option>
+            <option value="last_week">\u067E\u0686\u06C1\u0644\u0627 \u06C1\u0641\u062A\u06C1 / ~Last week</option>
+            <option value="other">\u062F\u06CC\u06AF\u0631 / Other (detail below)</option>
+          </select>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u06CC\u0627 \u067E\u0648\u0686\u06BE\u0627 \u06AF\u06CC\u0627\u061F / What was asked (<span dir="ltr">promptAsked</span>)</label>
+          <textarea id="acc_hf_prompt_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="\u0645\u062B\u0644\u064B\u0627: \u067E\u0686\u06C1\u0644\u06D2 \u062C\u0645\u0639\u06C1 \u06A9\u0627 \u0622\u062E\u0631\u06CC \u0633\u0628\u0642 \u06C1\u0645 \u0633\u06D2 \u062A\u06A9\u0631\u0627\u0631\u2026" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0637\u0627\u0644\u0628 \u0646\u06D2 \u06A9\u06CC\u0627 \u062C\u0648\u0627\u0628 \u062F\u06CC\u0627\u061F / Student said (<span dir="ltr">studentResponse</span>)</label>
+          <textarea id="acc_hf_resp_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="\u0637\u0627\u0644\u0628 \u06A9\u0627 \u0628\u0648\u0644\u0627 \u062C\u0648\u0627\u0628" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0627\u0628 \u06A9\u06C1\u0627\u06BA \u067E\u06CC\u06BA \u06C1\u06D2\u061F / Where they are at (<span dir="ltr">progressWhere</span>)</label>
+          <input type="text" id="acc_hf_pos_${hi}" oninput="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}" placeholder="\u0645\u062B\u0644\u064B\u0627 \u067E\u0627\u0631\u06C1 5\u060C \u0633\u0648\u0631\u06C1\u060C \u0635\u0641\u062D\u06C1">
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06CC\u0627\u062F \u06A9\u06CC\u0633\u06CC \u0631\u06C1\u06CC\u061F / Recall quality (<span dir="ltr">recallQuality</span>)</label>
+          <select id="acc_hf_quality_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('')}">
+            <option value="">\u2014</option>
+            <option value="weak">\u0636\u0639\u06CC\u0641 / Weak</option>
+            <option value="adequate">\u0645\u0646\u0627\u0633\u0628 / Adequate</option>
+            <option value="strong">\u0627\u0686\u06BE\u0627 / Strong</option>
+          </select>
+        </div>`;
+      }
+    }
+    const hifzBlockHtml = `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
+        <label style="font-size:12px;font-weight:700">\uD83D\uDCD6 \u062D\u0641\u0638 \u0627\u067E\u0688\u06CC\u0679 \u2014 \u0642\u0627\u0631\u06CC \u0635\u0627\u062D\u0628\u0627\u0646 \u0633\u06D2</label>
+        <span id="acc_hifz_actions_hint" style="font-size:9px;color:${hifzActOk?'var(--gr)':'#8a9ab5'}">${escHtml(hifzActHint)}</span>
+      </div>
+      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">JSON: <span dir="ltr">v, entries[].studentId, studentLabel, memorySpan, promptAsked, studentResponse, progressWhere, recallQuality</span> \u2192 <code dir="ltr">hifz_notes</code> \u2014 \u06A9\u0645 \u0627\u0632 \u06A9\u0645 \u0627\u06CC\u06A9 \u0645\u06A9\u0645\u0644 \u0633\u0644\u0627\u0679\u060C \u06CC\u0627 10+ \u062D\u0631\u0641 \u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646\u06D4</div>
+      <div id="acc_hifz_wrap" data-hifz-roster-len="${hifzRoster.length}">${hifzSlotsHtml}</div>
+      <pre id="acc_hifz_legacy_note" style="display:none;font-size:10px;color:#fdba74;white-space:pre-wrap;word-break:break-word;margin-top:8px;padding:8px;background:var(--dk);border-radius:8px;border:1px solid #7c2d12"></pre>
+      <textarea id="acc_hifz" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(hifzActRaw)}</textarea>
+    </div>`;
+
     const descFields = [
       {id:'acc_syllabus', label:'📚 نصاب پیشرفت نوٹس', field:'syllabus_notes', ph:'کون سے مضامین پیچھے ہیں، کیا منصوبہ ہے...', rows:3, min:10},
-      {id:'acc_hifz', label:'📖 حفظ اپڈیٹ — قاری صاحبان سے', field:'hifz_notes', ph:'کس طالب علم نے کتنا حفظ کیا، کوئی مسئلہ...', rows:3, min:10},
       {id:'acc_remarks', label:'💬 عمومی ملاحظات', field:'general_remarks', ph:'آج کا کوئی خاص واقعہ، تجویز، شکایت...', rows:2, min:5},
     ];
-    descFields.forEach(f => {
+    descFields.forEach((f, fi) => {
       const val = rpt[f.field] || '';
       const ok = val.length >= f.min;
       html += `<div style="margin-bottom:14px">
@@ -1278,6 +1489,7 @@ function render() {
         </div>
         <textarea id="${f.id}" rows="${f.rows}" placeholder="${f.ph}" style="${iS('resize:vertical;')}">${val}</textarea>
       </div>`;
+      if (fi === 0) html += hifzBlockHtml;
     });
     html += '</div>';
 
@@ -1708,6 +1920,7 @@ window.initAdminInspectClassFromSaved = function () {
   window.refreshVisitsListUI && window.refreshVisitsListUI();
   window.onInspectClassChange({ preserveTextarea: !!(v && v.trim()) });
   window.initAbsentActionsBlockFromStore && window.initAbsentActionsBlockFromStore();
+  window.initHifzNotesBlockFromStore && window.initHifzNotesBlockFromStore();
 };
 
 window.refreshVisitsListUI = function () {
@@ -1888,6 +2101,7 @@ window.onInspectClassChange = async function (opts) {
 async function submitAccountability() {
   try {
     if (typeof window.syncAbsentActionsToHidden === 'function') window.syncAbsentActionsToHidden();
+    if (typeof window.syncHifzNotesToHidden === 'function') window.syncHifzNotesToHidden();
     const g = id => document.getElementById(id);
     const v = id => (g(id)||{}).value||'';
     const ck = id => (g(id)||{}).checked||false;
