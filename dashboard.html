@@ -616,6 +616,201 @@ function sAttendGroupKey(r, assignments) {
   return pPart + '|' + (r.subject_id || '') + '|' + (r.teacher_id || '');
 }
 
+/** Unique students marked absent (A) today — one row per child in accountability follow-up. */
+function dedupeAbsentStudentsToday(sAttToday, students) {
+  const out = [];
+  const seen = new Set();
+  for (const r of sAttToday || []) {
+    if (!r || r.status !== 'A' || !r.student_id) continue;
+    if (seen.has(r.student_id)) continue;
+    seen.add(r.student_id);
+    const st = (students || []).find(s => s.id === r.student_id);
+    const cls = st && st.class != null && String(st.class).trim() !== '' ? String(st.class).trim() : (r.class != null ? String(r.class).trim() : '');
+    out.push({ student_id: r.student_id, name: st ? (st.name || r.student_id) : r.student_id, class: cls });
+  }
+  return out;
+}
+
+function tryParseAbsentActionsJson(raw) {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  if (!s.startsWith('{')) return null;
+  try {
+    const o = JSON.parse(s);
+    if (!o || o.v !== 1 || !Array.isArray(o.rows)) return null;
+    return o;
+  } catch (e) {
+    return null;
+  }
+}
+
+function absentActionRowValid(row, path) {
+  if (!row || !path) return false;
+  if (path === 'teacher_ok') {
+    const tid = String(row.teacherId || '').trim();
+    const ex = String(row.teacherExplanation || '').trim();
+    return !!tid && ex.length >= 5;
+  }
+  if (path === 'principal_called') return String(row.callReply || '').trim().length >= 3;
+  if (path === 'assigned_call') {
+    const rep = String(row.callReply || '').trim();
+    const tid = String(row.assigneeTeacherId || '').trim();
+    const nm = String(row.assigneeName || '').trim();
+    return rep.length >= 3 && (!!tid || nm.length >= 2);
+  }
+  return false;
+}
+
+function absentActionsScoringOk(raw, absentDeduped) {
+  const list = absentDeduped || [];
+  if (!list.length) return true;
+  const parsed = tryParseAbsentActionsJson(raw);
+  if (!parsed) return typeof raw === 'string' && raw.trim().length >= 10;
+  const bySid = {};
+  (parsed.rows || []).forEach(r => {
+    if (r && r.studentId) bySid[r.studentId] = r;
+  });
+  for (const a of list) {
+    const row = bySid[a.student_id];
+    if (!row) return false;
+    const path = String(row.path || '').trim();
+    if (!absentActionRowValid(row, path)) return false;
+  }
+  return true;
+}
+
+function absentActionsHintText(raw, absentDeduped) {
+  const list = absentDeduped || [];
+  if (!list.length) return '\u2014 \u0622\u062C \u06A9\u0648\u0626\u06CC \u063A\u0627\u0626\u0628 \u0646\u06C1\u06CC\u06BA';
+  const parsed = tryParseAbsentActionsJson(raw);
+  if (!parsed) {
+    const n = (typeof raw === 'string' ? raw.trim().length : 0);
+    return n + '/10 \u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646' + (n >= 10 ? ' \u2713' : '');
+  }
+  const bySid = {};
+  (parsed.rows || []).forEach(r => {
+    if (r && r.studentId) bySid[r.studentId] = r;
+  });
+  let ok = 0;
+  for (const a of list) {
+    const row = bySid[a.student_id];
+    if (row && absentActionRowValid(row, String(row.path || '').trim())) ok++;
+  }
+  return ok + '/' + list.length + ' \u0637\u0644\u0628\u0627' + (ok === list.length ? ' \u2713' : '');
+}
+
+window.syncAbsentActionsToHidden = function () {
+  const hid = document.getElementById('acc_absent_actions');
+  const wrap = document.getElementById('acc_absent_actions_wrap');
+  if (!hid || !wrap) return;
+  const n = parseInt(wrap.getAttribute('data-abs-count') || '0', 10);
+  const prevRaw = hid.value || '';
+  const prevParsed = tryParseAbsentActionsJson(prevRaw);
+  const fromLegacy = prevRaw.trim() && !prevParsed ? prevRaw.trim() : (prevParsed && prevParsed.fromLegacyText ? prevParsed.fromLegacyText : '');
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const sidEl = document.getElementById('acc_abs_sid_' + i);
+    const pathEl = document.getElementById('acc_abs_path_' + i);
+    const teachEl = document.getElementById('acc_abs_teacher_' + i);
+    const explainEl = document.getElementById('acc_abs_teacher_explain_' + i);
+    const assignEl = document.getElementById('acc_abs_assignee_' + i);
+    const nameEl = document.getElementById('acc_abs_assignee_name_' + i);
+    const replyEl = document.getElementById('acc_abs_reply_' + i);
+    const studentId = sidEl ? sidEl.value.trim() : '';
+    const path = pathEl ? pathEl.value.trim() : '';
+    let assigneeTeacherId = assignEl ? assignEl.value.trim() : '';
+    let assigneeName = nameEl ? String(nameEl.value || '').trim() : '';
+    if (assigneeTeacherId === '__name_only__') assigneeTeacherId = '';
+    else if (assigneeTeacherId) assigneeName = '';
+    rows.push({
+      studentId,
+      path,
+      teacherId: teachEl ? teachEl.value.trim() : '',
+      teacherExplanation: explainEl ? String(explainEl.value || '').trim() : '',
+      assigneeTeacherId,
+      assigneeName,
+      callReply: replyEl ? String(replyEl.value || '').trim() : ''
+    });
+  }
+  const payload = { v: 1, rows };
+  if (fromLegacy) payload.fromLegacyText = fromLegacy;
+  hid.value = JSON.stringify(payload);
+  const hint = document.getElementById('acc_absent_actions_hint');
+  if (hint) {
+    if (!n) hint.textContent = absentActionsHintText(hid.value, []);
+    else {
+      let ok = 0;
+      for (const row of rows) {
+        if (absentActionRowValid(row, String(row.path || '').trim())) ok++;
+      }
+      hint.textContent = ok + '/' + n + ' \u0637\u0644\u0628\u0627' + (ok === n ? ' \u2713' : '');
+    }
+  }
+};
+
+window.toggleAccAbsentRow = function (idx) {
+  const path = (document.getElementById('acc_abs_path_' + idx) || {}).value || '';
+  const tw = document.getElementById('acc_abs_twrap_' + idx);
+  const rw = document.getElementById('acc_abs_replywrap_' + idx);
+  const aw = document.getElementById('acc_abs_assignwrap_' + idx);
+  const nw = document.getElementById('acc_abs_assignname_wrap_' + idx);
+  const assignEl = document.getElementById('acc_abs_assignee_' + idx);
+  if (tw) tw.style.display = path === 'teacher_ok' ? 'block' : 'none';
+  if (rw) rw.style.display = path === 'principal_called' || path === 'assigned_call' ? 'block' : 'none';
+  if (aw) aw.style.display = path === 'assigned_call' ? 'block' : 'none';
+  if (nw && assignEl) nw.style.display = path === 'assigned_call' && assignEl.value === '__name_only__' ? 'block' : 'none';
+};
+
+window.initAbsentActionsBlockFromStore = function () {
+  const hid = document.getElementById('acc_absent_actions');
+  const wrap = document.getElementById('acc_absent_actions_wrap');
+  if (!hid || !wrap) return;
+  const n = parseInt(wrap.getAttribute('data-abs-count') || '0', 10);
+  const parsed = tryParseAbsentActionsJson(hid.value);
+  const bySid = {};
+  if (parsed && parsed.rows) parsed.rows.forEach(r => {
+    if (r && r.studentId) bySid[r.studentId] = r;
+  });
+  for (let i = 0; i < n; i++) {
+    const sidEl = document.getElementById('acc_abs_sid_' + i);
+    if (!sidEl) continue;
+    const sid = sidEl.value.trim();
+    const r = bySid[sid] || {};
+    const path = document.getElementById('acc_abs_path_' + i);
+    const p = String(r.path || '').trim();
+    if (path) path.value = (p === 'teacher_ok' || p === 'principal_called' || p === 'assigned_call') ? p : '';
+    const te = document.getElementById('acc_abs_teacher_' + i);
+    if (te) te.value = r.teacherId || '';
+    const ex = document.getElementById('acc_abs_teacher_explain_' + i);
+    if (ex) ex.value = r.teacherExplanation || '';
+    const as = document.getElementById('acc_abs_assignee_' + i);
+    if (as) {
+      const atid = String(r.assigneeTeacherId || '').trim();
+      const anm = String(r.assigneeName || '').trim();
+      if (atid && [...as.options].some(o => o.value === atid)) as.value = atid;
+      else if (anm) {
+        as.value = '__name_only__';
+        const ne = document.getElementById('acc_abs_assignee_name_' + i);
+        if (ne) ne.value = anm;
+      } else as.value = '';
+    }
+    const rep = document.getElementById('acc_abs_reply_' + i);
+    if (rep) rep.value = r.callReply || '';
+    window.toggleAccAbsentRow(i);
+  }
+  const note = document.getElementById('acc_absent_legacy_note');
+  if (note) {
+    if (!parsed && n > 0 && (hid.value || '').trim() && !(hid.value || '').trim().startsWith('{')) {
+      note.style.display = 'block';
+      const raw = (hid.value || '').trim();
+      note.textContent = raw.length > 800 ? raw.slice(0, 800) + '\u2026' : raw;
+    } else {
+      note.style.display = 'none';
+      note.textContent = '';
+    }
+  }
+  if (parsed || !((hid.value || '').trim()) || !n) window.syncAbsentActionsToHidden();
+};
+
 /** Before `innerHTML` rebuild: unsaved جوابدہی fields on the principal dashboard (auto-refresh / loadAll). */
 function captureAccountabilityDraft() {
   const ta = document.getElementById('acc_class_visited');
@@ -654,9 +849,13 @@ function initAccountabilityAfterDraftRestore() {
   window.refreshVisitsListUI && window.refreshVisitsListUI();
   window.onInspectClassChange && window.onInspectClassChange({ preserveTextarea: true, skipVisitQaReload: true });
   window.refreshAccVisitWhoOptions && window.refreshAccVisitWhoOptions();
+  window.initAbsentActionsBlockFromStore && window.initAbsentActionsBlockFromStore();
 }
 
 function render() {
+  if (typeof window.syncAbsentActionsToHidden === 'function' && document.getElementById('acc_absent_actions_wrap')) {
+    window.syncAbsentActionsToHidden();
+  }
   const accountabilityDraft = (activeTab === TAB_ACCOUNTABILITY) ? captureAccountabilityDraft() : null;
   const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
   const curPeriod = getCurrentPeriod(periods);
@@ -843,11 +1042,11 @@ function render() {
     const teachersWhoShouldReport = [...new Set(assignments.filter(a=>activeTeacherIds.includes(a.teacher_id)).map(a=>a.teacher_id))];
     const missingReports = teachersWhoShouldReport.filter(t=>!teachersWithReports.includes(t));
     const allReportsIn = missingReports.length === 0 && reportsToday.length > 0;
-    const absentStudents = sAttToday.filter(r=>r.status==='A');
+    const absentListDedup = dedupeAbsentStudentsToday(sAttToday, students);
     const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
     const behindSubjects = reportsToday.filter(r=>(r.actual_page||0)<(r.target_page||0));
     const isThursday = new Date().getDay() === 4;
-    const actualAbsent = absentStudents.length;
+    const actualAbsent = absentListDedup.length;
     const actualBehind = behindSubjects.length;
     const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:rtl;min-height:44px;box-sizing:border-box;'+s;
 
@@ -857,7 +1056,7 @@ function render() {
     if (rpt.behind_subjects_entered != null) filled++;
     if (rpt.coverage_details) filled++;
     if ((rpt.class_visited||'').length >= 3 && classObsScoringOk(rpt.class_observations)) filled++;
-    if ((rpt.absent_actions||'').length >= 10) filled++;
+    if (absentActionsScoringOk(rpt.absent_actions || '', absentListDedup)) filled++;
     if ((rpt.syllabus_notes||'').length >= 10) filled++;
     if ((rpt.hifz_notes||'').length >= 10) filled++;
     if ((rpt.general_remarks||'').length >= 5) filled++;
@@ -1004,8 +1203,67 @@ function render() {
       <textarea id="acc_class_obs" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(coRaw)}</textarea>
     </div>`;
 
+    const absentActRaw = typeof rpt.absent_actions === 'string' ? rpt.absent_actions : '';
+    const absentActOk = absentActionsScoringOk(absentActRaw, absentListDedup);
+    const absentActHint = absentActionsHintText(absentActRaw, absentListDedup);
+    const teacherPickOpts = teachers.map(t => '<option value="' + escAttr(t.id) + '">' + escHtml(t.name || t.id) + '</option>').join('');
+    let absentFollowHtml = '';
+    if (!absentListDedup.length) {
+      absentFollowHtml = '<div style="font-size:11px;color:var(--gr);padding:10px;background:#34a85315;border-radius:10px;margin-bottom:10px">\u2713 \u0622\u062C \u06A9\u0648\u0626\u06CC \u0637\u0627\u0644\u0628 \u0639\u0644\u0645 \u063A\u0627\u0626\u0628 \u0646\u06C1\u06CC\u06BA \u2014 \u0627\u0633 \u0628\u0627\u0628 \u06A9\u0648\u0626\u06CC \u0627\u0642\u062F\u0627\u0645 \u0631\u06CC\u06A9\u0627\u0631\u0688 \u0646\u06C1\u06CC\u06BA\u06D4</div>';
+    } else {
+      absentListDedup.forEach((abs, idx) => {
+        const cid = abs.class || '';
+        const badge = cid ? `<span class="class-badge ${escAttr(cid)}">${escHtml(CLASS_UR[cid] || cid)}</span> ` : '';
+        absentFollowHtml += `<div style="margin-bottom:14px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
+          <input type="hidden" id="acc_abs_sid_${idx}" value="${escAttr(abs.student_id)}">
+          <div style="font-weight:800;font-size:12px;margin-bottom:8px;color:var(--gd)">${badge}${escHtml(abs.name)}</div>
+          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">\u067E\u06C1\u0644\u06D2 \u0627\u0633\u062A\u0627\u0630 \u0633\u06D2 \u0648\u0636\u0627\u062D\u062A \u2014 \u0645\u0646\u0627\u0633\u0628 \u06C1\u0648 \u062A\u0648 \u0648\u0627\u0644\u062F\u06CC\u0646 \u062A\u06A9 \u0646\u06C1\u06CC\u06BA\u06D4 / Ask teacher first; if explanation is sufficient, no parent escalation.</div>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0627\u0642\u062F\u0627\u0645 / Next step (<span dir="ltr">path</span>)</label>
+          <select id="acc_abs_path_${idx}" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
+            <option value="">\u2014 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA \u2014</option>
+            <option value="teacher_ok">\u0627\u0633\u062A\u0627\u0630 \u06A9\u06CC \u0648\u0636\u0627\u062D\u062A \u06A9\u0627\u0641\u06CC / Teacher explanation OK</option>
+            <option value="principal_called">\u0645\u06CC\u06BA \u0646\u06D2 \u0648\u0627\u0644\u062F\u06CC\u0646 \u0633\u06D2 \u0631\u0627\u0628\u0637\u06C1 / I called parents</option>
+            <option value="assigned_call">\u06A9\u0633\u06CC \u0627\u0648\u0631 \u06A9\u0648 \u0641\u0648\u0646 \u06A9\u0631\u0646\u06D2 \u06A9\u0627 \u06A9\u06C1\u0627 / Assigned someone to call</option>
+          </select>
+          <div id="acc_abs_twrap_${idx}" style="display:none">
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u0627\u0633\u062A\u0627\u0630 \u0633\u06D2 \u067E\u0648\u0686\u06BE\u0627\u061F / Which teacher? (<span dir="ltr">teacherId</span>)</label>
+            <select id="acc_abs_teacher_${idx}" onchange="window.syncAbsentActionsToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${teacherPickOpts}</select>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0648\u0636\u0627\u062D\u062A / Explanation (<span dir="ltr">teacherExplanation</span>)</label>
+            <textarea id="acc_abs_teacher_explain_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="\u06A9\u06CC\u0627 \u062C\u0648\u0627\u0628 \u0645\u0644\u0627\u061F \u06A9\u06CC\u0648\u06BA \u0645\u0646\u0627\u0633\u0628\u061F" style="${iS('resize:vertical;')}"></textarea>
+          </div>
+          <div id="acc_abs_assignwrap_${idx}" style="display:none">
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u06A9\u0648 \u0630\u0645\u06C1 \u062F\u0627\u0631\u06CC\u061F / Assignee (<span dir="ltr">assigneeTeacherId</span>)</label>
+            <select id="acc_abs_assignee_${idx}" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
+              <option value="">\u2014</option>
+              ${teacherPickOpts}
+              <option value="__name_only__">\u062F\u0633\u062A\u06CC \u0646\u0627\u0645 / Type name manually</option>
+            </select>
+            <div id="acc_abs_assignname_wrap_${idx}" style="display:none;margin-bottom:8px">
+              <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0646\u0627\u0645 / Name (<span dir="ltr">assigneeName</span>)</label>
+              <input type="text" id="acc_abs_assignee_name_${idx}" oninput="window.syncAbsentActionsToHidden()" style="${iS('')}" placeholder="\u0645\u06A9\u0645\u0644 \u0646\u0627\u0645">
+            </div>
+          </div>
+          <div id="acc_abs_replywrap_${idx}" style="display:none">
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0641\u0648\u0646 \u067E\u0631 \u06A9\u06CC\u0627 \u062C\u0648\u0627\u0628 \u0645\u0644\u0627\u061F / Call reply (<span dir="ltr">callReply</span>)</label>
+            <textarea id="acc_abs_reply_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="\u0648\u0627\u0644\u062F\u06CC\u0646 \u06CC\u0627 \u0645\u0646\u062A\u0638\u0631 \u06A9\u0627 \u062C\u0648\u0627\u0628" style="${iS('resize:vertical;')}"></textarea>
+          </div>
+        </div>`;
+      });
+    }
+    html += `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
+        <label style="font-size:12px;font-weight:700">\uD83D\uDCDE \u063A\u0627\u0626\u0628 \u0637\u0644\u0628\u0627 \u2014 \u06A9\u06CC\u0627 \u0627\u0642\u062F\u0627\u0645\u061F</label>
+        <span id="acc_absent_actions_hint" style="font-size:9px;color:${absentActOk?'var(--gr)':'#8a9ab5'}">${escHtml(absentActHint)}</span>
+      </div>
+      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">JSON keys: <span dir="ltr">v, rows[].studentId, path, teacherId, teacherExplanation, assigneeTeacherId, assigneeName, callReply</span> \u2192 <code dir="ltr">absent_actions</code></div>
+      <div id="acc_absent_actions_wrap" data-abs-count="${absentListDedup.length}">
+        ${absentFollowHtml}
+      </div>
+      <pre id="acc_absent_legacy_note" style="display:none;font-size:10px;color:#fdba74;white-space:pre-wrap;word-break:break-word;margin-top:8px;padding:8px;background:var(--dk);border-radius:8px;border:1px solid #7c2d12"></pre>
+      <textarea id="acc_absent_actions" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(absentActRaw)}</textarea>
+    </div>`;
+
     const descFields = [
-      {id:'acc_absent_actions', label:'📞 غائب طلبا — کیا اقدام کیا؟', field:'absent_actions', ph:'کن والدین کو فون کیا، کیا جواب ملا...', rows:3, min:10},
       {id:'acc_syllabus', label:'📚 نصاب پیشرفت نوٹس', field:'syllabus_notes', ph:'کون سے مضامین پیچھے ہیں، کیا منصوبہ ہے...', rows:3, min:10},
       {id:'acc_hifz', label:'📖 حفظ اپڈیٹ — قاری صاحبان سے', field:'hifz_notes', ph:'کس طالب علم نے کتنا حفظ کیا، کوئی مسئلہ...', rows:3, min:10},
       {id:'acc_remarks', label:'💬 عمومی ملاحظات', field:'general_remarks', ph:'آج کا کوئی خاص واقعہ، تجویز، شکایت...', rows:2, min:5},
@@ -1449,6 +1707,7 @@ window.initAdminInspectClassFromSaved = function () {
   if (obs) obs.value = (DATA.adminReport && typeof DATA.adminReport.class_observations === 'string' && DATA.adminReport.class_observations) || '';
   window.refreshVisitsListUI && window.refreshVisitsListUI();
   window.onInspectClassChange({ preserveTextarea: !!(v && v.trim()) });
+  window.initAbsentActionsBlockFromStore && window.initAbsentActionsBlockFromStore();
 };
 
 window.refreshVisitsListUI = function () {
@@ -1628,6 +1887,7 @@ window.onInspectClassChange = async function (opts) {
 // ═══════════════════════════════════════════
 async function submitAccountability() {
   try {
+    if (typeof window.syncAbsentActionsToHidden === 'function') window.syncAbsentActionsToHidden();
     const g = id => document.getElementById(id);
     const v = id => (g(id)||{}).value||'';
     const ck = id => (g(id)||{}).checked||false;
