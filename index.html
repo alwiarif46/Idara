@@ -1384,6 +1384,9 @@ function normalizeStudentRow(row) {
   };
 }
 
+/** Delay before permanent Supabase delete so admin can واپس. */
+const STUDENT_DELETE_UNDO_MS = 8000;
+
 // ═══════════════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════════════
@@ -1471,6 +1474,8 @@ function App() {
   const [rptDateTo, setRptDateTo] = useState('');
   const [rptFilter, setRptFilter] = useState('');
   const saveTimer = useRef(null);
+  const pendingStudentDelRef = useRef({ timerId: null, student: null });
+  const [studentDelUndo, setStudentDelUndo] = useState(null);
   // Early-bind CL so hooks before the full destructuring never hit TDZ
   const CL = (cfg && cfg.classes) || [];
 
@@ -1811,6 +1816,65 @@ function App() {
       throw new Error((r.status === 409 ? 'اب بھی منسلک ڈیٹا (409) — ' : '') + (t || r.statusText));
     }
   };
+
+  const flushPriorPendingStudentDelete = async () => {
+    const p = pendingStudentDelRef.current;
+    if (!p.student) return;
+    if (p.timerId) {
+      clearTimeout(p.timerId);
+      p.timerId = null;
+    }
+    const prevStud = normalizeStudentRow(p.student) || p.student;
+    p.student = null;
+    setStudentDelUndo(null);
+    if (cfg && cfg.supabase_url && cfg.supabase_key) {
+      try {
+        await deleteStudentRemote(prevStud.id);
+      } catch (err) {
+        setStudents(prev => [...prev, prevStud].sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur')));
+        setToast('❌ پچھلا حذف ناکام: ' + (err.message || String(err)));
+        setTimeout(() => setToast(''), 4000);
+      }
+    }
+  };
+
+  const finalizeDelayedStudentDelete = async () => {
+    const p = pendingStudentDelRef.current;
+    if (!p.student) return;
+    p.timerId = null;
+    const copy = normalizeStudentRow(p.student) || p.student;
+    p.student = null;
+    setStudentDelUndo(null);
+    try {
+      if (cfg && cfg.supabase_url && cfg.supabase_key) await deleteStudentRemote(copy.id);
+      setToast('✓ ڈیٹابیس سے حذف');
+      setTimeout(() => setToast(''), 2500);
+    } catch (err) {
+      setStudents(prev => [...prev, copy].sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur')));
+      setToast('❌ حذف ناکام: ' + (err.message || String(err)));
+      setTimeout(() => setToast(''), 4000);
+    }
+  };
+
+  const undoPendingStudentDelete = () => {
+    const p = pendingStudentDelRef.current;
+    if (!p.student) return;
+    if (p.timerId) {
+      clearTimeout(p.timerId);
+      p.timerId = null;
+    }
+    const r = normalizeStudentRow(p.student) || p.student;
+    p.student = null;
+    setStudentDelUndo(null);
+    setStudents(prev => [...prev, r].sort((a, b) => (a.n || '').localeCompare(b.n || '', 'ur')));
+    setToast('↩️ واپس');
+    setTimeout(() => setToast(''), 2500);
+  };
+
+  useEffect(() => () => {
+    const tid = pendingStudentDelRef.current.timerId;
+    if (tid) clearTimeout(tid);
+  }, []);
 
   const syncPost = async (type, payload) => {
     if (!cfg.supabase_url || !cfg.supabase_key) {
@@ -2717,7 +2781,7 @@ function App() {
       direction: 'rtl',
       background: '#f5f0e8'
     }
-  }, /*#__PURE__*/React.createElement(CDM, null), toast && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(CDM, null), (studentDelUndo || toast) && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
       top: 56,
@@ -2725,14 +2789,35 @@ function App() {
       transform: 'translateX(-50%)',
       background: ST.dk,
       color: ST.gd,
-      padding: '8px 20px',
+      padding: '10px 16px',
       borderRadius: 10,
       fontSize: 12,
       fontWeight: 700,
       zIndex: 999,
-      whiteSpace: 'nowrap'
+      maxWidth: 'min(560px, 94vw)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      boxShadow: '0 4px 16px rgba(0,0,0,.25)'
     }
-  }, toast), /*#__PURE__*/React.createElement("div", {
+  }, studentDelUndo ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    style: { textAlign: 'center' }
+  }, "\u00AB", studentDelUndo.name, "\u00BB \u062D\u0630\u0641 \u2014 "), /*#__PURE__*/React.createElement("button", {
+    type: 'button',
+    onClick: undoPendingStudentDelete,
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      padding: '6px 14px',
+      borderRadius: 8,
+      border: 'none',
+      background: ST.gd,
+      color: ST.dk,
+      cursor: 'pointer'
+    }
+  }, "\u21A9\uFE0F \u0648\u0627\u067E\u0633")) : toast), /*#__PURE__*/React.createElement("div", {
     style: {
       background: `linear-gradient(135deg,${ST.dk},${ST.gn})`,
       padding: '11px 15px',
@@ -3895,13 +3980,20 @@ tab === 'thu' && isEx && React.createElement('div', null,
                 type: 'button',
                 onClick: async (e) => {
                   e.stopPropagation();
-                  if (!window.confirm('اس طالب علم کو حذف کریں؟ ڈیٹابیس سے بھی ہٹ جائے گا۔')) return;
+                  if (!window.confirm('اس طالب علم کو حذف کریں؟ (' + STUDENT_DELETE_UNDO_MS / 1000 + ' سیکنڈ میں واپس کر سکتے ہیں۔)')) return;
                   try {
-                    if (cfg && cfg.supabase_url) await deleteStudentRemote(s.id);
+                    await flushPriorPendingStudentDelete();
+                    const snap = JSON.parse(JSON.stringify(s));
+                    setToast('');
                     setStudents(prev => prev.filter(st => st.id !== s.id));
-                    flash('✓ حذف');
+                    setStudentDelUndo({ id: s.id, name: s.n || s.id });
+                    pendingStudentDelRef.current.student = normalizeStudentRow(snap) || snap;
+                    pendingStudentDelRef.current.timerId = setTimeout(() => {
+                      pendingStudentDelRef.current.timerId = null;
+                      void finalizeDelayedStudentDelete();
+                    }, STUDENT_DELETE_UNDO_MS);
                   } catch (err) {
-                    flash('❌ حذف ناکام: ' + (err.message || String(err)));
+                    flash('❌ ' + (err.message || String(err)));
                   }
                 },
                 style:{fontSize:10,padding:'3px 8px',borderRadius:8,border:'none',background:'#fee2e2',color:'#dc2626',cursor:'pointer'}
