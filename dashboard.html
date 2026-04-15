@@ -376,6 +376,20 @@ function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, sub
   return miss;
 }
 
+/** Submitted today but actual pages still below target (same rows as `daily_reports` for TODAY). */
+function reportsBehindSyllabusTarget(reportsToday) {
+  return (reportsToday || [])
+    .map(r => {
+      const tp = r.target_page != null && String(r.target_page).trim() !== '' ? Number(r.target_page) : NaN;
+      const ap = r.actual_page != null && String(r.actual_page).trim() !== '' ? Number(r.actual_page) : NaN;
+      if (Number.isNaN(tp) || Number.isNaN(ap) || ap >= tp) return null;
+      return { r, diff: ap - tp };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.diff - b.diff)
+    .map(x => x.r);
+}
+
 // ═══════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════
@@ -485,6 +499,7 @@ function render() {
     {id:'tAttend',l:'👨‍🏫 اساتذہ حاضری'},
     {id:'sAttend',l:'👥 طلبا حاضری'},
     {id:'reports',l:'📝 رپورٹس'},
+    {id:'behind',l:'📉 ہدف سے پیچھے'},
     {id:'export',l:'📥 ایکسپورٹ'},
   ];
   html += '<div class="tabs">';
@@ -1004,6 +1019,71 @@ function render() {
       html += '</tbody></table></div>';
     } else {
       html += '<div style="text-align:center;padding:30px;color:#8a9ab5">آج ابھی تک کوئی رپورٹ نہیں</div>';
+    }
+    html += '</div>';
+  }
+
+  // ═══════════════════════════════════════════
+  // TAB: BEHIND SYLLABUS TARGET (Supabase — آج)
+  // ═══════════════════════════════════════════
+  if (activeTab === 'behind') {
+    const behindRows = reportsBehindSyllabusTarget(reportsToday);
+    const pendingRep = pendingDailyReports(assignments, reportsToday, tAttToday, teachers, subjects);
+    const agg = {};
+    behindRows.forEach(r => {
+      const n = (r.teacher_name || r.teacher_id || '').trim() || '—';
+      agg[n] = (agg[n] || 0) + 1;
+    });
+    const aggChips = Object.keys(agg).sort((a, b) => a.localeCompare(b, 'ur')).map(n =>
+      `<span style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:999px;background:var(--dk3);font-size:10px;color:#c5cee0">${escHtml(n)} <strong style="color:var(--yl)">${agg[n]}</strong></span>`
+    ).join('');
+
+    html += '<div class="section"><h2>📉 ہدف سے پیچھے — مضمون و استاذ</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.55">براہ راست <strong>Supabase</strong> کی آج کی <code style="font-size:9px">daily_reports</code> اور <code style="font-size:9px">assignments</code> سے۔ پہلی فہرست: رپورٹ جمع مگر اصل صفحہ &lt; ہدف۔ دوسری: تفویض ہے مگر آج کی رپورٹ نہیں۔</div>';
+
+    html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:14px 0 8px">🎯 ہدف صفحے سے پیچھے (رپورٹ موصول)</h3>';
+    if (behindRows.length) {
+      if (aggChips) html += '<div style="margin-bottom:10px">' + aggChips + '</div>';
+      html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
+      html += '<th>استاذ</th><th>مضمون</th><th>درجہ</th><th>پیریڈ</th><th>ہدف</th><th>اصل</th><th>کمی</th><th>مکمل</th>';
+      html += '</tr></thead><tbody>';
+      behindRows.forEach(r => {
+        const tp = Number(r.target_page);
+        const ap = Number(r.actual_page);
+        const short = tp - ap;
+        html += `<tr>
+          <td>${escHtml(r.teacher_name || r.teacher_id || '')}</td>
+          <td>${escHtml(r.subject_name || r.subject_id || '')}</td>
+          <td><span class="class-badge ${r.class || ''}">${escHtml(CLASS_UR[r.class] || r.class || '')}</span></td>
+          <td>${r.period_id != null ? escHtml(String(r.period_id)) : '—'}</td>
+          <td>${escHtml(String(r.target_page != null ? r.target_page : ''))}</td>
+          <td style="font-weight:700;color:#fdba74">${escHtml(String(r.actual_page != null ? r.actual_page : ''))}</td>
+          <td style="color:var(--rd);font-weight:800">−${short}</td>
+          <td><span class="badge ${r.complete === 'ہاں' ? 'p' : r.complete === 'جزوی' ? 'l' : 'a'}">${escHtml(r.complete || '')}</span></td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">✓ کوئی مضمون آج کے ہدف صفحے سے پیچھے نہیں (جمع شدہ رپورٹس میں)۔</div>';
+    }
+
+    html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:18px 0 8px">📋 رپورٹ ابھی نہیں (تفویض — غائب/رخصت اساتذہ شمار نہیں)</h3>';
+    if (pendingRep.length) {
+      html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
+      html += '<th>استاذ</th><th>مضمون</th><th>درجہ</th><th>پیریڈ</th>';
+      html += '</tr></thead><tbody>';
+      pendingRep.forEach(pr => {
+        const clsUr = CLASS_UR[pr.cls] || pr.cls || '';
+        html += `<tr>
+          <td>${escHtml(pr.tname)}</td>
+          <td>${escHtml(pr.subn)}</td>
+          <td><span class="class-badge ${pr.cls || ''}">${escHtml(clsUr)}</span></td>
+          <td>${pr.p != null ? escHtml(String(pr.p)) : '—'}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">✓ تمام متوقع رپورٹس جمع ہیں۔</div>';
     }
     html += '</div>';
   }
