@@ -244,6 +244,21 @@ function resolveClassInspectionSlot(periods, assignments, subjects, classId) {
 
 const VISIT_OBS_TAG = '[[VISIT_OBS class=';
 const VISIT_OBS_CLOSE = '[[/VISIT_OBS]]';
+/** Saved inside each VISIT_OBS block — English keys only (UI labels stay Urdu/ bilingual). */
+const VISIT_QA_REQUIRED = 3;
+
+function tryParseVisitJsonPayload(inner) {
+  const t = (typeof inner === 'string' ? inner : '').trim();
+  if (!t.startsWith('{')) return null;
+  try {
+    const o = JSON.parse(t);
+    if (!o || !Array.isArray(o.qa)) return null;
+    const narrative = typeof o.narrative === 'string' ? o.narrative : '';
+    return { qa: o.qa, narrative };
+  } catch (e) {
+    return null;
+  }
+}
 
 function parseVisitObservations(raw) {
   const s = typeof raw === 'string' ? raw : '';
@@ -252,7 +267,12 @@ function parseVisitObservations(raw) {
   const out = [];
   const re = /\[\[VISIT_OBS class=([a-zA-Z0-9_]+)\]\]([\s\S]*?)\[\[\/VISIT_OBS\]\]/g;
   let m;
-  while ((m = re.exec(s))) out.push({ classId: m[1], text: (m[2] || '').trim() });
+  while ((m = re.exec(s))) {
+    const inner = (m[2] || '').trim();
+    const parsed = tryParseVisitJsonPayload(inner);
+    if (parsed) out.push({ classId: m[1], structured: true, qa: parsed.qa, narrative: parsed.narrative });
+    else out.push({ classId: m[1], text: inner, structured: false });
+  }
   return out;
 }
 
@@ -274,9 +294,42 @@ function sortVisitObservationsForDisplay(visits) {
 function serializeVisitObservations(arr) {
   const sorted = sortVisitObservationsForDisplay(arr || []);
   return sorted
-    .filter(v => v && v.classId && (v.text || '').trim())
-    .map(v => VISIT_OBS_TAG + v.classId + ']]\n' + (v.text || '').trim() + '\n' + VISIT_OBS_CLOSE)
+    .filter(v => {
+      if (!v || !v.classId) return false;
+      if (v.structured) return visitHasThreeValidQa(v.qa);
+      return (v.text || '').trim().length > 0;
+    })
+    .map(v => {
+      const inner = v.structured
+        ? JSON.stringify({ qa: v.qa, narrative: (v.narrative || '').trim() })
+        : (v.text || '').trim();
+      return VISIT_OBS_TAG + v.classId + ']]\n' + inner + '\n' + VISIT_OBS_CLOSE;
+    })
     .join('\n\n');
+}
+
+function visitQaRowValid(q) {
+  if (!q || typeof q !== 'object') return false;
+  const wt = String(q.whoType || '').trim();
+  if (wt !== 'teacher' && wt !== 'student') return false;
+  const wid = String(q.whoId || '').trim();
+  if (!wid) return false;
+  if (String(q.question || '').trim().length < 2) return false;
+  if (String(q.answer || '').trim().length < 2) return false;
+  return true;
+}
+
+function visitHasThreeValidQa(qa) {
+  if (!Array.isArray(qa) || qa.length < VISIT_QA_REQUIRED) return false;
+  for (let i = 0; i < VISIT_QA_REQUIRED; i++) if (!visitQaRowValid(qa[i])) return false;
+  return true;
+}
+
+function visitBlockScoresOk(v) {
+  if (!v) return false;
+  if (v.legacy) return String(v.text || '').trim().length >= 10;
+  if (v.structured) return visitHasThreeValidQa(v.qa);
+  return String(v.text || '').trim().length >= 15;
 }
 
 function classObsScoringOk(raw) {
@@ -284,8 +337,38 @@ function classObsScoringOk(raw) {
   if (!s) return false;
   if (s.indexOf(VISIT_OBS_TAG) === -1) return s.length >= 10;
   const visits = parseVisitObservations(raw);
-  const total = visits.reduce((a, v) => a + ((v.text || '').trim().length), 0);
-  return visits.length > 0 && total >= 10;
+  if (!visits.length) return false;
+  return visits.every(visitBlockScoresOk);
+}
+
+function formatVisitStructuredCardInner(v) {
+  const rows = (v.qa || []).slice(0, VISIT_QA_REQUIRED).map((q, idx) => {
+    const whoUr = q.whoType === 'teacher' ? '\u0627\u0633\u062A\u0627\u0630' : '\u0637\u0627\u0644\u0628 \u0639\u0644\u0645';
+    const whoEn = q.whoType === 'teacher' ? 'Teacher' : 'Student';
+    const nm = escHtml(q.whoLabel || q.whoId || '\u2014');
+    return `<tr>
+      <td style="font-weight:700">${idx + 1}</td>
+      <td>${escHtml(whoUr)}<br><span style="font-size:9px;color:#8a9ab5">${whoEn}</span></td>
+      <td style="text-align:right;max-width:100px;white-space:normal;word-break:break-word">${nm}</td>
+      <td style="text-align:right;max-width:140px;white-space:normal;word-break:break-word">${escHtml(q.question || '')}</td>
+      <td style="text-align:right;max-width:140px;white-space:normal;word-break:break-word">${escHtml(q.answer || '')}</td>
+    </tr>`;
+  }).join('');
+  const nar = (v.narrative || '').trim();
+  const narBlock = nar
+    ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><span style="font-size:9px;color:#8a9ab5">\u0636\u0645\u06CC\u0645\u06CC \u0646\u0648\u0679 / narrative</span><div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;margin-top:4px">${escHtml(nar)}</div></div>`
+    : '';
+  return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <table class="tbl" style="font-size:10px;white-space:normal">
+      <thead><tr>
+        <th>#</th>
+        <th>\u06A9\u0633 \u0633\u06D2 / To</th>
+        <th>\u0646\u0627\u0645 / Name</th>
+        <th>\u0633\u0648\u0627\u0644 / Question</th>
+        <th>\u062C\u0648\u0627\u0628 / Answer</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>${narBlock}`;
 }
 
 function formatVisitObsCardBody(v, omitGradeBadge) {
@@ -305,9 +388,10 @@ function formatVisitObsCardBody(v, omitGradeBadge) {
           <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">\u062D\u0630\u0641</button>
         </span>
       </div>`;
-  return `<div style="border:1px solid #1f3d5e;border-radius:10px;padding:10px;background:var(--dk)">${head}
-    <div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;max-height:160px;overflow-y:auto">${escHtml(v.text || '')}</div>
-  </div>`;
+  const body = v.structured
+    ? formatVisitStructuredCardInner(v)
+    : `<div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;max-height:160px;overflow-y:auto">${escHtml(v.text || '')}</div>`;
+  return `<div style="border:1px solid #1f3d5e;border-radius:10px;padding:10px;background:var(--dk)">${head}${body}</div>`;
 }
 
 /** One row per grade in CLASS_ORDER: note under its درجہ heading (not random save order). */
@@ -319,7 +403,7 @@ function formatVisitObsCardsHtml(visits) {
   const extras = sorted.filter(v => !v.legacy && !known.has(v.classId));
 
   if (!legacy.length && !byGrade.size && !extras.length) {
-    return '<span style="color:#8a9ab5;font-size:11px">ابھی کوئی درجہ وار معائنہ نوٹ نہیں — اوپر درجہ منتخب کر کے نیچے تفصیل لکھیں</span>';
+    return '<span style="color:#8a9ab5;font-size:11px">\u0627\u0628\u06BE\u06CC \u06A9\u0648\u0626\u06CC \u062F\u0631\u062C\u06D2 \u0648\u0627\u0631 \u0645\u0639\u0627\u0626\u0646\u06C1 \u0646\u06C1\u06CC\u06BA \u2014 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA\u060C \u06AF\u0631\u062F \u0645\u06CC\u06BA 3 \u0633\u0648\u0627\u0644-\u062C\u0648\u0627\u0628 \u0628\u06BE\u0631\u06CC\u06BA\u060C \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA</span>';
   }
 
   const blocks = [];
@@ -390,6 +474,111 @@ function reportsBehindSyllabusTarget(reportsToday) {
     .map(x => x.r);
 }
 
+function accStudentRowClass(s) {
+  if (!s) return '';
+  const c = s.class != null && String(s.class).trim() !== '' ? s.class : (s.c != null ? s.c : '');
+  return String(c).trim();
+}
+
+function ensureOptionInSelect(sel, value, label) {
+  if (!sel || value == null || String(value) === '') return;
+  const v = String(value);
+  for (let i = 0; i < sel.options.length; i++) if (sel.options[i].value === v) return;
+  const o = document.createElement('option');
+  o.value = v;
+  o.textContent = label || v;
+  sel.appendChild(o);
+}
+
+function resolveVisitWhoLabel(whoType, whoId) {
+  if (!whoId) return '';
+  if (whoType === 'teacher') {
+    const t = (DATA.teachers || []).find(x => x.id === whoId);
+    return t ? (t.name || whoId) : whoId;
+  }
+  const st = (DATA.students || []).find(x => x.id === whoId);
+  return st ? (st.name || whoId) : whoId;
+}
+
+function readAccVisitQaFromDom() {
+  const qa = [];
+  for (let i = 1; i <= VISIT_QA_REQUIRED; i++) {
+    const wtEl = document.getElementById('acc_qa_who_type_' + i);
+    const idEl = document.getElementById('acc_qa_who_id_' + i);
+    const qEl = document.getElementById('acc_qa_question_' + i);
+    const aEl = document.getElementById('acc_qa_answer_' + i);
+    const whoType = (wtEl && wtEl.value) || '';
+    const whoId = (idEl && idEl.value) ? String(idEl.value).trim() : '';
+    const question = qEl ? String(qEl.value || '').trim() : '';
+    const answer = aEl ? String(aEl.value || '').trim() : '';
+    qa.push({
+      whoType,
+      whoId,
+      whoLabel: resolveVisitWhoLabel(whoType, whoId),
+      question,
+      answer
+    });
+  }
+  const narEl = document.getElementById('acc_visit_narrative');
+  return { qa, narrative: narEl ? String(narEl.value || '').trim() : '' };
+}
+
+window.refreshAccVisitQaWhoRow = function (rowIdx) {
+  const selClass = document.getElementById('acc_inspect_class_sel');
+  const classId = selClass && selClass.value ? selClass.value : '';
+  const wtEl = document.getElementById('acc_qa_who_type_' + rowIdx);
+  const idEl = document.getElementById('acc_qa_who_id_' + rowIdx);
+  if (!wtEl || !idEl) return;
+  const prev = idEl.value;
+  const wt = wtEl.value === 'teacher' ? 'teacher' : 'student';
+  const opts = [];
+  opts.push('<option value="">\u2014 \u0645\u0646\u062A\u062E\u0628 / Select \u2014</option>');
+  if (wt === 'teacher') {
+    (DATA.teachers || []).forEach(t => {
+      if (!t || !t.id) return;
+      opts.push('<option value="' + escAttr(t.id) + '">' + escHtml(t.name || t.id) + '</option>');
+    });
+  } else if (!classId) {
+    opts.push('<option value="" disabled>\u0627\u0648\u067E\u0631 \u062F\u0631\u062C\u06C1 \u0688\u0631\u0627\u067E \u0688\u0627\u0624\u0646 \u0633\u06D2 / Pick class above</option>');
+  } else {
+    (DATA.students || []).forEach(s => {
+      if (!s || !s.id) return;
+      if (accStudentRowClass(s) !== classId) return;
+      opts.push('<option value="' + escAttr(s.id) + '">' + escHtml(s.name || s.id) + '</option>');
+    });
+  }
+  idEl.innerHTML = opts.join('');
+  if (prev && [...idEl.options].some(o => o.value === prev)) idEl.value = prev;
+};
+
+window.refreshAccVisitWhoOptions = function () {
+  for (let i = 1; i <= VISIT_QA_REQUIRED; i++) window.refreshAccVisitQaWhoRow(i);
+};
+
+window.fillAccVisitQaForm = function (qa, narrative) {
+  const list = Array.isArray(qa) ? qa.slice(0, VISIT_QA_REQUIRED) : [];
+  for (let i = 1; i <= VISIT_QA_REQUIRED; i++) {
+    const q = list[i - 1] || {};
+    const wt = document.getElementById('acc_qa_who_type_' + i);
+    if (wt) wt.value = (q.whoType === 'teacher' || q.whoType === 'student') ? q.whoType : 'student';
+  }
+  window.refreshAccVisitWhoOptions();
+  for (let i = 1; i <= VISIT_QA_REQUIRED; i++) {
+    const q = list[i - 1] || {};
+    const idEl = document.getElementById('acc_qa_who_id_' + i);
+    if (idEl) {
+      if (q.whoId) ensureOptionInSelect(idEl, q.whoId, q.whoLabel || q.whoId);
+      idEl.value = q.whoId || '';
+    }
+    const qEl = document.getElementById('acc_qa_question_' + i);
+    const aEl = document.getElementById('acc_qa_answer_' + i);
+    if (qEl) qEl.value = q.question || '';
+    if (aEl) aEl.value = q.answer || '';
+  }
+  const narEl = document.getElementById('acc_visit_narrative');
+  if (narEl) narEl.value = narrative != null ? String(narrative) : '';
+};
+
 // ═══════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════
@@ -431,7 +620,10 @@ function sAttendGroupKey(r, assignments) {
 function captureAccountabilityDraft() {
   const ta = document.getElementById('acc_class_visited');
   if (!ta) return null;
-  const valueIds = ['acc_absent','acc_behind','acc_coverage','acc_inspect_class_sel','acc_class_visited','acc_visit_obs_input','acc_class_obs','acc_absent_actions','acc_syllabus','acc_hifz','acc_remarks'];
+  const valueIds = ['acc_absent','acc_behind','acc_coverage','acc_inspect_class_sel','acc_class_visited','acc_class_obs','acc_absent_actions','acc_syllabus','acc_hifz','acc_remarks','acc_visit_narrative'];
+  for (let i = 1; i <= VISIT_QA_REQUIRED; i++) {
+    valueIds.push('acc_qa_who_type_' + i, 'acc_qa_who_id_' + i, 'acc_qa_question_' + i, 'acc_qa_answer_' + i);
+  }
   const values = {};
   valueIds.forEach(id => {
     const el = document.getElementById(id);
@@ -460,7 +652,8 @@ function restoreAccountabilityDraft(draft) {
 function initAccountabilityAfterDraftRestore() {
   window.updateAccClassVisitedCounter && window.updateAccClassVisitedCounter();
   window.refreshVisitsListUI && window.refreshVisitsListUI();
-  window.onInspectClassChange && window.onInspectClassChange({ preserveTextarea: true });
+  window.onInspectClassChange && window.onInspectClassChange({ preserveTextarea: true, skipVisitQaReload: true });
+  window.refreshAccVisitWhoOptions && window.refreshAccVisitWhoOptions();
 }
 
 function render() {
@@ -768,13 +961,44 @@ function render() {
 
     const coRaw = typeof rpt.class_observations === 'string' ? rpt.class_observations : '';
     const visits0 = parseVisitObservations(coRaw);
+    let accQaFormHtml = '';
+    for (let qi = 1; qi <= VISIT_QA_REQUIRED; qi++) {
+      accQaFormHtml += `<div style="margin-bottom:12px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
+        <div style="font-weight:800;font-size:11px;margin-bottom:10px;color:var(--gd)">\u0633\u0648\u0627\u0644 ${qi} / Question ${qi}</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u0633\u06D2\u061F / To (<span dir="ltr">whoType</span>)</label>
+            <select id="acc_qa_who_type_${qi}" onchange="window.refreshAccVisitQaWhoRow(${qi})" style="${iS('')}">
+              <option value="student">\u0637\u0627\u0644\u0628 \u0639\u0644\u0645 / Student</option>
+              <option value="teacher">\u0627\u0633\u062A\u0627\u0630 / Teacher</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0646\u0627\u0645 / Name (<span dir="ltr">whoId</span>)</label>
+            <select id="acc_qa_who_id_${qi}" style="${iS('')}"></select>
+          </div>
+          <div>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0633\u0648\u0627\u0644 / Question</label>
+            <textarea id="acc_qa_question_${qi}" rows="2" placeholder="\u06A9\u06CC\u0627 \u067E\u0648\u0686\u06BE\u0627 \u06AF\u06CC\u0627\u061F / What was asked?" style="${iS('resize:vertical;')}"></textarea>
+          </div>
+          <div>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u062C\u0648\u0627\u0628 / Answer</label>
+            <textarea id="acc_qa_answer_${qi}" rows="2" placeholder="\u062C\u0648\u0627\u0628 / Their answer" style="${iS('resize:vertical;')}"></textarea>
+          </div>
+        </div>
+      </div>`;
+    }
     html += `<div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1f3d5e">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">\uD83D\uDC41\uFE0F \u06A9\u0644\u0627\u0633 \u0645\u0639\u0627\u0626\u0646\u06C1 \u2014 \u062F\u0631\u062C\u06C1 \u0648\u0627\u0631 (\u06C1\u0631 \u062F\u0631\u062C\u06D2 \u0627\u0644\u06AF \u0646\u0648\u0679)</label>
         <span id="acc_class_obs_score_hint" style="font-size:9px;color:#8a9ab5"></span>
       </div>
-      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px">\u0627\u0648\u067E\u0631 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA\u060C \u0633\u06CC\u0627\u0642 \u062F\u06CC\u06A9\u06BE\u06CC\u06BA\u060C \u067E\u06BE\u0631 \u06CC\u06C1\u0627\u06BA \u0645\u0639\u0627\u0626\u0646\u06C1 \u0644\u06A9\u06BE \u06A9\u0631 <strong>\u0645\u062D\u0641\u0648\u0638</strong> \u062F\u0628\u0627\u0626\u06CC\u06BA\u06D4 \u0646\u06CC\u0686\u06D2 \u06A9\u0627\u0631\u0688\u0632 \u062F\u0631\u062C\u0648\u06BA \u06A9\u06CC \u0645\u0639\u0645\u0648\u0644 \u062A\u0631\u062A\u06CC\u0628 \u0645\u06CC\u06BA \u0622\u0626\u06D2 \u06AF\u06D2 (\u0627\u0648\u0644\u06CC\u0670 \u2192 \u062B\u0627\u0646\u06CC\u06C1 \u2192 \u2026 \u2192 \u062D\u0641\u0638)\u060C \u0645\u062D\u0641\u0648\u0638 \u062F\u0631\u062C\u06D2 \u06C1\u06CC \u062F\u06A9\u06BE\u0627\u0626\u06CC \u062C\u0627\u062A\u06D2 \u06C1\u06CC\u06BA\u06D4</div>
-      <textarea id="acc_visit_obs_input" rows="4" placeholder="\u0627\u0633 \u062F\u0631\u062C\u06D2 \u0645\u06CC\u06BA \u062A\u062F\u0631\u06CC\u0633\u060C \u0637\u0644\u0628\u0627 \u06A9\u06CC \u062A\u0648\u062C\u06C1\u060C \u0646\u0638\u0645 \u0648 \u0636\u0628\u0637..." style="${iS('margin-bottom:8px;')}"></textarea>
+      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px;line-height:1.55">ہر درجے کے لیے <strong>3</strong> سوال-جواب لازمی۔ JSON (English keys: <span dir="ltr" style="font-size:9px;word-break:break-all">whoType, whoId, whoLabel, question, answer, narrative</span>) <code dir="ltr" style="font-size:9px">class_observations</code> کے <code dir="ltr" style="font-size:9px">[[VISIT_OBS]]</code> بلاک میں محفوظ\u06D4 پرانے صرف-متن بلاک 15+ حرف سے سکور پر رہتے ہیں\u06D4</div>
+      ${accQaFormHtml}
+      <div style="margin-bottom:10px">
+        <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0636\u0645\u06CC\u0645\u06CC \u0646\u0648\u0679 (\u0627\u062E\u062A\u06CC\u0627\u0631\u06CC) / Extra notes (<span dir="ltr">narrative</span>)</label>
+        <textarea id="acc_visit_narrative" rows="2" placeholder="\u0627\u0636\u0627\u0641\u06CC \u0645\u0644\u0627\u062D\u0638\u0627\u062A / Optional context" style="${iS('resize:vertical;')}"></textarea>
+      </div>
       <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">\uD83D\uDCBE \u0627\u0633 \u062F\u0631\u062C\u06D2 \u06A9\u0627 \u0645\u0639\u0627\u0626\u0646\u06C1 \u0646\u0648\u0679 \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA</button>
       <div id="acc_visits_list" style="margin-bottom:4px">${formatVisitObsCardsHtml(visits0)}</div>
       <textarea id="acc_class_obs" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(coRaw)}</textarea>
@@ -1234,27 +1458,32 @@ window.refreshVisitsListUI = function () {
   if (!store) return;
   const visits = parseVisitObservations(store.value);
   if (el) el.innerHTML = formatVisitObsCardsHtml(visits);
-  const tot = visits.reduce((a, v) => a + ((v.text || '').trim().length), 0);
   if (hint) {
-    hint.textContent = visits.length
-      ? tot + ' حرف' + (classObsScoringOk(store.value) ? ' \u2713' : ' (10+ کل)')
-      : '';
+    const nonLeg = visits.filter(v => !v.legacy);
+    if (!nonLeg.length) {
+      hint.textContent = visits.some(v => v.legacy) ? '\u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646' : '';
+    } else {
+      const okN = nonLeg.filter(visitBlockScoresOk).length;
+      hint.textContent = okN + '/' + nonLeg.length + ' \u062F\u0631\u062C\u06D2' + (classObsScoringOk(store.value) ? ' \u2713' : ' (\u06AF\u0631\u062F: 3\u00D7Q&A \u06CC\u0627 15+ \u062D\u0631\u0641 \u0642\u062F\u06CC\u0645)');
+    }
   }
 };
 
 window.saveClassVisitObservation = function () {
   const sel = document.getElementById('acc_inspect_class_sel');
-  const obsInp = document.getElementById('acc_visit_obs_input');
   const store = document.getElementById('acc_class_obs');
-  if (!sel || !obsInp || !store) return;
+  if (!sel || !store) return;
   const classId = sel.value;
-  const text = (obsInp.value || '').trim();
   if (!classId) { toast('\u26A0 \u067E\u06C1\u0644\u06D2 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA'); return; }
-  if (text.length < 5) { toast('\u26A0 \u06A9\u0645 \u0627\u0632 \u06A9\u0645 5 \u062D\u0631\u0648\u0641'); return; }
+  const { qa, narrative } = readAccVisitQaFromDom();
+  if (!visitHasThreeValidQa(qa)) {
+    toast('\u26A0 \u06AF\u0631\u062F \u06A9\u06D2 \u0644\u06CC\u06D2 3 \u0645\u06A9\u0645\u0644 \u0633\u0648\u0627\u0644-\u062C\u0648\u0627\u0628 (\u06A9\u0633 \u0633\u06D2\u060C \u0633\u0648\u0627\u0644\u060C \u062C\u0648\u0627\u0628\u060C \u06A9\u0645 \u0627\u0632 \u06A9\u0645 2 \u062D\u0631\u0648\u0641)');
+    return;
+  }
   let visits = parseVisitObservations(store.value);
   if (visits.some(v => v.legacy)) visits = [];
   const idx = visits.findIndex(v => v.classId === classId);
-  const entry = { classId, text };
+  const entry = { classId, structured: true, qa, narrative };
   if (idx >= 0) visits[idx] = entry; else visits.push(entry);
   store.value = serializeVisitObservations(visits);
   toast('\u2713 \u0645\u062D\u0641\u0648\u0638');
@@ -1265,10 +1494,8 @@ window.editClassVisitObs = function (classId) {
   const sel = document.getElementById('acc_inspect_class_sel');
   if (!sel) return;
   if (!classId) {
-    const obsInp = document.getElementById('acc_visit_obs_input');
-    const store = document.getElementById('acc_class_obs');
-    if (obsInp && store) obsInp.value = (store.value || '').trim();
     sel.value = '';
+    window.fillAccVisitQaForm([], '');
     toast('\u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646: \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631 \u06A9\u06D2 \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA');
     return;
   }
@@ -1286,11 +1513,43 @@ window.removeClassVisitObs = function (classId) {
     store.value = serializeVisitObservations(visits);
   }
   window.refreshVisitsListUI();
+  const sel = document.getElementById('acc_inspect_class_sel');
+  if (sel && classId && sel.value === classId) window.fillAccVisitQaForm([], '');
   toast('\u062D\u0630\u0641');
 };
 
+/** Load Q&A form from hidden store for this class; optional slot teacher prefills row 1 when new. */
+function loadAccVisitFormForClass(classId, slotAsg) {
+  const store = document.getElementById('acc_class_obs');
+  if (!classId) {
+    window.fillAccVisitQaForm([], '');
+    const narEl = document.getElementById('acc_visit_narrative');
+    if (narEl) narEl.value = '';
+    return;
+  }
+  const vs = store ? parseVisitObservations(store.value).filter(v => !v.legacy) : [];
+  const ex = vs.find(x => x.classId === classId);
+  if (ex && ex.structured) {
+    window.fillAccVisitQaForm(ex.qa, ex.narrative);
+  } else if (ex && !ex.structured && (ex.text || '').trim()) {
+    window.fillAccVisitQaForm([], '');
+    const narEl = document.getElementById('acc_visit_narrative');
+    if (narEl) narEl.value = (ex.text || '').trim();
+  } else {
+    window.fillAccVisitQaForm([], '');
+    if (slotAsg && slotAsg.teacher_id) {
+      const w1 = document.getElementById('acc_qa_who_type_1');
+      if (w1) w1.value = 'teacher';
+      window.refreshAccVisitQaWhoRow(1);
+      const id1 = document.getElementById('acc_qa_who_id_1');
+      if (id1) id1.value = slotAsg.teacher_id;
+    }
+  }
+}
+
 window.onInspectClassChange = async function (opts) {
   const preserveTa = opts && opts.preserveTextarea;
+  const skipVisitQaReload = opts && opts.skipVisitQaReload;
   const sel = document.getElementById('acc_inspect_class_sel');
   const ta = document.getElementById('acc_class_visited');
   const prev = document.getElementById('acc_inspect_preview');
@@ -1299,8 +1558,7 @@ window.onInspectClassChange = async function (opts) {
   if (!classId) {
     prev.innerHTML = '<span style="color:#8a9ab5">\u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA \u2014 \u0645\u0648\u062C\u0648\u062F\u06C1 \u0648\u0642\u062A \u06A9\u06D2 \u067E\u06CC\u0631\u06CC\u0688\u060C \u0645\u0636\u0645\u0648\u0646\u060C \u0622\u062C \u06A9\u0627 \u06C1\u062F\u0641/\u0627\u0635\u0644\u060C \u0627\u0648\u0631 \u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679 \u06CC\u06C1\u0627\u06BA \u0622\u0626\u06D2 \u06AF\u06CC</span>';
     if (!preserveTa) ta.value = '';
-    const oi = document.getElementById('acc_visit_obs_input');
-    if (oi) oi.value = '';
+    if (!skipVisitQaReload) loadAccVisitFormForClass('', null);
     window.updateAccClassVisitedCounter();
     return;
   }
@@ -1317,13 +1575,7 @@ window.onInspectClassChange = async function (opts) {
     prev.innerHTML = linesHtml.join('');
     if (!preserveTa || !(ta.value || '').trim()) ta.value = textLines.join('\n');
     window.updateAccClassVisitedCounter();
-    const obsInp0 = document.getElementById('acc_visit_obs_input');
-    const store0 = document.getElementById('acc_class_obs');
-    if (obsInp0 && store0) {
-      const vs0 = parseVisitObservations(store0.value).filter(v => !v.legacy);
-      const ex0 = vs0.find(x => x.classId === classId);
-      obsInp0.value = ex0 ? ex0.text : '';
-    }
+    if (!skipVisitQaReload) loadAccVisitFormForClass(classId, null);
     return;
   }
   const { period, assignment: asg, when } = slot;
@@ -1368,17 +1620,7 @@ window.onInspectClassChange = async function (opts) {
     ta.value = textLines.join('\n');
   }
   window.updateAccClassVisitedCounter();
-  const obsInp = document.getElementById('acc_visit_obs_input');
-  const store = document.getElementById('acc_class_obs');
-  if (obsInp && store) {
-    if (classId) {
-      const vs = parseVisitObservations(store.value).filter(v => !v.legacy);
-      const ex = vs.find(x => x.classId === classId);
-      obsInp.value = ex ? ex.text : '';
-    } else {
-      obsInp.value = '';
-    }
-  }
+  if (!skipVisitQaReload) loadAccVisitFormForClass(classId, asg);
 };
 
 // ═══════════════════════════════════════════
