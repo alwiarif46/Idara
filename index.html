@@ -1794,13 +1794,21 @@ function App() {
 
   const deleteStudentRemote = async studentId => {
     if (!cfg || !cfg.supabase_url || !cfg.supabase_key) throw new Error('⚠');
-    const r = await fetch(cfg.supabase_url + '/rest/v1/students?id=eq.' + encodeURIComponent(studentId), {
-      method: 'DELETE',
-      headers: { apikey: cfg.supabase_key, Authorization: 'Bearer ' + cfg.supabase_key }
-    });
+    const sid = encodeURIComponent(studentId);
+    const hdr = { apikey: cfg.supabase_key, Authorization: 'Bearer ' + cfg.supabase_key, Prefer: 'return=minimal' };
+    /** FK rows block student DELETE (409) — remove dependents first. */
+    const depTables = ['student_attendance', 'daily_attendance', 'hifz_progress'];
+    for (const table of depTables) {
+      const r = await fetch(cfg.supabase_url + '/rest/v1/' + table + '?student_id=eq.' + sid, { method: 'DELETE', headers: hdr });
+      if (!r.ok) {
+        const t = await r.text();
+        throw new Error((r.status === 409 ? 'حاضری/حفظ ریکارڈ ہٹانا: ' : '') + table + ' — ' + (t || r.statusText));
+      }
+    }
+    const r = await fetch(cfg.supabase_url + '/rest/v1/students?id=eq.' + sid, { method: 'DELETE', headers: hdr });
     if (!r.ok) {
       const t = await r.text();
-      throw new Error(t || r.statusText);
+      throw new Error((r.status === 409 ? 'اب بھی منسلک ڈیٹا (409) — ' : '') + (t || r.statusText));
     }
   };
 
