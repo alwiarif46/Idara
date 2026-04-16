@@ -43,6 +43,12 @@ function _stSave(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 function _stDel(k){try{localStorage.removeItem(k);}catch(e){}}
 </script>
 
+<script src="./constants.js"></script>
+<script src="./helpers.js"></script>
+<script src="./components.js"></script>
+<script src="./storage.js"></script>
+<script src="./modern.js"></script>
+
 <script>
 const {
   useState,
@@ -52,1344 +58,6 @@ const {
   useRef
 } = React;
 
-// ═══════════════════════════════════════════════════════════
-// DEFAULTS — seed data for first launch, all overridable
-// ═══════════════════════════════════════════════════════════
-const LOGO = 'data:image/webp;base64,UklGRgIGAABXRUJQVlA4IPYFAAAwFwCdASpAAEAAPplClkmlpCIhN/6sALATCWwAsR/oxoEvfrwG7Mvok21XPJf3L1b/6ffAPRA6XefQc1PwyOS3L4P75Pw0TWnAUBN3a1oSgB+ifQMzpPU3sGfrd1mfRT/cNkEgnp3E+Rr8o76sQBYCgZDEVSko2LjLUHK3xNAuF5/gMFJlrZfP155r8QoyIqRPMrKWDwf0qg2Os/bRScqSgSDs/+9D/9nbycuxLQChTF16QsUSoza93UYjcCXvRLeMAAD+/vXNvZXgvdfZnnsTc2ycr4pTTclzAUMKySO3ik5nyOQx3qb1eJiu2fn7Ze72H6DUr+55cXMtX3AFtx/3RNy7qkAykmLTE021Bg+pFSS/uyaia1id/dJtFf8SGvrIiaSbg5lNY9xH7Q0/Ez3OhJfvE5/gKUdMNSFxNCSrBGSI4BF5615WnM/RMv2Tv1n6KhtRHQdhUcPv4W6m7X7iUK6aN/Ijlah8stYN0mOg/K9nmUBVIsE3ZZrxXcJr/Eo38PWHe0c18MhhEcOhWnwVZ+Z0rgFV85H3KhJO5uqKDwbYKICzK8zo9xl7gTXCOFyQa7zO/9+ICIvNkrrCMNv2JnUYO1mTA2r7wO9iGac5g5AD7/wEvdLjs+mzQES4BrWRD8r6dHXxQr/b/reKeyOQ9iT680PnjR4jNRogl0uX66ph1i7sAtRlIktmwjfOZUhwXiyOvCkmAQN+UqqvajNXlm0fHzYai5dfRQZ9IAhc3zBgQ2n1FssbF9Uf0uMGE+M/WmDz6bWds5wrnNk6cSdLiQD5j5uEdj2rqSWviJVJnlzmhUVgPXfxsVq0Kef35Mb++fhJhD6WrPny07HhuSx1FipAkp6H8G5XW3egBYu9Bq4ZztIt2mL3yVvpuOIyHxr0ZIJ0ceS3xX90Fy3tx1C0th477+KHVE3HyWBg0gOK8YYd1iIOL6oROSn/Kh8jRZGq93kmEtm5vV5RZ42z69lLTv+yjeDuXpWtGTj/Xsn+b+5SqMeuZ0S5KMEepvRGXWqpLiNaYY1MlNBEwyYCxIAMJ9f4E2+BGf8EsIN2EiA8c00/DEgT5uyfXcalkm7x13n3VEdzsN/gGIljqWGlNoP/bRHG6Wtnz6jLwxuMMmar9nFvdx/m/xcVSV+M781hhvJ5yNPNh4N5uZe2EhZA1SxaWcZg6yYOj6+V/r+OLDa2ujThorjFYWxQ6cHiXUkF0kaBBFsJq4Y77DvKx4e/6mDhoVHR1D8FdBBrMAv7rbuKx8XF4P/28HbfmeXzl5a2qgPF/np4wbmR/5AACC0vWlcWFJsRGPuw+OhcVDVXY+GQpbuW//PgddHw8In4HFqQB1DbJBR7FPF9vwvZLxolis7x7OsF4HxsyBhBWcZaAamlC/XVRwRrr1zcnUavXduOQ5McxTznxojBoPXb/CceLfkw6ZaRx2IzDaUKzRmh5CKNoM4SSdtBxFFnSDsC4ujsCVjrjUstxoan5kiwmn2DBxpaDgrZGyZTccEvh2a49ovqSSRLhy/TYQiavrJYWl/JTfKyvG5bdPGXXBv3+H57RanT+rNXx4cw3LVOvkBHi45I9g2+kexIkFfj194k3ZeszFd/fDMb/hB8NTqfQzrii/9JaINhdsbk3pilwQ7CkR8XBH8wxAbnL1oHX1RtE+2htY0V/AKNrkuUG52JyZQPi7r2QeCqG1HwD2CRh5cIIKXXiz0vHXVYWU1IPTdan/+GPIBfjX8G1MvBvCGsiePASjlL/P/fFHOWFY7yM6IDl1U9NPWrrc3LVCaM5FiPhxa/JIJog3bjo4e6HJGzwhbwap6gK8W/tvNmXlF1cLONoW3WTfh38+/drMsA5De9uZrxgw2C+eODNB64wTam3hmZLViAE2Woa+nFMUotHPXHnnQCeqxFhadlJ9rgAA+QIqTVHS97L6aQeV5npyVxKRcOtUGsST/2Ftddkai/G1Kg8lMo+CGniqLqfuoSPkP/vS8uhbXqMaIR1qnOxWdpQd9VW125H+zoy54m4YEE0Vq0s+q3hMIqMxgAAA==';
-const DEFAULTS = {
-  _version: 11,
-  institution: {
-    name_ur: 'ادارہ تحقیقات اسلامی',
-    name_en: 'Imam Azam College — My Idara',
-    term_start: '2026-04-01',
-    term_end: '2026-05-30',
-    teaching_days: 42,
-    off_day: 5,
-    revision_day: 4
-  },
-  classes: [{
-    id: 'oola',
-    n: 'اولیٰ',
-    c: '#f4e0c1',
-    a: '#c8860a'
-  }, {
-    id: 'sania',
-    n: 'ثانیة',
-    c: '#c9e0f5',
-    a: '#2563eb'
-  }, {
-    id: 'salisa',
-    n: 'ثالثة',
-    c: '#e0d0f0',
-    a: '#7c3aed'
-  }, {
-    id: 'rabia',
-    n: 'رابعة',
-    c: '#c5ede2',
-    a: '#059669'
-  }, {
-    id: 'khamisa',
-    n: 'خامسة',
-    c: '#faf0c8',
-    a: '#b45309'
-  }, {
-    id: 'fazilat',
-    n: 'فضیلة',
-    c: '#f5d0d0',
-    a: '#dc2626'
-  }, {
-    id: 'hifz',
-    n: 'حفظ',
-    c: '#e2e8f0',
-    a: '#475569'
-  }],
-  subjects: [{
-    id: 'S01',
-    n: 'منہاج العربیة',
-    c: 'oola',
-    s: 9,
-    e: 62
-  }, {
-    id: 'S02',
-    n: 'تمرین الصرف',
-    c: 'oola',
-    s: 5,
-    e: 74
-  }, {
-    id: 'S03',
-    n: 'آسان النحو',
-    c: 'oola',
-    s: 3,
-    e: 38
-  }, {
-    id: 'S04',
-    n: 'فارسی قواعد',
-    c: 'oola',
-    s: 11,
-    e: 72
-  }, {
-    id: 'S05',
-    n: 'احادیث',
-    c: 'oola',
-    s: 1,
-    e: 40
-  }, {
-    id: 'S06',
-    n: 'قرآت',
-    c: 'oola',
-    s: 1,
-    e: 30
-  }, {
-    id: 'S07',
-    n: 'میزان الصرف',
-    c: 'sania',
-    s: 3,
-    e: 54
-  }, {
-    id: 'S08',
-    n: 'نور الایضاح',
-    c: 'sania',
-    s: 2,
-    e: 97
-  }, {
-    id: 'S09',
-    n: 'معلم الانشاء',
-    c: 'sania',
-    s: 1,
-    e: 52
-  }, {
-    id: 'S10',
-    n: 'قصص النبیین',
-    c: 'sania',
-    s: 3,
-    e: 60
-  }, {
-    id: 'S11',
-    n: 'کنز الایمان',
-    c: 'sania',
-    s: 2,
-    e: 110
-  }, {
-    id: 'S12',
-    n: 'گلستان سعدی',
-    c: 'sania',
-    s: 220,
-    e: 257
-  }, {
-    id: 'S13',
-    n: 'نحو میر',
-    c: 'sania',
-    s: 9,
-    e: 88
-  }, {
-    id: 'S14',
-    n: 'فیض الادب',
-    c: 'sania',
-    s: 1,
-    e: 23
-  }, {
-    id: 'S15',
-    n: 'درس قرآن ثالثہ',
-    c: 'salisa',
-    s: 123,
-    e: 162
-  }, {
-    id: 'S16',
-    n: 'النحو الواضح',
-    c: 'salisa',
-    s: 3,
-    e: 79
-  }, {
-    id: 'S17',
-    n: 'دروس البلاغة',
-    c: 'salisa',
-    s: 15,
-    e: 97
-  }, {
-    id: 'S18',
-    n: 'ہدایة النحو',
-    c: 'salisa',
-    s: 2,
-    e: 47
-  }, {
-    id: 'S19',
-    n: 'مختصر القدوری',
-    c: 'salisa',
-    s: 19,
-    e: 132
-  }, {
-    id: 'S20',
-    n: 'ریاض الصالحین',
-    c: 'salisa',
-    s: 7,
-    e: 110
-  }, {
-    id: 'S21',
-    n: 'علم الصیغة',
-    c: 'salisa',
-    s: 7,
-    e: 62
-  }, {
-    id: 'S22',
-    n: 'کافیة',
-    c: 'rabia',
-    s: 2,
-    e: 63
-  }, {
-    id: 'S23',
-    n: 'مشکوٰة',
-    c: 'rabia',
-    s: 391,
-    e: 430
-  }, {
-    id: 'S24',
-    n: 'تفسیر الجلالین',
-    c: 'rabia',
-    s: 194,
-    e: 228
-  }, {
-    id: 'S25',
-    n: 'اصول حدیث',
-    c: 'rabia',
-    s: 24,
-    e: 83
-  }, {
-    id: 'S26',
-    n: 'اصول الشاشی',
-    c: 'rabia',
-    s: 5,
-    e: 40
-  }, {
-    id: 'S27',
-    n: 'نفحة العرب',
-    c: 'rabia',
-    s: 9,
-    e: 52
-  }, {
-    id: 'S28',
-    n: 'معلم الانشاء ۴',
-    c: 'rabia',
-    s: 2,
-    e: 40
-  }, {
-    id: 'S29',
-    n: 'شرح الوقایة',
-    c: 'rabia',
-    s: 146,
-    e: 217
-  }, {
-    id: 'S30',
-    n: 'مدارک التنزیل',
-    c: 'khamisa',
-    s: 2,
-    e: 67
-  }, {
-    id: 'S31',
-    n: 'شمائل ترمذی',
-    c: 'khamisa',
-    s: 2,
-    e: 78
-  }, {
-    id: 'S32',
-    n: 'ہدایة الاولین',
-    c: 'khamisa',
-    s: 3,
-    e: 76
-  }, {
-    id: 'S33',
-    n: 'السراجی',
-    c: 'khamisa',
-    s: 2,
-    e: 84
-  }, {
-    id: 'S34',
-    n: 'نور الانوار',
-    c: 'khamisa',
-    s: 14,
-    e: 90
-  }, {
-    id: 'S35',
-    n: 'قصیدة البردة',
-    c: 'khamisa',
-    s: 40,
-    e: 299
-  }, {
-    id: 'S36',
-    n: 'تفسیر بیضاوی',
-    c: 'fazilat',
-    s: 32,
-    e: 81
-  }, {
-    id: 'S37',
-    n: 'صحیح بخاری',
-    c: 'fazilat',
-    s: 1,
-    e: 43
-  }, {
-    id: 'S38',
-    n: 'صحیح مسلم',
-    c: 'fazilat',
-    s: 448,
-    e: 482
-  }, {
-    id: 'S39',
-    n: 'سنن نسائی',
-    c: 'fazilat',
-    s: 153,
-    e: 196
-  }, {
-    id: 'S40',
-    n: 'سنن ترمذی',
-    c: 'fazilat',
-    s: 21,
-    e: 66
-  }, {
-    id: 'S41',
-    n: 'ہدایة آخرین',
-    c: 'fazilat',
-    s: 18,
-    e: 104
-  }, {
-    id: 'S42',
-    n: 'المختارات',
-    c: 'fazilat',
-    s: 22,
-    e: 65
-  }, {
-    id: 'S43',
-    n: 'تجوید',
-    c: 'oola',
-    s: 1,
-    e: 30
-  }, {
-    id: 'S44',
-    n: 'ادب و املاء',
-    c: 'hifz',
-    s: 1,
-    e: 50
-  }],
-  teachers: [{
-    id: 'T1',
-    n: 'م۔ ارشاد حیدری',
-    role: 'teacher',
-    exam: false,
-    email: ''
-  }, {
-    id: 'T2',
-    n: 'م۔ اعجاز مخدومی',
-    role: 'teacher',
-    exam: true,
-    email: ''
-  }, {
-    id: 'T3',
-    n: 'م۔ شاکر امجدی',
-    role: 'teacher',
-    exam: true,
-    email: ''
-  }, {
-    id: 'T4',
-    n: 'م۔ طارق نعیمی',
-    role: 'teacher',
-    exam: true,
-    email: ''
-  }, {
-    id: 'T5',
-    n: 'م۔ ضیاء علیمی',
-    role: 'teacher',
-    exam: true,
-    email: ''
-  }, {
-    id: 'T6',
-    n: 'م۔ زاہد حیدری',
-    role: 'teacher',
-    exam: true,
-    email: ''
-  }, {
-    id: 'T7',
-    n: 'م۔ منتظر نوری',
-    role: 'teacher',
-    exam: false,
-    email: ''
-  }, {
-    id: 'T8',
-    n: 'ق۔ عارف رضا حسینی',
-    role: 'qari',
-    exam: false,
-    email: ''
-  }, {
-    id: 'T9',
-    n: 'ق۔ زبیر سلطانی',
-    role: 'qari',
-    exam: false,
-    email: ''
-  }],
-  assignments: [
-    {t:'T1',sub:'S37',p:2},{t:'T1',sub:'S01',p:4},{t:'T1',sub:'S38',p:7},
-    {t:'T2',sub:'S15',p:1},{t:'T2',sub:'S31',p:2},{t:'T2',sub:'S13',p:3},{t:'T2',sub:'S08',p:4},{t:'T2',sub:'S23',p:7},{t:'T2',sub:'S12',p:8},
-    {t:'T3',sub:'S24',p:1},{t:'T3',sub:'S07',p:2},{t:'T3',sub:'S41',p:3},{t:'T3',sub:'S19',p:4},{t:'T3',sub:'S32',p:5},{t:'T3',sub:'S16',p:7},{t:'T3',sub:'S25',p:8},{t:'T3',sub:'S26',p:9},
-    {t:'T4',sub:'S36',p:1},{t:'T4',sub:'S03',p:2},{t:'T4',sub:'S33',p:3},{t:'T4',sub:'S40',p:4},{t:'T4',sub:'S29',p:5},{t:'T4',sub:'S35',p:7},{t:'T4',sub:'S21',p:8},{t:'T4',sub:'S02',p:9},
-    {t:'T5',sub:'S30',p:1},{t:'T5',sub:'S22',p:2},{t:'T5',sub:'S18',p:3},{t:'T5',sub:'S34',p:4},{t:'T5',sub:'S17',p:5},{t:'T5',sub:'S14',p:7},{t:'T5',sub:'S28',p:8},{t:'T5',sub:'S39',p:9},
-    {t:'T6',sub:'S20',p:2},{t:'T6',sub:'S04',p:3},{t:'T6',sub:'S27',p:4},{t:'T6',sub:'S10',p:5},{t:'T6',sub:'S05',p:7},{t:'T6',sub:'S42',p:8},
-    {t:'T8',sub:'S44',p:7},
-    {t:'T9',sub:'S43',p:5}
-  ],
-  periods: [{
-    id: 1,
-    s: '10:00',
-    e: '10:35',
-    type: 'class'
-  }, {
-    id: 2,
-    s: '10:35',
-    e: '11:10',
-    type: 'class'
-  }, {
-    id: 3,
-    s: '11:10',
-    e: '11:45',
-    type: 'class'
-  }, {
-    id: 4,
-    s: '11:45',
-    e: '12:20',
-    type: 'class'
-  }, {
-    id: 5,
-    s: '12:20',
-    e: '12:55',
-    type: 'class'
-  }, {
-    id: 6,
-    s: '12:55',
-    e: '02:00',
-    type: 'break',
-    brk: true
-  }, {
-    id: 7,
-    s: '02:00',
-    e: '02:35',
-    type: 'class'
-  }, {
-    id: 8,
-    s: '02:35',
-    e: '03:10',
-    type: 'class'
-  }, {
-    id: 9,
-    s: '03:10',
-    e: '03:45',
-    type: 'class'
-  }],
-  pins: {
-    ADMIN: '9999',
-    T1: '1234',
-    T2: '1234',
-    T3: '1234',
-    T4: '1234',
-    T5: '1234',
-    T6: '1234',
-    T7: '1234',
-    T8: '1234',
-    T9: '1234'
-  },
-  supabase_url: 'https://mhhifytmrlyksfrjacvi.supabase.co',
-  supabase_key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oaGlmeXRtcmx5a3NmcmphY3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTExNTAsImV4cCI6MjA4OTc2NzE1MH0.RIkSQq1Q7qLO_tVqklGV_KZabcKYfqqBFd7SLKpBE_Y',
-  admin_creds: { username: 'admin', password: 'idara2026' },
-  scoring: {
-    excellent: 80,
-    good: 60,
-    weak: 40
-  },
-  dashboard: {
-    yellow: -5
-  },
-  holidays: [],
-  students: [{
-    id: 'HA01',
-    n: 'اظہر فیاض',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'completed',
-    hifz: {
-      paras: 30,
-      soorah: '',
-      aayat: 0,
-      daur_para: '6'
-    }
-  }, {
-    id: 'HA02',
-    n: 'فیضان فیاض',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 16,
-      soorah: '',
-      aayat: 0,
-      daur_para: '10'
-    }
-  }, {
-    id: 'HA03',
-    n: 'مہران فاروق',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 14,
-      soorah: '',
-      aayat: 0,
-      daur_para: '10'
-    }
-  }, {
-    id: 'HA04',
-    n: 'ثاقب احمد وانی',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 17,
-      soorah: '',
-      aayat: 0,
-      daur_para: '13'
-    }
-  }, {
-    id: 'HA05',
-    n: 'جبران فیاض',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 0,
-      soorah: 'البقرة',
-      aayat: 46,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA06',
-    n: 'یونس شافع',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 26,
-      soorah: '',
-      aayat: 0,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA07',
-    n: 'فرید احمد کھتانہ',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 10,
-      soorah: '',
-      aayat: 0,
-      daur_para: '4'
-    }
-  }, {
-    id: 'HA08',
-    n: 'ارسلان جہانگیر',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 4,
-      soorah: 'النساء',
-      aayat: 180,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA09',
-    n: 'حازم سمیر ہانجی',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 9,
-      soorah: 'الأعراف',
-      aayat: 159,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA10',
-    n: 'یاسر الطاف',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 3,
-      soorah: 'آل عمران',
-      aayat: 45,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA11',
-    n: 'امتیاز احمد بٹانہ',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 8,
-      soorah: 'الأعراف',
-      aayat: 11,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA12',
-    n: 'فاضل احمد پدر',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 1,
-      soorah: 'البقرة',
-      aayat: 76,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA13',
-    n: 'محمد اذان',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 1,
-      soorah: 'البقرة',
-      aayat: 76,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA14',
-    n: 'آفاق نبی',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 0,
-      soorah: 'البقرة',
-      aayat: 46,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA15',
-    n: 'عمران نثار',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 5,
-      soorah: 'النساء',
-      aayat: 58,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA16',
-    n: 'میلاد جاوید',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 2,
-      soorah: 'البقرة',
-      aayat: 166,
-      daur_para: ''
-    }
-  }, {
-    id: 'HA17',
-    n: 'راقب گلزار',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 0,
-      soorah: '',
-      aayat: 0,
-      daur_para: '10'
-    }
-  }, {
-    id: 'HA18',
-    n: 'طارق احمد برگت',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T8',
-    status: 'active',
-    hifz: {
-      paras: 4,
-      soorah: 'آل عمران',
-      aayat: 115,
-      daur_para: ''
-    }
-  }, {
-    id: 'HZ01',
-    n: 'محسن احمد گنائی',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'completed',
-    hifz: {
-      paras: 30,
-      soorah: '',
-      aayat: 0,
-      daur_para: '15'
-    }
-  }, {
-    id: 'HZ02',
-    n: 'حاذق اعجاز',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'completed',
-    hifz: {
-      paras: 30,
-      soorah: '',
-      aayat: 0,
-      daur_para: '22'
-    }
-  }, {
-    id: 'HZ03',
-    n: 'میزان پرویز',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'الطارق',
-      aayat: 0,
-      daur_para: ''
-    }
-  }, {
-    id: 'HZ04',
-    n: 'شیزان طارق',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 5,
-      soorah: 'آل عمران',
-      aayat: 54,
-      daur_para: '3'
-    }
-  }, {
-    id: 'HZ05',
-    n: 'یاور فیاض',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 16,
-      soorah: 'البقرة',
-      aayat: 83,
-      daur_para: '1'
-    }
-  }, {
-    id: 'HZ06',
-    n: 'ابرق امتیاز',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'البقرة',
-      aayat: 15,
-      daur_para: '1'
-    }
-  }, {
-    id: 'HZ07',
-    n: 'ایان فیاض',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'الطارق',
-      aayat: 0,
-      daur_para: ''
-    }
-  }, {
-    id: 'HZ08',
-    n: 'اویس چوپان',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 8,
-      soorah: 'الأنعام',
-      aayat: 0,
-      daur_para: ''
-    }
-  }, {
-    id: 'HZ09',
-    n: 'فیضان منظور',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'الجن',
-      aayat: 0,
-      daur_para: '29'
-    }
-  }, {
-    id: 'HZ10',
-    n: 'راحل نثار',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'البقرة',
-      aayat: 69,
-      daur_para: '1'
-    }
-  }, {
-    id: 'HZ11',
-    n: 'عفید مدثر',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'الأعلى',
-      aayat: 0,
-      daur_para: ''
-    }
-  }, {
-    id: 'HZ12',
-    n: 'مصدق ریاض',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'الطارق',
-      aayat: 0,
-      daur_para: ''
-    }
-  }, {
-    id: 'HZ13',
-    n: 'برہان شیخ',
-    parent: '',
-    phone: '',
-    residence: '',
-    c: 'hifz',
-    qari: 'T9',
-    status: 'active',
-    hifz: {
-      paras: 30,
-      soorah: 'الفجر',
-      aayat: 0,
-      daur_para: ''
-    }
-  }]
-};
-
-// ═══════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════
-const ST = {
-  f: "'Noto Nastaliq Urdu','Noto Sans Arabic',serif",
-  dk: '#0c2e2e',
-  gd: '#d4af37',
-  gn: '#1a4a35',
-  sg: '#8fbc8f',
-  mt: '#6b7c6b'
-};
-const stC = {
-  green: '#10b981',
-  yellow: '#f59e0b',
-  red: '#ef4444',
-  unknown: '#9ca3af'
-};
-const catC = {
-  excellent: '#10b981',
-  good: '#3b82f6',
-  weak: '#f59e0b',
-  fail: '#ef4444',
-  absent: '#6b7280'
-};
-const gC = (CL, id) => (CL || []).find(c => c.id === id) || {
-  id: '?',
-  n: '?',
-  c: '#ccc',
-  a: '#666'
-};
-function calcTD(cfg) {
-  const st = new Date(cfg.term_start + 'T00:00:00'),
-    now = new Date();
-  let c = 0;
-  for (let d = new Date(st); d <= now; d.setDate(d.getDate() + 1)) {
-    const w = d.getDay();
-    if (w !== cfg.off_day && w !== cfg.revision_day && !(cfg.holidays || []).includes(d.toISOString().split('T')[0])) c++;
-  }
-  return Math.min(Math.max(c, 1), cfg.teaching_days);
-}
-/** Institution teaching days counted only when teacher was not absent/leave (all subjects pause). */
-function calcTDTeacher(cfg, attendanceByDate) {
-  const st = new Date(cfg.term_start + 'T00:00:00'),
-    now = new Date();
-  let c = 0;
-  for (let d = new Date(st); d <= now; d.setDate(d.getDate() + 1)) {
-    const w = d.getDay();
-    const ds = d.toISOString().split('T')[0];
-    if (w === cfg.off_day || w === cfg.revision_day || (cfg.holidays || []).includes(ds)) continue;
-    const status = attendanceByDate && attendanceByDate[ds];
-    if (status === 'absent' || status === 'leave') continue;
-    c++;
-  }
-  return Math.min(Math.max(c, 1), cfg.teaching_days);
-}
-function genThursdays(cfg) {
-  const st = new Date(cfg.term_start + 'T00:00:00'),
-    en = new Date(cfg.term_end + 'T00:00:00');
-  const dates = [];
-  for (let d = new Date(st); d <= en; d.setDate(d.getDate() + 1)) {
-    if (d.getDay() === cfg.revision_day) dates.push(d.toISOString().split('T')[0]);
-  }
-  return dates;
-}
-function _thuShuffle(arr, seed) {
-  const a = [...arr]; let s = seed;
-  for (let i = a.length - 1; i > 0; i--) {
-    s = (s * 1103515245 + 12345) & 0x7fffffff;
-    const j = s % (i + 1); [a[i], a[j]] = [a[j], a[i]];
-  } return a;
-}
-function _thuDerange(teachers, origTeachers, seed) {
-  for (let att = 0; att < 200; att++) {
-    const perm = _thuShuffle(teachers, seed + att);
-    if (perm.every((t, i) => t !== origTeachers[i])) return perm;
-  }
-  const perm = _thuShuffle(teachers, seed);
-  for (let i = 0; i < perm.length; i++) {
-    if (perm[i] === origTeachers[i]) {
-      for (let j = 0; j < perm.length; j++) {
-        if (i !== j && perm[j] !== origTeachers[i] && perm[i] !== origTeachers[j]) {
-          [perm[i], perm[j]] = [perm[j], perm[i]]; break;
-        }
-      }
-    }
-  } return perm;
-}
-function genThuMap(regularAsg, eligibleIds, thuDates) {
-  const byPeriod = {};
-  for (const a of regularAsg) { if (!byPeriod[a.p]) byPeriod[a.p] = []; byPeriod[a.p].push(a); }
-  const result = [];
-  for (let wi = 0; wi < thuDates.length; wi++) {
-    const weekAsg = [];
-    for (const [period, slots] of Object.entries(byPeriod)) {
-      const origT = slots.map(s => s.t);
-      const pool = _thuShuffle(eligibleIds, wi * 100 + parseInt(period));
-      const subset = pool.slice(0, origT.length);
-      const assigned = _thuDerange(subset, origT, wi * 1000 + parseInt(period));
-      for (let si = 0; si < slots.length; si++) {
-        weekAsg.push({ t: assigned[si], sub: slots[si].sub, p: parseInt(period), origT: slots[si].t });
-      }
-    }
-    result.push({ wk: wi + 1, dt: thuDates[wi], assignments: weekAsg });
-  }
-  return result;
-}
-function genThuSch(dates, examiners) {
-  return dates.map((dt, i) => ({
-    wk: i + 1, dt, ex: examiners.length ? examiners[i % examiners.length] : null
-  }));
-}
-function cSR(sc, ab, scoring) {
-  if (ab) return {
-    t: null,
-    p: null,
-    c: 'absent'
-  };
-  const f = sc.filter(s => s != null && s !== '');
-  if (!f.length) return {
-    t: null,
-    p: null,
-    c: null
-  };
-  const n = f.map(Number);
-  if (n.some(x => isNaN(x) || x < 0 || x > 10)) return {
-    t: null,
-    p: null,
-    c: 'invalid'
-  };
-  const t = n.reduce((a, b) => a + b, 0),
-    p = Math.round(t / (f.length * 10) * 100);
-  return {
-    t,
-    p,
-    c: p >= scoring.excellent ? 'excellent' : p >= scoring.good ? 'good' : p >= scoring.weak ? 'weak' : 'fail'
-  };
-}
-
-// Shared components
-const Card = _ref => {
-  let {
-    children,
-    style,
-    onClick
-  } = _ref;
-  return /*#__PURE__*/React.createElement("div", {
-    onClick: onClick,
-    style: {
-      background: '#fff',
-      borderRadius: 13,
-      padding: 14,
-      marginBottom: 8,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-      lineHeight: 1.8,
-      ...style
-    }
-  }, children);
-};
-const Btn = _ref2 => {
-  let {
-    children,
-    onClick,
-    color = '#10b981',
-    full,
-    small,
-    disabled,
-    style
-  } = _ref2;
-  return /*#__PURE__*/React.createElement("button", {
-    onClick: onClick,
-    disabled: disabled,
-    style: {
-      padding: small ? '6px 12px' : '12px 16px',
-      borderRadius: small ? 8 : 12,
-      border: 'none',
-      background: disabled ? '#ccc' : `linear-gradient(135deg,${color},${color}dd)`,
-      color: '#fff',
-      fontSize: small ? 11 : 14,
-      fontWeight: 700,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      fontFamily: ST.f,
-      width: full ? '100%' : undefined,
-      opacity: disabled ? 0.5 : 1,
-      ...style
-    }
-  }, children);
-};
-const Inp = _ref3 => {
-  let {
-    value,
-    onChange,
-    placeholder,
-    type = 'text',
-    style
-  } = _ref3;
-  return /*#__PURE__*/React.createElement("input", {
-    type: type,
-    value: value,
-    onChange: e => onChange(e.target.value),
-    placeholder: placeholder,
-    style: {
-      width: '100%',
-      padding: 8,
-      borderRadius: 8,
-      border: '1px solid #d5d0c5',
-      fontSize: 12,
-      fontFamily: 'inherit',
-      direction: 'rtl',
-      outline: 'none',
-      background: '#faf8f3',
-      ...style
-    }
-  });
-};
-const Sel = _ref4 => {
-  let {
-    value,
-    onChange,
-    children,
-    style
-  } = _ref4;
-  return /*#__PURE__*/React.createElement("select", {
-    value: value,
-    onChange: e => onChange(e.target.value),
-    style: {
-      width: '100%',
-      padding: 8,
-      borderRadius: 8,
-      border: '1px solid #d5d0c5',
-      fontSize: 12,
-      fontFamily: 'inherit',
-      direction: 'rtl',
-      outline: 'none',
-      background: '#faf8f3',
-      ...style
-    }
-  }, children);
-};
-const Bk = _ref5 => {
-  let {
-    onClick
-  } = _ref5;
-  return /*#__PURE__*/React.createElement("button", {
-    onClick: onClick,
-    style: {
-      background: 'none',
-      border: 'none',
-      fontSize: 12,
-      color: ST.mt,
-      cursor: 'pointer',
-      fontFamily: 'inherit'
-    }
-  }, "\u2190 \u0648\u0627\u067E\u0633");
-};
-const Bdg = _ref6 => {
-  let {
-    text,
-    bg,
-    color
-  } = _ref6;
-  return /*#__PURE__*/React.createElement("span", {
-    style: {
-      background: bg || '#f0ebe0',
-      color: color || '#6b7c6b',
-      padding: '3px 8px',
-      borderRadius: 5,
-      fontSize: 10,
-      fontWeight: 700,
-      lineHeight: 1.8
-    }
-  }, text);
-};
-const Ttl = _ref7 => {
-  let {
-    icon,
-    text
-  } = _ref7;
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      marginBottom: 10,
-      lineHeight: 2
-    }
-  }, icon, " ", text);
-};
-const Row = _ref8 => {
-  let {
-    label,
-    children
-  } = _ref8;
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: '#999',
-      marginBottom: 2
-    }
-  }, label), children);
-};
-
-// ═══════════════════════════════════════════════════════════
-// PERSISTENT STORAGE LAYER
-// ═══════════════════════════════════════════════════════════
-async function loadConfig() {
-  try {
-    const r = await _stLoad("iri-config-v7");
-    return r ? JSON.parse(r.value) : null;
-  } catch (e) {
-    return null;
-  }
-}
-// [removed duplicate definitions]
-async function saveConfig(cfg) {
-  try {
-    await _stSave("iri-config-v7", JSON.stringify(cfg));
-  } catch (e) {
-    console.error('Save failed', e);
-  }
-}
-async function loadStudents() {
-  try {
-    const r = await _stLoad("iri-students-v7");
-    return r ? JSON.parse(r.value) : null;
-  } catch (e) { return null; }
-}
-async function saveStudents(data) {
-  try { await _stSave("iri-students-v7", JSON.stringify(data)); } catch (e) {}
-}
-async function loadHifzLogs() {
-  try {
-    const r = await _stLoad("iri-hifz-v7");
-    return r ? JSON.parse(r.value) : null;
-  } catch (e) { return null; }
-}
-async function saveHifzLogs(data) {
-  try { await _stSave("iri-hifz-v7", JSON.stringify(data)); } catch (e) {}
-}
-async function loadReports() {
-  try {
-    const r = await _stLoad("iri-reports");
-    return r ? JSON.parse(r.value) : {};
-  } catch (e) {
-    return {};
-  }
-}
-async function saveReports(reps) {
-  try {
-    await _stSave("iri-reports", JSON.stringify(reps));
-  } catch (e) {}
-}
-async function loadSyncQ() {
-  try {
-    const r = await _stLoad("iri-syncq");
-    return r ? JSON.parse(r.value) : [];
-  } catch (e) {
-    return [];
-  }
-}
-async function saveSyncQ(q) {
-  try {
-    await _stSave("iri-syncq", JSON.stringify(q));
-  } catch (e) {}
-}
-async function loadSAttend() {
-  try { const r = await _stLoad("iri-sattend"); return r ? JSON.parse(r.value) : {}; } catch (e) { return {}; }
-}
-async function saveSAttend(d) { try { await _stSave("iri-sattend", JSON.stringify(d)); } catch (e) {} }
-async function loadTAttend() {
-  try { const r = await _stLoad("iri-tattend"); return r ? JSON.parse(r.value) : {}; } catch (e) { return {}; }
-}
-async function saveTAttend(d) { try { await _stSave("iri-tattend", JSON.stringify(d)); } catch (e) {} }
-async function loadDAttend() {
-  try { const r = await _stLoad("iri-dattend"); return r ? JSON.parse(r.value) : {}; } catch (e) { return {}; }
-}
-async function saveDAttend(d) { try { await _stSave("iri-dattend", JSON.stringify(d)); } catch (e) {} }
-
-/** Class id for roster filters — app uses `c`, Supabase often uses `class` / `class_id`. */
-function studentClassId(s) {
-  if (!s) return '';
-  return String(s.c || s.class_id || s.class || '').trim();
-}
-/** Show in subject/period attendance lists (exclude only withdrawn). */
-function isStudentOnRoll(s) {
-  return s && s.status !== 'left';
-}
-/** Unify local + Supabase student row shapes into app shape. */
-function normalizeStudentRow(row) {
-  if (!row || !row.id) return null;
-  const hIn = row.hifz && typeof row.hifz === 'object' ? row.hifz : {};
-  const cid = String(row.c || row.class_id || row.class || '').trim();
-  return {
-    id: row.id,
-    n: row.n || row.name || '',
-    parent: row.parent || '',
-    phone: row.phone || '',
-    residence: row.residence || '',
-    c: cid,
-    qari: row.qari || row.qari_id || '',
-    status: row.status || 'active',
-    hifz: {
-      paras: hIn.paras != null ? hIn.paras : (Number(row.hifz_paras) || 0),
-      soorah: hIn.soorah != null ? hIn.soorah : (row.hifz_soorah || ''),
-      aayat: hIn.aayat != null ? hIn.aayat : (Number(row.hifz_aayat) || 0),
-      daur_para: hIn.daur_para != null ? hIn.daur_para : (row.hifz_daur || '')
-    }
-  };
-}
-
-/** Delay before permanent Supabase delete so admin can واپس. */
-const STUDENT_DELETE_UNDO_MS = 8000;
-
-// ═══════════════════════════════════════════════════════════
-// APP
-// ═══════════════════════════════════════════════════════════
 function App() {
   const [loading, setLoading] = useState(true);
   const [cfg, setCfgRaw] = useState(null);
@@ -1454,6 +122,7 @@ function App() {
   const [studSearch, setStudSearch] = useState('');
   const [hifzEntry, setHifzEntry] = useState(null);
   const [showStudForm, setShowStudForm] = useState(false);
+  const [studFormEditId, setStudFormEditId] = useState(null);
   const [newStud, setNewStud] = useState({id:'',n:'',parent:'',phone:'',residence:'',c:'hifz',qari:'T8',status:'active'});
 
   const [thWk, setThWk] = useState(null);
@@ -1525,45 +194,50 @@ function App() {
   // Load on mount
   useEffect(() => {
     (async () => {
-      const [saved, savedReps, savedQ, savedStudents, savedHifz, savedSA, savedTA, savedDA] = await Promise.all([loadConfig(), loadReports(), loadSyncQ(), loadStudents(), loadHifzLogs(), loadSAttend(), loadTAttend(), loadDAttend()]);
-      if (saved) {
-        const sv = saved._version || 0;
-        const dv = DEFAULTS._version || 0;
-        let merged;
-        if (sv < dv) {
-          // New version: take DEFAULTS structure, preserve user data
-          merged = { ...DEFAULTS };
-          // Preserve user-edited fields
-          if (saved.pins) merged.pins = { ...DEFAULTS.pins, ...saved.pins };
-          if (saved.assignments && saved.assignments.length > 0) merged.assignments = saved.assignments;
-          if (saved.supabase_url) merged.supabase_url = saved.supabase_url;
-          if (saved.supabase_key) merged.supabase_key = saved.supabase_key;
-          if (saved.admin_creds) merged.admin_creds = saved.admin_creds;
-          if (saved.scoring) merged.scoring = { ...DEFAULTS.scoring, ...saved.scoring };
-          if (saved.dashboard) merged.dashboard = { ...DEFAULTS.dashboard, ...saved.dashboard };
-          if (saved.holidays) merged.holidays = saved.holidays;
-          if (saved.institution) {
-            // Preserve user-changed institution settings but take new defaults for unchanged fields
-            merged.institution = { ...DEFAULTS.institution, ...saved.institution };
-          }
-          // Subjects, teachers, periods, classes always come from DEFAULTS on version bump
-          // This ensures page range fixes and new subjects take effect
-          console.log('Config upgraded: v' + sv + ' → v' + dv);
+      const [savedCfg, savedReps, savedQ, savedStudents, savedHifz, savedSA, savedTA, savedDA] = await Promise.all([
+        loadConfig(), loadReports(), loadSyncQ(), loadStudents(), loadHifzLogs(), loadSAttend(), loadTAttend(), loadDAttend()
+      ]);
+
+      var url = (savedCfg && savedCfg.supabase_url) || DEFAULTS.supabase_url;
+      var key = (savedCfg && savedCfg.supabase_key) || DEFAULTS.supabase_key;
+
+      var cfg;
+      try {
+        var dbData = await fetchFullConfigFromSupabase(url, key);
+        cfg = {
+          _version: DEFAULTS._version || 11,
+          supabase_url: url,
+          supabase_key: key,
+          ...dbData
+        };
+        console.log('[BOOT] Loaded from Supabase:', cfg.teachers.length, 'teachers,', cfg.subjects.length, 'subjects,', cfg.students.length, 'students');
+      } catch (e) {
+        console.warn('[BOOT] Supabase unavailable, falling back to localStorage:', e.message || e);
+        if (savedCfg && savedCfg.teachers && savedCfg.teachers.length) {
+          cfg = { ...savedCfg };
+          if (!cfg.supabase_url) cfg.supabase_url = url;
+          if (!cfg.supabase_key) cfg.supabase_key = key;
         } else {
-          // Same version: use saved config entirely
-          merged = { ...DEFAULTS, ...saved };
-          merged.pins = { ...DEFAULTS.pins, ...(saved.pins || {}) };
-          if (!merged.supabase_url) merged.supabase_url = DEFAULTS.supabase_url;
+          cfg = {
+            _version: 11, supabase_url: url, supabase_key: key,
+            teachers: [], subjects: [], assignments: [], periods: [], classes: [], students: [], pins: {},
+            institution: { name_ur: 'ادارہ تحقیقات اسلامی', name_en: 'Imam Azam College', term_start: '2026-04-01', term_end: '2026-05-30', teaching_days: 42, off_day: 5, revision_day: 4 },
+            scoring: { excellent: 80, good: 60, weak: 40 }, dashboard: { yellow: -5 },
+            admin_creds: { username: 'admin', password: 'idara2026' }, holidays: []
+          };
+          console.error('[BOOT] No data source available — app will be empty until Supabase is reachable');
         }
-        merged._version = dv;
-        setCfgRaw(merged);
-      } else {
-        setCfgRaw({ ...DEFAULTS });
       }
+
+      setCfgRaw(cfg);
+      saveConfig(cfg);
+
+      var initialStud = cfg.students && cfg.students.length ? cfg.students :
+        (savedStudents && savedStudents.length ? savedStudents.map(normalizeStudentRow).filter(Boolean) : []);
+      setStudentsRaw(initialStud);
+
       setRepsRaw(savedReps || {});
       setSyncQRaw(savedQ || []);
-      const initialStud = (savedStudents && savedStudents.length ? savedStudents : (DEFAULTS.students || []));
-      setStudentsRaw(initialStud.map(normalizeStudentRow).filter(Boolean));
       setHifzLogsRaw(savedHifz || {});
       setSAttendRaw(savedSA || {});
       setTAttendRaw(savedTA || {});
@@ -2476,23 +1150,27 @@ function App() {
 
   // ── Sync ──
 
-  const submitD = () => {
+  const submitD = async () => {
     const tName = teachers.find(t => t.id === user.id);
-    const entries = myA.filter(a => r(a.sub.id).actual).map(a => {
+    const entries = myA.map(a => {
       const rp = r(a.sub.id);
+      const raw = rp.actual;
+      if (raw === '' || raw == null) return null;
+      const actualNum = parseInt(String(raw).trim(), 10);
+      if (Number.isNaN(actualNum)) return null;
       return {
         subject_id: a.sub.id,
         subject_name: a.sub.n || '',
         class_id: a.sub.c,
         period: a.p || '',
         target_page: a.target,
-        actual_page: parseInt(rp.actual),
+        actual_page: actualNum,
         complete: rp.complete || '',
         reason_code: rp.reason || ''
       };
-    });
+    }).filter(Boolean);
     if (!entries.length) {
-      flash('⚠️ خالی');
+      flash('\u26A0\uFE0F \u06A9\u0645 \u0627\u0632 \u06A9\u0645 \u06CC\u06A9 \u0645\u0636\u0645\u0648\u0646 \u0645\u06CC\u06BA \u062D\u0642\u06CC\u0642\u06CC \u0635\u0641\u062D\u06C1 \u062F\u0631\u062C \u06A9\u0631\u06CC\u06BA');
       return;
     }
     const pl = {
@@ -2510,12 +1188,28 @@ function App() {
       if (sAttend[aKey] && Object.keys(sAttend[aKey]).length) attData[cId] = sAttend[aKey];
     });
     if (Object.keys(attData).length) pl.attendance = attData;
-    if (cfg.supabase_url) syncPost('daily_report', pl);else {
+    if (cfg.supabase_url) {
+      flash('\u23F3 \u0631\u067E\u0648\u0631\u0679 \u0628\u06BE\u06CC\u062C \u0631\u06C1\u06D2 \u06C1\u06CC\u06BA...');
+      try {
+        const res = await syncPost('daily_report', pl);
+        if (res && res.note === 'DEBOUNCED') {
+          flash('\u23F3 \u062F\u0648\u0628\u0627\u0631\u06C1 \u0628\u06BE\u06CC\u062C\u0646\u06D2 \u0633\u06D2 \u067E\u06C1\u0644\u06D2 3 \u0633\u06CC\u06A9\u0646\u0688 \u0627\u0646\u062A\u0638\u0627\u0631');
+          return;
+        }
+        if (res && res.success) {
+          flash('\u2705 \u0631\u067E\u0648\u0631\u0679 \u0645\u062D\u0641\u0648\u0638 \u2014 ' + entries.length + ' \u0645\u0636\u0645\u0648\u0646');
+        } else {
+          flash('\u274C \u0646\u0627\u06A9\u0627\u0645: ' + (res && res.error ? res.error : ''));
+        }
+      } catch (e) {
+        flash('\u274C ' + (e.message || String(e)));
+      }
+    } else {
       setSyncQ(p => [...p, {
         type: 'daily_report',
         payload: pl
       }]);
-      flash('✓ قطار');
+      flash('\u2713 \u0642\u0637\u0627\u0631 \u2014 ' + entries.length + ' \u0645\u0636\u0645\u0648\u0646');
     }
   };
   const submitTh = () => {
@@ -2725,9 +1419,9 @@ function App() {
               },k))
             ),
             BT('لاگِن ✓',()=>{
-              const t=teachers.find(x=>x.id===selT);
+              var t=teachers.find(function(x){return x.id===selT;});
               if(!t){setErr('غلط');return;}
-              if(pin!==(pins[selT]||'1234')){setErr('غلط پن');return;}
+              if(pin!==(t.pin||pins[selT]||'1234')){setErr('غلط پن');return;}
               setUser({id:t.id,n:t.n,role:t.role,exam:!!t.exam});
               setScr('main');setTab('home');setPin('');
             })
@@ -2746,7 +1440,7 @@ function App() {
               color:'#e0d9c8',fontSize:13,fontFamily:'inherit',direction:'ltr',marginBottom:12,outline:'none',
               textAlign:'center',boxSizing:'border-box'}}),
           BT('لاگِن ✓',()=>{
-            const creds=(adminCreds&&adminCreds.username)?adminCreds:DEFAULTS.admin_creds;
+            const creds=(adminCreds&&adminCreds.username)?adminCreds:((cfg&&cfg.admin_creds)||{username:'admin',password:'idara2026'});
             if(loginEmail.trim()!==creds.username||otpCode!==creds.password){
               setErr('غلط یوزر نیم یا پاس ورڈ');return;
             }
@@ -3531,7 +2225,7 @@ function App() {
                   React.createElement(Btn, {small:true, color:'#1a3a5c', onClick:()=>syncAttendance(a.sub.c, a.sub.id)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC')
                 ),
                 React.createElement('div',{
-                  onClick:()=>{const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const px=pm[a.sub.c]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud({id:px+String(mx+1).padStart(2,'0'),n:'',parent:'',phone:'',residence:'',c:a.sub.c,qari:'T8',status:'active'});setShowStudForm(true);},
+                  onClick:()=>{const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const px=pm[a.sub.c]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud({id:px+String(mx+1).padStart(2,'0'),n:'',parent:'',phone:'',residence:'',c:a.sub.c,qari:'T8',status:'active'});setStudFormEditId(null);setShowStudForm(true);},
                   style:{textAlign:'center',padding:8,marginTop:6,border:'1.5px dashed #bbb',borderRadius:8,fontSize:10,color:'#888',cursor:'pointer'}
                 },'+ \u0637\u0627\u0644\u0628 \u0639\u0644\u0645 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA')
               )
@@ -4034,7 +2728,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
         React.createElement(Btn, {full:true, style:{marginTop:10}, onClick:()=>syncDailyAttendance(dAttSlot)}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC \u2713'),
         // Add student
         React.createElement('div', {
-          onClick:()=>{const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const dc=dAttClass!=='all'?dAttClass:CL[0].id;const px=pm[dc]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud({id:px+String(mx+1).padStart(2,'0'),n:'',parent:'',phone:'',residence:'',c:dc,qari:'T8',status:'active'});setShowStudForm(true);},
+          onClick:()=>{const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const dc=dAttClass!=='all'?dAttClass:CL[0].id;const px=pm[dc]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud({id:px+String(mx+1).padStart(2,'0'),n:'',parent:'',phone:'',residence:'',c:dc,qari:'T8',status:'active'});setStudFormEditId(null);setShowStudForm(true);},
           style:{textAlign:'center',padding:8,marginTop:8,border:'1.5px dashed #bbb',borderRadius:8,fontSize:10,color:'#888',cursor:'pointer'}
         }, '+ \u0637\u0627\u0644\u0628 \u0639\u0644\u0645 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA')
       );
@@ -4084,7 +2778,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
     }, "🔄 ڈیٹابیس سے تمام طلبا لوڈ کریں"),
 
     user && /*#__PURE__*/React.createElement("button", {
-      onClick: () => { const prefixMap={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'}; const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id); const px=prefixMap[defClass]||'ST'; const clsStuds=students.filter(s=>s.id.startsWith(px)); const maxNum=clsStuds.reduce((mx,s)=>{const n=parseInt(s.id.slice(2));return n>mx?n:mx;},0); const newId=px+String(maxNum+1).padStart(2,'0'); setNewStud(p=>({...p,id:newId,c:defClass})); setShowStudForm(true); },
+      onClick: () => { const prefixMap={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'}; const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id); const px=prefixMap[defClass]||'ST'; const clsStuds=students.filter(s=>s.id.startsWith(px)); const maxNum=clsStuds.reduce((mx,s)=>{const n=parseInt(s.id.slice(2));return n>mx?n:mx;},0); const newId=px+String(maxNum+1).padStart(2,'0'); setNewStud(p=>({...p,id:newId,c:defClass})); setStudFormEditId(null); setShowStudForm(true); },
       style:{width:'100%',padding:'9px',borderRadius:10,border:'2px dashed #aaa',background:'none',
         cursor:'pointer',fontSize:12,color:'#555',marginBottom:10,fontFamily:ST.f}
     }, "+ نیا طالب علم"),
@@ -4128,28 +2822,50 @@ tab === 'thu' && isEx && React.createElement('div', null,
                 color: s.status==='completed'?'#065f46':s.status==='left'?'#991b1b':'#1e40af'
               }),
 
-              isAd && /*#__PURE__*/React.createElement("button", {
-                type: 'button',
-                onClick: async (e) => {
-                  e.stopPropagation();
-                  if (!window.confirm('اس طالب علم کو حذف کریں؟ (' + STUDENT_DELETE_UNDO_MS / 1000 + ' سیکنڈ میں واپس کر سکتے ہیں۔)')) return;
-                  try {
-                    await flushPriorPendingStudentDelete();
-                    const snap = JSON.parse(JSON.stringify(s));
-                    setToast('');
-                    setStudents(prev => prev.filter(st => st.id !== s.id));
-                    setStudentDelUndo({ id: s.id, name: s.n || s.id });
-                    pendingStudentDelRef.current.student = normalizeStudentRow(snap) || snap;
-                    pendingStudentDelRef.current.timerId = setTimeout(() => {
-                      pendingStudentDelRef.current.timerId = null;
-                      void finalizeDelayedStudentDelete();
-                    }, STUDENT_DELETE_UNDO_MS);
-                  } catch (err) {
-                    flash('❌ ' + (err.message || String(err)));
-                  }
-                },
-                style:{fontSize:10,padding:'3px 8px',borderRadius:8,border:'none',background:'#fee2e2',color:'#dc2626',cursor:'pointer'}
-              }, "🗑")
+              /*#__PURE__*/React.createElement("div", {style:{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end',marginTop:2}},
+                isAd && /*#__PURE__*/React.createElement("button", {
+                  type: 'button',
+                  title: 'ترمیم',
+                  onClick: e => {
+                    e.stopPropagation();
+                    setStudFormEditId(s.id);
+                    setNewStud({
+                      id: s.id,
+                      n: s.n || '',
+                      parent: s.parent || '',
+                      phone: s.phone || '',
+                      residence: s.residence || '',
+                      c: studentClassId(s) || s.c || 'hifz',
+                      qari: s.qari || teachers.find(t => t.role === 'qari')?.id || 'T8',
+                      status: s.status && s.status !== '' ? s.status : 'active'
+                    });
+                    setShowStudForm(true);
+                  },
+                  style:{fontSize:10,padding:'3px 8px',borderRadius:8,border:'none',background:'#e0e7ff',color:'#3730a3',cursor:'pointer'}
+                }, "\u270F\uFE0F"),
+                isAd && /*#__PURE__*/React.createElement("button", {
+                  type: 'button',
+                  onClick: async (e) => {
+                    e.stopPropagation();
+                    if (!window.confirm('اس طالب علم کو حذف کریں؟ (' + STUDENT_DELETE_UNDO_MS / 1000 + ' سیکنڈ میں واپس کر سکتے ہیں۔)')) return;
+                    try {
+                      await flushPriorPendingStudentDelete();
+                      const snap = JSON.parse(JSON.stringify(s));
+                      setToast('');
+                      setStudents(prev => prev.filter(st => st.id !== s.id));
+                      setStudentDelUndo({ id: s.id, name: s.n || s.id });
+                      pendingStudentDelRef.current.student = normalizeStudentRow(snap) || snap;
+                      pendingStudentDelRef.current.timerId = setTimeout(() => {
+                        pendingStudentDelRef.current.timerId = null;
+                        void finalizeDelayedStudentDelete();
+                      }, STUDENT_DELETE_UNDO_MS);
+                    } catch (err) {
+                      flash('❌ ' + (err.message || String(err)));
+                    }
+                  },
+                  style:{fontSize:10,padding:'3px 8px',borderRadius:8,border:'none',background:'#fee2e2',color:'#dc2626',cursor:'pointer'}
+                }, "🗑")
+              )
             )
           ),
           isHifzCls && /*#__PURE__*/React.createElement("div", {style:{marginTop:8}},
@@ -4260,14 +2976,14 @@ tab === 'thu' && isEx && React.createElement('div', null,
     /* Add Student Form Modal */
     showStudForm && user && /*#__PURE__*/React.createElement("div", {
       style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center'},
-      onClick:()=>setShowStudForm(false)
+      onClick:()=>{ setShowStudForm(false); setStudFormEditId(null); }
     },
       /*#__PURE__*/React.createElement("div", {
         onClick:e=>e.stopPropagation(),
         style:{background:'#fff',borderRadius:'18px 18px 0 0',padding:20,width:'100%',maxWidth:480,direction:'rtl',fontFamily:ST.f,paddingBottom:32}
       },
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:15,fontWeight:800,marginBottom:8,color:ST.dk}}, "نیا طالب علم"),
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:'#666',marginBottom:10,background:'#f0fdf4',padding:'6px 10px',borderRadius:8,direction:'ltr',fontFamily:'monospace'}}, "شناختی کوڈ: ", newStud.id),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:15,fontWeight:800,marginBottom:8,color:ST.dk}}, studFormEditId ? "طالب علم میں ترمیم" : "نیا طالب علم"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:'#666',marginBottom:10,background:'#f0fdf4',padding:'6px 10px',borderRadius:8,direction:'ltr',fontFamily:'monospace'}}, "شناختی کوڈ: ", newStud.id, studFormEditId ? " (تبدیل نہیں)" : ""),
         [['n','نام *'],['parent','والد کا نام'],['phone','فون'],['residence','رہائش']].map(([field,label])=>
           /*#__PURE__*/React.createElement("div", {key:field,style:{marginBottom:8}},
             /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:'#666',marginBottom:3}}, label),
@@ -4283,7 +2999,7 @@ tab === 'thu' && isEx && React.createElement('div', null,
             /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:'#666',marginBottom:3}}, "جماعت"),
             /*#__PURE__*/React.createElement("select", {
               value:newStud.c,
-              onChange:e=>{const nc=e.target.value;const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const px=pm[nc]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud(p=>({...p,c:nc,id:px+String(mx+1).padStart(2,'0')}));},
+              onChange:e=>{const nc=e.target.value;if(studFormEditId){setNewStud(p=>({...p,c:nc}));return;}const pm={oola:'OL',sania:'SA',salisa:'SL',rabia:'RA',khamisa:'KH',fazilat:'FA',hifz:'HX'};const px=pm[nc]||'ST';const cs=students.filter(s=>s.id.startsWith(px));const mx=cs.reduce((m,s)=>{const n=parseInt(s.id.slice(2));return n>m?n:m;},0);setNewStud(p=>({...p,c:nc,id:px+String(mx+1).padStart(2,'0')}));},
               style:{width:'100%',padding:'8px',borderRadius:8,border:'1px solid #ddd',fontSize:12,fontFamily:ST.f}
             },
               (isAd ? CL : CL.filter(cl=>{ const mc=new Set(myA.map(a=>a.sub.c)); return mc.has(cl.id) || cl.id==='hifz'; })).map(cl=>/*#__PURE__*/React.createElement("option",{key:cl.id,value:cl.id},cl.n))
@@ -4300,22 +3016,50 @@ tab === 'thu' && isEx && React.createElement('div', null,
             )
           )
         ),
+        studFormEditId && /*#__PURE__*/React.createElement("div", {style:{marginBottom:12}},
+          /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:'#666',marginBottom:3}}, "حالت"),
+          /*#__PURE__*/React.createElement("select", {
+            value:newStud.status || 'active',
+            onChange:e=>setNewStud(p=>({...p,status:e.target.value})),
+            style:{width:'100%',padding:'8px',borderRadius:8,border:'1px solid #ddd',fontSize:12,fontFamily:ST.f}
+          },
+            /*#__PURE__*/React.createElement("option", {value:'active'}, "فعال"),
+            /*#__PURE__*/React.createElement("option", {value:'completed'}, "مکمل"),
+            /*#__PURE__*/React.createElement("option", {value:'left'}, "چھوڑ دیا")
+          )
+        ),
         /*#__PURE__*/React.createElement("button", {
           onClick: ()=>{
             if(!newStud.n.trim()||!newStud.id.trim()){flash('⚠️ نام اور کوڈ ضروری');return;}
+            if(studFormEditId){
+              const prev = students.find(st=>st.id===studFormEditId);
+              if(!prev){flash('⚠️ ریکارڈ نہیں ملا');setStudFormEditId(null);setShowStudForm(false);return;}
+              if(newStud.id!==studFormEditId){flash('⚠️ شناختی کوڈ تبدیل نہیں ہو سکتا');return;}
+              const st = newStud.status || prev.status || 'active';
+              const stud = {...prev,n:newStud.n.trim(),parent:newStud.parent||'',phone:newStud.phone||'',residence:newStud.residence||'',c:newStud.c,qari:newStud.qari,status:st,id:prev.id,hifz:prev.hifz||{paras:0,soorah:'',aayat:0,daur_para:''}};
+              setStudents(prevList=>prevList.map(x=>x.id===studFormEditId?stud:x));
+              if(cfg.supabase_url) syncPost('student_upsert',{student:stud}); else { setSyncQ(p=>[...p,{type:'student_upsert',payload:{student:stud}}]); }
+              const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id);
+              setNewStud({id:'',n:'',parent:'',phone:'',residence:'',c:defClass,qari:teachers.find(t=>t.role==='qari')?.id||'T8',status:'active'});
+              setStudFormEditId(null);
+              setShowStudForm(false);
+              flash('✓ تفصیلات محفوظ');
+              return;
+            }
             if(students.find(s=>s.id===newStud.id)){flash('⚠️ کوڈ موجود');return;}
             const stud = {...newStud,status:'active',hifz:{paras:0,soorah:'',aayat:0,daur_para:''}};
             setStudents(prev=>[...prev,stud]);
             if(cfg.supabase_url) syncPost('student_upsert',{student:stud}); else { setSyncQ(p=>[...p,{type:'student_upsert',payload:{student:stud}}]); }
             const defClass = isQari ? 'hifz' : isAd ? CL[0].id : (myA.length ? myA[0].sub.c : CL[0].id);
             setNewStud({id:'',n:'',parent:'',phone:'',residence:'',c:defClass,qari:teachers.find(t=>t.role==='qari')?.id||'T8',status:'active'});
+            setStudFormEditId(null);
             setShowStudForm(false);
             flash('✓ طالب علم شامل');
           },
           style:{width:'100%',padding:12,borderRadius:12,border:'none',background:ST.dk,color:ST.gd,fontSize:14,fontWeight:800,cursor:'pointer',fontFamily:ST.f}
-        }, "شامل کریں"),
+        }, studFormEditId ? "محفوظ کریں" : "شامل کریں"),
         /*#__PURE__*/React.createElement("button", {
-          onClick:()=>setShowStudForm(false),
+          onClick:()=>{ setShowStudForm(false); setStudFormEditId(null); },
           style:{width:'100%',padding:10,borderRadius:12,border:'1px solid #ddd',background:'#fff',fontSize:13,cursor:'pointer',marginTop:8,fontFamily:ST.f}
         }, "منسوخ")
       )
@@ -5357,6 +4101,13 @@ tab === 'thu' && isEx && React.createElement('div', null,
           ...pins,
           [t.id]: pinEdit.val
         });
+        if (cfg.supabase_url && cfg.supabase_key) {
+          fetch(cfg.supabase_url + '/rest/v1/teachers?id=eq.' + encodeURIComponent(pinEdit.tid), {
+            method: 'PATCH',
+            headers: { 'apikey': cfg.supabase_key, 'Authorization': 'Bearer ' + cfg.supabase_key, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ pin: pinEdit.val })
+          }).catch(function(e) { console.warn('PIN sync failed', e); });
+        }
         setPinEdit({
           tid: '',
           val: ''
@@ -5372,6 +4123,13 @@ tab === 'thu' && isEx && React.createElement('div', null,
         ...pins,
         [t.id]: '1234'
       });
+      if (cfg.supabase_url && cfg.supabase_key) {
+        fetch(cfg.supabase_url + '/rest/v1/teachers?id=eq.' + encodeURIComponent(t.id), {
+          method: 'PATCH',
+          headers: { 'apikey': cfg.supabase_key, 'Authorization': 'Bearer ' + cfg.supabase_key, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ pin: '1234' })
+        }).catch(function(e) { console.warn('PIN reset sync failed', e); });
+      }
       flash('↺');
     }
   }, "\u21BA")))), admSub === 'sync' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -5662,8 +4420,15 @@ tab === 'thu' && isEx && React.createElement('div', null,
         await _stDel("iri-config-v7");
       } catch (e) {}
       setCfgRaw({
-        ...DEFAULTS
+        _version: DEFAULTS._version || 11,
+        supabase_url: DEFAULTS.supabase_url,
+        supabase_key: DEFAULTS.supabase_key,
+        teachers: [], subjects: [], assignments: [], periods: [], classes: [], students: [], pins: {},
+        institution: { name_ur: 'ادارہ تحقیقات اسلامی', name_en: 'Imam Azam College', term_start: '2026-04-01', term_end: '2026-05-30', teaching_days: 42, off_day: 5, revision_day: 4 },
+        scoring: { excellent: 80, good: 60, weak: 40 }, dashboard: { yellow: -5 },
+        admin_creds: { username: 'admin', password: 'idara2026' }, holidays: []
       });
+      setStudentsRaw([]);
       setRepsRaw({});
       setSyncQRaw([]);
       flash('✓ ری سیٹ');
@@ -5734,5 +4499,6 @@ tab === 'thu' && isEx && React.createElement('div', null,
   if (el) ReactDOM.createRoot(el).render(React.createElement(App));
 })();
 </script>
+
 </body>
 </html>

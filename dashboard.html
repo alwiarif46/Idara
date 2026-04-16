@@ -747,6 +747,7 @@ window.syncAbsentActionsToHidden = function () {
       hint.textContent = ok + '/' + n + ' \u0637\u0644\u0628\u0627' + (ok === n ? ' \u2713' : '');
     }
   }
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
 window.toggleAccAbsentRow = function (idx) {
@@ -921,6 +922,7 @@ window.syncHifzNotesToHidden = function () {
     const rosterLen = parseInt(wrap.getAttribute('data-hifz-roster-len') || '0', 10);
     hint.textContent = hifzNotesHintText(hid.value, rosterLen > 0 ? [{ id: '_' }] : []);
   }
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
 window.initHifzNotesBlockFromStore = function () {
@@ -1010,6 +1012,133 @@ function initAccountabilityAfterDraftRestore() {
   window.initAbsentActionsBlockFromStore && window.initAbsentActionsBlockFromStore();
   window.initHifzNotesBlockFromStore && window.initHifzNotesBlockFromStore();
 }
+
+/** DOM snapshot for ذمہ داریاں checklist (same rules as score header). */
+window.accountabilityProgressFromDom = function () {
+  const g = id => document.getElementById(id);
+  const v = id => (g(id) && 'value' in g(id) ? String(g(id).value) : '').trim();
+  const ck = id => !!(g(id) && g(id).checked);
+  const absentListDedup = dedupeAbsentStudentsToday(DATA.sAttToday || [], DATA.students || []);
+  const hifzRoster = hifzRosterStudents(DATA.students || []);
+  const absentTeachers = (DATA.tAttToday || []).filter(r => r && (r.status === 'absent' || r.status === 'leave'));
+  const tAttToday = DATA.tAttToday || [];
+  const isThu = new Date().getDay() === 4;
+
+  const absentNumOk = v('acc_absent') !== '' && !Number.isNaN(parseInt(v('acc_absent'), 10));
+  const behindNumOk = v('acc_behind') !== '' && !Number.isNaN(parseInt(v('acc_behind'), 10));
+  const covOk = (absentTeachers.length === 0 && tAttToday.length > 0) || v('acc_coverage').length > 0;
+
+  const visLen = v('acc_class_visited').length;
+  const obsVal = (g('acc_class_obs') && g('acc_class_obs').value) ? String(g('acc_class_obs').value) : '';
+  const obsOk = classObsScoringOk(obsVal);
+  const classBlockOk = visLen >= 3 && obsOk;
+  let classAnchor = 'acc_anchor_class_visit';
+  if (visLen >= 3 && !obsOk) classAnchor = 'acc_anchor_inspection';
+  else if (visLen < 3) classAnchor = 'acc_anchor_class_visit';
+
+  const absentActVal = (g('acc_absent_actions') && g('acc_absent_actions').value) ? String(g('acc_absent_actions').value) : '';
+  const absentActOk = absentActionsScoringOk(absentActVal, absentListDedup);
+
+  const hifzVal = (g('acc_hifz') && g('acc_hifz').value) ? String(g('acc_hifz').value) : '';
+  const hifzOk = hifzNotesScoringOk(hifzVal, hifzRoster);
+
+  const remarksOk = v('acc_remarks').length >= 5;
+
+  const sections = [
+    { key: 'verify', label: '\u0642\u0627\u0628\u0644 \u062A\u0635\u062F\u06CC\u0642 \u2014 \u063A\u0627\u0626\u0628\u060C \u067E\u06CC\u0686\u06D2\u060C \u0628\u0646\u062F\u0648\u0628\u0633\u062A', labelEn: 'Verifiable (absent / behind / coverage)', done: absentNumOk && behindNumOk && covOk, anchor: 'acc_anchor_verify' },
+    { key: 'class', label: '\u06A9\u0644\u0627\u0633 \u062F\u06CC\u06A9\u06BE\u0646\u0627 + \u0645\u0639\u0627\u0626\u0646\u06C1 (3\u00D7Q&A)', labelEn: 'Class visit + inspection', done: classBlockOk, anchor: classAnchor },
+    { key: 'absent_act', label: '\u063A\u0627\u0626\u0628 \u0637\u0644\u0628\u0627 \u2014 \u0627\u0642\u062F\u0627\u0645', labelEn: 'Absent students follow-up', done: absentActOk, anchor: 'acc_anchor_absent_actions' },
+    { key: 'hifz', label: '\u062D\u0641\u0638 \u06CC\u0627\u062F / \u0642\u0627\u0631\u06CC', labelEn: 'Hifz recall', done: hifzOk, anchor: 'acc_anchor_hifz' },
+    { key: 'remarks', label: '\u0639\u0645\u0648\u0645\u06CC \u0645\u0644\u0627\u062D\u0638\u0627\u062A', labelEn: 'General remarks', done: remarksOk, anchor: 'acc_anchor_remarks' },
+    { key: 'chk_parents', label: '\u0686\u06CC\u06A9: \u063A\u0627\u0626\u0628 \u0637\u0644\u0628\u0627 \u2014 \u0648\u0627\u0644\u062F\u06CC\u0646 \u0633\u06D2 \u0631\u0627\u0628\u0637\u06C1', labelEn: 'Confirm: parent calls', done: ck('acc_chk_parents'), anchor: 'acc_anchor_chk_parents' },
+    { key: 'chk_hifz', label: '\u0686\u06CC\u06A9: \u062D\u0641\u0638 \u062E\u0648\u062F \u062F\u06CC\u06A9\u06BE\u06CC', labelEn: 'Confirm: hifz seen', done: ck('acc_chk_hifz'), anchor: 'acc_anchor_chk_hifz' }
+  ];
+  if (isThu) {
+    sections.push({
+      key: 'chk_thu',
+      label: '\u0686\u06CC\u06A9: \u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646',
+      labelEn: 'Confirm: Thursday tests',
+      done: ck('acc_chk_thu'),
+      anchor: 'acc_anchor_chk_thu'
+    });
+  }
+  const allDone = sections.every(s => s.done);
+  const firstIncomplete = sections.find(s => !s.done);
+  return { sections, allDone, firstIncompleteAnchor: firstIncomplete ? firstIncomplete.anchor : '' };
+};
+
+window.scrollToAccSection = function (anchorId) {
+  if (!anchorId) return;
+  const el = document.getElementById(anchorId);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.scrollToFirstIncompleteAccountability = function () {
+  if (typeof window.syncAbsentActionsToHidden === 'function') window.syncAbsentActionsToHidden();
+  if (typeof window.syncHifzNotesToHidden === 'function') window.syncHifzNotesToHidden();
+  const p = window.accountabilityProgressFromDom();
+  if (p.firstIncompleteAnchor) window.scrollToAccSection(p.firstIncompleteAnchor);
+};
+
+window.scheduleAccountabilityChecklistRefresh = function () {
+  clearTimeout(window._accChecklistRefreshT);
+  window._accChecklistRefreshT = setTimeout(function () {
+    window.refreshAccountabilityChecklist && window.refreshAccountabilityChecklist();
+  }, 200);
+};
+
+window.refreshAccountabilityChecklist = function () {
+  const banner = document.getElementById('acc_checklist_banner');
+  const rowsEl = document.getElementById('acc_checklist_rows');
+  const btn = document.getElementById('acc_checklist_scroll_btn');
+  if (!banner || !rowsEl) return;
+  if (typeof window.syncAbsentActionsToHidden === 'function') window.syncAbsentActionsToHidden();
+  if (typeof window.syncHifzNotesToHidden === 'function') window.syncHifzNotesToHidden();
+  const p = window.accountabilityProgressFromDom();
+  if (p.allDone) {
+    banner.style.background = '#34a85322';
+    banner.style.borderColor = '#34a85388';
+    banner.style.color = 'var(--gr)';
+    banner.textContent = '\u2713 \u0633\u0627\u0631\u06D2 \u0633\u06CC\u06A9\u0634\u0646 \u0645\u06A9\u0645\u0644 \u2014 Complete';
+    if (btn) btn.style.display = 'none';
+  } else {
+    banner.style.background = '#ea433522';
+    banner.style.borderColor = '#ea433588';
+    banner.style.color = '#fdba74';
+    banner.innerHTML = '\u26A0 \u0630\u06CC\u0644 \u0633\u06CC\u06A9\u0634\u0646 \u0645\u06A9\u0645\u0644 \u0646\u06C1\u06CC\u06BA \u2014 Please complete the highlighted rows below, or tap the button to scroll to the first incomplete part.';
+    if (btn) btn.style.display = 'block';
+  }
+  rowsEl.innerHTML = p.sections.map(s => {
+    const icon = s.done ? '\u2713' : '\u25CB';
+    const col = s.done ? 'var(--gr)' : 'var(--yl)';
+    const aid = String(s.anchor || '').replace(/'/g, '');
+    return `<button type="button" class="acc-checklist-row" data-acc-anchor="${escAttr(aid)}" style="display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--dk);border:1px solid ${s.done ? '#1f3d5e' : '#b45309'};border-radius:10px;cursor:pointer;font-family:inherit;color:var(--wh);text-align:right" onclick="window.scrollToAccSection('${aid}')">
+      <span style="font-size:16px;color:${col};flex-shrink:0">${icon}</span>
+      <span style="flex:1;font-size:12px;font-weight:700">${escHtml(s.label)}<br><span style="font-size:9px;color:#8a9ab5;font-weight:600">${escHtml(s.labelEn)}</span></span>
+    </button>`;
+  }).join('');
+};
+
+window.initAccountabilityChecklistDelegation = function () {
+  if (window._accChecklistAbort) window._accChecklistAbort.abort();
+  window._accChecklistAbort = new AbortController();
+  const app = document.getElementById('app');
+  if (!app) return;
+  const sig = { signal: window._accChecklistAbort.signal };
+  const onEv = function (ev) {
+    const t = ev.target;
+    if (!t || !t.id || !String(t.id).startsWith('acc_')) return;
+    window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
+  };
+  app.addEventListener('input', onEv, sig);
+  app.addEventListener('change', onEv, sig);
+};
+
+window.initAccountabilityChecklistUi = function () {
+  window.initAccountabilityChecklistDelegation && window.initAccountabilityChecklistDelegation();
+  window.refreshAccountabilityChecklist && window.refreshAccountabilityChecklist();
+};
 
 function render() {
   if (typeof window.syncAbsentActionsToHidden === 'function' && document.getElementById('acc_absent_actions_wrap')) {
@@ -1255,7 +1384,7 @@ function render() {
     html += '</div>';
 
     // ═══ Section B: Verifiable Fields ═══
-    html += '<div class="section"><h2>📊 قابل تصدیق — نظام جانچے گا</h2>';
+    html += '<div class="section" id="acc_anchor_verify" style="scroll-margin-top:72px"><h2>📊 قابل تصدیق — نظام جانچے گا</h2>';
     html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">آپ جو عدد لکھیں گے، نظام حقیقی ڈیٹا سے ملائے گا</div>';
 
     // Absent students count
@@ -1298,13 +1427,13 @@ function render() {
     html += '</div>';
 
     // ═══ Section C: Descriptive Reports ═══
-    html += '<div class="section"><h2>📝 تفصیلی رپورٹ — لازمی</h2>';
+    html += '<div class="section" id="acc_anchor_report" style="scroll-margin-top:72px"><h2>📝 تفصیلی رپورٹ — لازمی</h2>';
     html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">کم از کم 10 حروف — خالی چھوڑنے سے سکور کم ہوگا</div>';
 
     const savedVisited = (typeof rpt.class_visited === 'string' ? rpt.class_visited : '') || '';
     const savedClassMatch = savedVisited.match(/^\[([a-zA-Z0-9_]+)\]/);
     const savedClassSel = savedClassMatch ? savedClassMatch[1] : '';
-    html += `<div style="margin-bottom:14px">
+    html += `<div id="acc_anchor_class_visit" style="margin-bottom:14px;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <label style="font-size:12px;font-weight:700">📍 کون سی کلاس دیکھی؟</label>
         <span id="acc_class_visited_cnt" style="font-size:9px;color:#8a9ab5"></span>
@@ -1349,7 +1478,7 @@ function render() {
         </div>
       </div>`;
     }
-    html += `<div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1f3d5e">
+    html += `<div id="acc_anchor_inspection" style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1f3d5e;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">\uD83D\uDC41\uFE0F \u06A9\u0644\u0627\u0633 \u0645\u0639\u0627\u0626\u0646\u06C1 \u2014 \u062F\u0631\u062C\u06C1 \u0648\u0627\u0631 (\u06C1\u0631 \u062F\u0631\u062C\u06D2 \u0627\u0644\u06AF \u0646\u0648\u0679)</label>
         <span id="acc_class_obs_score_hint" style="font-size:9px;color:#8a9ab5"></span>
@@ -1412,7 +1541,7 @@ function render() {
         </div>`;
       });
     }
-    html += `<div style="margin-bottom:14px">
+    html += `<div id="acc_anchor_absent_actions" style="margin-bottom:14px;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">\uD83D\uDCDE \u063A\u0627\u0626\u0628 \u0637\u0644\u0628\u0627 \u2014 \u06A9\u06CC\u0627 \u0627\u0642\u062F\u0627\u0645\u061F</label>
         <span id="acc_absent_actions_hint" style="font-size:9px;color:${absentActOk?'var(--gr)':'#8a9ab5'}">${escHtml(absentActHint)}</span>
@@ -1463,7 +1592,7 @@ function render() {
         </div>`;
       }
     }
-    const hifzBlockHtml = `<div style="margin-bottom:14px">
+    const hifzBlockHtml = `<div id="acc_anchor_hifz" style="margin-bottom:14px;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">\uD83D\uDCD6 \u062D\u0641\u0638 \u0627\u067E\u0688\u06CC\u0679 \u2014 \u0642\u0627\u0631\u06CC \u0635\u0627\u062D\u0628\u0627\u0646 \u0633\u06D2</label>
         <span id="acc_hifz_actions_hint" style="font-size:9px;color:${hifzActOk?'var(--gr)':'#8a9ab5'}">${escHtml(hifzActHint)}</span>
@@ -1481,7 +1610,8 @@ function render() {
     descFields.forEach(f => {
       const val = rpt[f.field] || '';
       const ok = val.length >= f.min;
-      html += `<div style="margin-bottom:14px">
+      const wrapAttr = f.id === 'acc_remarks' ? 'id="acc_anchor_remarks" ' : '';
+      html += `<div ${wrapAttr} style="margin-bottom:14px${f.id === 'acc_remarks' ? ';scroll-margin-top:72px' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <label style="font-size:12px;font-weight:700">${f.label}</label>
           <span style="font-size:9px;color:${ok?'var(--gr)':'#8a9ab5'}">${val.length}/${f.min} ${ok?'✅':''}</span>
@@ -1491,16 +1621,20 @@ function render() {
     });
     html += '</div>';
 
-    // ═══ Section D: Checklist ═══
-    html += '<div class="section"><h2>✅ چیک لسٹ</h2>';
+    // ═══ Section D: Checklist (progress + confirmations) ═══
+    html += '<div class="section" id="acc_anchor_checklist" style="scroll-margin-top:72px"><h2>✅ چیک لسٹ — سیکشن مکملگی</h2>';
+    html += '<div id="acc_checklist_banner" style="margin-bottom:12px;padding:12px;border-radius:12px;font-size:12px;font-weight:700;text-align:center;line-height:1.5;background:var(--dk3);border:1px solid #1f3d5e;color:#8a9ab5">\u2026</div>';
+    html += '<div id="acc_checklist_rows" style="margin-bottom:12px"></div>';
+    html += '<button type="button" class="btn btn-gd btn-sm" id="acc_checklist_scroll_btn" style="width:100%;margin-bottom:12px;display:none;min-height:44px" onclick="window.scrollToFirstIncompleteAccountability()">\u067E\u06C1\u0644\u06CC \u0646\u0627\u0645\u06A9\u0645\u0644 \u062C\u06AF\u06C1 \u067E\u0631 \u0633\u06A9\u0631\u0648\u0644 \u06A9\u0631\u06CC\u06BA</button>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px">\u062A\u0635\u062F\u06CC\u0642\u0627\u062A \u2014 \u0631\u067E\u0648\u0631\u0679 \u062C\u0645\u0639 \u06A9\u0631\u0627\u0646\u06D2 \u0633\u06D2 \u067E\u06C1\u0644\u06D2 \u062F\u0631\u0633\u062A \u0633\u06CC\u06A9\u0634\u0646 \u0645\u06A9\u0645\u0644 \u06A9\u0631\u06CC\u06BA\u06D4</div>';
     const checks = [
-      {id:'acc_chk_parents', label:'📞 غائب طلبا کے والدین کو فون کیا', field:'called_parents'},
-      {id:'acc_chk_hifz', label:'📖 حفظ پیشرفت خود دیکھی', field:'checked_hifz'},
+      {id:'acc_chk_parents', label:'📞 غائب طلبا کے والدین کو فون کیا', field:'called_parents', anchor:'acc_anchor_chk_parents'},
+      {id:'acc_chk_hifz', label:'📖 حفظ پیشرفت خود دیکھی', field:'checked_hifz', anchor:'acc_anchor_chk_hifz'},
     ];
-    if (isThursday) checks.push({id:'acc_chk_thu', label:'✍️ جمعرات امتحانی نتائج دیکھے', field:'reviewed_thursday'});
+    if (isThursday) checks.push({id:'acc_chk_thu', label:'✍️ جمعرات امتحانی نتائج دیکھے', field:'reviewed_thursday', anchor:'acc_anchor_chk_thu'});
     checks.forEach(c => {
       const ck = rpt[c.field] ? 'checked' : '';
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px;min-height:48px;cursor:pointer" onclick="document.getElementById('${c.id}').click()">
+      html += `<div id="${c.anchor}" style="scroll-margin-top:72px;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px;min-height:48px;cursor:pointer" onclick="document.getElementById('${c.id}').click()">
         <input type="checkbox" id="${c.id}" ${ck} style="width:22px;height:22px;accent-color:var(--gr)" onclick="event.stopPropagation()">
         <label style="font-size:12px;font-weight:700;cursor:pointer" for="${c.id}">${c.label}</label>
       </div>`;
@@ -1818,6 +1952,7 @@ function render() {
     } else {
       initAdminInspectClassFromSaved();
     }
+    window.initAccountabilityChecklistUi && window.initAccountabilityChecklistUi();
   }
   if (activeTab === 'sAttend' && sAttendUi.search.length) {
     const inp = document.getElementById('sSearch');
@@ -1902,6 +2037,7 @@ window.updateAccClassVisitedCounter = function () {
   if (!ta || !cnt) return;
   const n = (ta.value || '').length;
   cnt.textContent = n + '/3' + (n >= 3 ? ' \u2713' : '');
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
 window.initAdminInspectClassFromSaved = function () {
@@ -1937,6 +2073,7 @@ window.refreshVisitsListUI = function () {
       hint.textContent = okN + '/' + nonLeg.length + ' \u062F\u0631\u062C\u06D2' + (classObsScoringOk(store.value) ? ' \u2713' : ' (\u06AF\u0631\u062F: 3\u00D7Q&A \u06CC\u0627 15+ \u062D\u0631\u0641 \u0642\u062F\u06CC\u0645)');
     }
   }
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
 window.saveClassVisitObservation = function () {
@@ -1958,6 +2095,7 @@ window.saveClassVisitObservation = function () {
   store.value = serializeVisitObservations(visits);
   toast('\u2713 \u0645\u062D\u0641\u0648\u0638');
   window.refreshVisitsListUI();
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
 window.editClassVisitObs = function (classId) {
@@ -1971,6 +2109,7 @@ window.editClassVisitObs = function (classId) {
   }
   sel.value = classId;
   window.onInspectClassChange({ preserveTextarea: true });
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
 window.removeClassVisitObs = function (classId) {
@@ -1986,6 +2125,7 @@ window.removeClassVisitObs = function (classId) {
   const sel = document.getElementById('acc_inspect_class_sel');
   if (sel && classId && sel.value === classId) window.fillAccVisitQaForm([], '');
   toast('\u062D\u0630\u0641');
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
 /** Load Q&A form from hidden store for this class; optional slot teacher prefills row 1 when new. */
@@ -1995,6 +2135,7 @@ function loadAccVisitFormForClass(classId, slotAsg) {
     window.fillAccVisitQaForm([], '');
     const narEl = document.getElementById('acc_visit_narrative');
     if (narEl) narEl.value = '';
+    if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
     return;
   }
   const vs = store ? parseVisitObservations(store.value).filter(v => !v.legacy) : [];
@@ -2015,6 +2156,7 @@ function loadAccVisitFormForClass(classId, slotAsg) {
       if (id1) id1.value = slotAsg.teacher_id;
     }
   }
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 }
 
 window.onInspectClassChange = async function (opts) {

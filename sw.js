@@ -1,7 +1,20 @@
-const CACHE_NAME = 'iri-app-v8';
+const CACHE_NAME = 'iri-app-v9';
+
+/** Offline shell: split modules from index.html (bump CACHE_NAME when this list changes). */
+const PRECACHE_URLS = [
+  './constants.js',
+  './helpers.js',
+  './components.js',
+  './storage.js',
+  './modern.js',
+];
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(PRECACHE_URLS).catch(() => {}))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', event => {
