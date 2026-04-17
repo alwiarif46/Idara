@@ -158,6 +158,10 @@ function App() {
   const [rptDateFrom, setRptDateFrom] = useState('');
   const [rptDateTo, setRptDateTo] = useState('');
   const [rptFilter, setRptFilter] = useState('');
+  const [rptTeacher, setRptTeacher] = useState('');
+  const [rptClass, setRptClass] = useState('');
+  const [rptStatus, setRptStatus] = useState('');
+  const [rptSlot, setRptSlot] = useState('');
   const saveTimer = useRef(null);
   const pendingStudentDelRef = useRef({ timerId: null, student: null });
   const [studentDelUndo, setStudentDelUndo] = useState(null);
@@ -1749,7 +1753,7 @@ function App() {
     k: 'sync'
   }, {
     ic: '📥',
-    l: 'رپورٹس / ایکسپورٹ',
+    l: 'رپورٹس — مشاہدہ و ایکسپورٹ',
     k: 'reports'
   }, {
     ic: '🌐',
@@ -4932,9 +4936,35 @@ tab === 'thu' && isEx && React.createElement('div', null,
     setRptLoading(false);
   };
 
-  const filtered = rptData && rptFilter
-    ? rptData.filter(row => JSON.stringify(row).toLowerCase().includes(rptFilter.toLowerCase()))
-    : rptData;
+  var filtered = rptData ? rptData.slice() : null;
+  if (filtered) {
+    if (rptTeacher) {
+      filtered = filtered.filter(function (row) {
+        return row.teacher_id === rptTeacher || row.examiner_id === rptTeacher || row.qari_id === rptTeacher || row.marked_by === rptTeacher;
+      });
+    }
+    if (rptClass) {
+      filtered = filtered.filter(function (row) {
+        return (row['class'] || '') === rptClass;
+      });
+    }
+    if (rptStatus) {
+      filtered = filtered.filter(function (row) {
+        return row.status === rptStatus || row.complete === rptStatus;
+      });
+    }
+    if (rptSlot) {
+      filtered = filtered.filter(function (row) {
+        return row.slot === rptSlot;
+      });
+    }
+    if (rptFilter) {
+      var q = rptFilter.toLowerCase();
+      filtered = filtered.filter(function (row) {
+        return JSON.stringify(row).toLowerCase().includes(q);
+      });
+    }
+  }
 
   const exportCSV = () => {
     if (!filtered || !filtered.length) { flash('⚠️ خالی'); return; }
@@ -4951,11 +4981,11 @@ tab === 'thu' && isEx && React.createElement('div', null,
   };
 
   return React.createElement('div', null,
-    React.createElement(Ttl, {icon:'📥', text:'رپورٹس / ایکسپورٹ'}),
+    React.createElement(Ttl, {icon:'📥', text:'رپورٹس — مشاہدہ و ایکسپورٹ'}),
 
     // Table selector
     React.createElement('div', {style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}},
-      tables.map(t => React.createElement('div', {key:t.id, onClick:()=>{setRptType(t.id);setRptData(null);setRptFilter('');},
+      tables.map(t => React.createElement('div', {key:t.id, onClick:function(){setRptType(t.id);setRptData(null);setRptFilter('');setRptTeacher('');setRptClass('');setRptStatus('');setRptSlot('');},
         style:{padding:'6px 12px',borderRadius:10,fontSize:11,fontWeight:700,cursor:'pointer',
           background:rptType===t.id?'#1a2780':'#f0f0f0',color:rptType===t.id?'#fff':'#333'}}, t.l))
     ),
@@ -4970,6 +5000,72 @@ tab === 'thu' && isEx && React.createElement('div', null,
       React.createElement(Btn, {small:true,color:'#1a2780',onClick:fetchReport}, rptLoading ? '⏳' : '🔍 لوڈ')
     ),
 
+    // Contextual filters based on report type
+    React.createElement('div', {style:{marginBottom:10}},
+      (rptType === 'student_attendance' || rptType === 'daily_reports' || rptType === 'thursday_tests') &&
+        React.createElement(Sel, {value:rptTeacher, onChange:function(v){setRptTeacher(v);}, style:{marginBottom:6}},
+          React.createElement('option', {value:''}, '— تمام اساتذہ —'),
+          teachers.map(function(t){return React.createElement('option', {key:t.id, value:t.id}, t.n);})
+        ),
+      (rptType === 'student_attendance' || rptType === 'daily_reports' || rptType === 'thursday_tests') &&
+        React.createElement('div', {style:{display:'flex',gap:3,flexWrap:'wrap',marginBottom:6}},
+          React.createElement('button', {onClick:function(){setRptClass('');},
+            style:{padding:'4px 10px',borderRadius:14,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+              background:!rptClass?ST.dk:'#e5e0d5',color:!rptClass?ST.gd:'#555'}}, 'سب'),
+          CL.map(function(cl){return React.createElement('button', {key:cl.id, onClick:function(){setRptClass(cl.id);},
+            style:{padding:'4px 10px',borderRadius:14,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+              background:rptClass===cl.id?cl.a:'#e5e0d5',color:rptClass===cl.id?'#fff':cl.a}}, cl.n);})
+        ),
+      (rptType === 'student_attendance' || rptType === 'daily_attendance') &&
+        React.createElement('div', {style:{display:'flex',gap:4,marginBottom:6}},
+          [{v:'',l:'سب',c:'#666'},{v:'P',l:'حاضر',c:'#10b981'},{v:'A',l:'غائب',c:'#ef4444'},{v:'L',l:'رخصت',c:'#3b82f6'}].map(function(s){
+            return React.createElement('button', {key:s.v||'all', onClick:function(){setRptStatus(s.v);},
+              style:{padding:'5px 12px',borderRadius:14,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+                background:rptStatus===s.v?(s.c+'22'):('#e5e0d5'),color:rptStatus===s.v?s.c:'#555'}}, s.l);
+          })
+        ),
+      rptType === 'teacher_attendance' &&
+        React.createElement('div', null,
+          React.createElement(Sel, {value:rptTeacher, onChange:function(v){setRptTeacher(v);}, style:{marginBottom:6}},
+            React.createElement('option', {value:''}, '— تمام اساتذہ —'),
+            teachers.map(function(t){return React.createElement('option', {key:t.id, value:t.id}, t.n);})
+          ),
+          React.createElement('div', {style:{display:'flex',gap:4,marginBottom:6}},
+            [{v:'',l:'سب',c:'#666'},{v:'present',l:'حاضر',c:'#10b981'},{v:'late',l:'تاخیر',c:'#f59e0b'},{v:'absent',l:'غائب',c:'#ef4444'},{v:'leave',l:'رخصت',c:'#3b82f6'}].map(function(s){
+              return React.createElement('button', {key:s.v||'all', onClick:function(){setRptStatus(s.v);},
+                style:{padding:'5px 12px',borderRadius:14,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+                  background:rptStatus===s.v?(s.c+'22'):('#e5e0d5'),color:rptStatus===s.v?s.c:'#555'}}, s.l);
+            })
+          )
+        ),
+      rptType === 'daily_attendance' &&
+        React.createElement('div', {style:{display:'flex',gap:4,marginBottom:6,overflowX:'auto',flexWrap:'nowrap',paddingBottom:4}},
+          [{v:'',l:'سب'}].concat([
+            {v:'fajr',l:'فجر'},{v:'salam',l:'سلام'},{v:'zuhr',l:'ظہر'},
+            {v:'asr',l:'عصر'},{v:'maghrib',l:'مغرب'},{v:'isha',l:'عشاء'}
+          ]).map(function(s){
+            return React.createElement('button', {key:s.v||'all', onClick:function(){setRptSlot(s.v);},
+              style:{padding:'5px 12px',borderRadius:14,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',flexShrink:0,
+                background:rptSlot===s.v?ST.dk:'#e5e0d5',color:rptSlot===s.v?ST.gd:'#555'}}, s.l);
+          })
+        ),
+      rptType === 'daily_reports' &&
+        React.createElement('div', {style:{display:'flex',gap:4,marginBottom:6}},
+          [{v:'',l:'سب',c:'#666'},{v:'\u06C1\u0627\u06BA',l:'\u06C1\u0627\u06BA',c:'#10b981'},{v:'\u062C\u0632\u0648\u06CC',l:'\u062C\u0632\u0648\u06CC',c:'#f59e0b'},{v:'\u0646\u06C1\u06CC\u06BA',l:'\u0646\u06C1\u06CC\u06BA',c:'#ef4444'}].map(function(s){
+            return React.createElement('button', {key:s.v||'all', onClick:function(){setRptStatus(s.v);},
+              style:{padding:'5px 12px',borderRadius:14,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',
+                background:rptStatus===s.v?(s.c+'22'):('#e5e0d5'),color:rptStatus===s.v?s.c:'#555'}}, s.l);
+          })
+        ),
+      rptType === 'hifz_progress' &&
+        React.createElement(Sel, {value:rptTeacher, onChange:function(v){setRptTeacher(v);}, style:{marginBottom:6}},
+          React.createElement('option', {value:''}, '— تمام قاری —'),
+          teachers.filter(function(t){return t.role==='qari';}).map(function(t){
+            return React.createElement('option', {key:t.id, value:t.id}, t.n);
+          })
+        )
+    ),
+
     // Search
     rptData && React.createElement('input', {
       value:rptFilter, onChange:e=>setRptFilter(e.target.value),
@@ -4980,8 +5076,62 @@ tab === 'thu' && isEx && React.createElement('div', null,
     // Results count + export
     rptData && React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
       React.createElement('span', {style:{fontSize:11,color:'#666'}},
-        (filtered?filtered.length:0) + ' نتائج' + (rptFilter ? ' (فلٹر شدہ)' : '')),
+        (filtered?filtered.length:0) + ' نتائج' + ((rptFilter || rptTeacher || rptClass || rptStatus || rptSlot) ? ' (فلٹر شدہ)' : '')),
       React.createElement(Btn, {small:true,color:'#10b981',onClick:exportCSV}, '📥 CSV ڈاؤنلوڈ')
+    ),
+
+    // Summary stats
+    filtered && filtered.length > 0 && React.createElement('div', {style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10,padding:'8px 12px',background:'#f5f0e8',borderRadius:10}},
+      (rptType === 'student_attendance' || rptType === 'daily_attendance') && (function(){
+        var pC = filtered.filter(function(r){return r.status==='P';}).length;
+        var aC = filtered.filter(function(r){return r.status==='A';}).length;
+        var lC = filtered.filter(function(r){return r.status==='L';}).length;
+        return React.createElement(React.Fragment, null,
+          React.createElement('span', {key:'p',style:{fontSize:10,fontWeight:700,color:'#10b981'}}, '\u2705 \u062D\u0627\u0636\u0631: '+pC),
+          React.createElement('span', {key:'a',style:{fontSize:10,fontWeight:700,color:'#ef4444'}}, '\u274C \u063A\u0627\u0626\u0628: '+aC),
+          React.createElement('span', {key:'l',style:{fontSize:10,fontWeight:700,color:'#3b82f6'}}, '\uD83D\uDCDD \u0631\u062E\u0635\u062A: '+lC),
+          React.createElement('span', {key:'pct',style:{fontSize:10,fontWeight:700,color:'#333'}}, '\uD83D\uDCCA \u062D\u0627\u0636\u0631\u06CC: '+((pC+aC+lC)>0?Math.round(pC/(pC+aC+lC)*100):0)+'%')
+        );
+      })(),
+      rptType === 'teacher_attendance' && (function(){
+        var pr = filtered.filter(function(r){return r.status==='present';}).length;
+        var lt = filtered.filter(function(r){return r.status==='late';}).length;
+        var ab = filtered.filter(function(r){return r.status==='absent';}).length;
+        var lv = filtered.filter(function(r){return r.status==='leave';}).length;
+        return React.createElement(React.Fragment, null,
+          React.createElement('span', {key:'pr',style:{fontSize:10,fontWeight:700,color:'#10b981'}}, '\u062D\u0627\u0636\u0631: '+pr),
+          React.createElement('span', {key:'lt',style:{fontSize:10,fontWeight:700,color:'#f59e0b'}}, '\u062A\u0627\u062E\u06CC\u0631: '+lt),
+          React.createElement('span', {key:'ab',style:{fontSize:10,fontWeight:700,color:'#ef4444'}}, '\u063A\u0627\u0626\u0628: '+ab),
+          React.createElement('span', {key:'lv',style:{fontSize:10,fontWeight:700,color:'#3b82f6'}}, '\u0631\u062E\u0635\u062A: '+lv)
+        );
+      })(),
+      rptType === 'daily_reports' && (function(){
+        var yes = filtered.filter(function(r){return r.complete==='\u06C1\u0627\u06BA';}).length;
+        var partial = filtered.filter(function(r){return r.complete==='\u062C\u0632\u0648\u06CC';}).length;
+        var no = filtered.filter(function(r){return r.complete==='\u0646\u06C1\u06CC\u06BA';}).length;
+        return React.createElement(React.Fragment, null,
+          React.createElement('span', {key:'y',style:{fontSize:10,fontWeight:700,color:'#10b981'}}, '\u0645\u06A9\u0645\u0644: '+yes),
+          React.createElement('span', {key:'p',style:{fontSize:10,fontWeight:700,color:'#f59e0b'}}, '\u062C\u0632\u0648\u06CC: '+partial),
+          React.createElement('span', {key:'n',style:{fontSize:10,fontWeight:700,color:'#ef4444'}}, '\u0646\u06C1\u06CC\u06BA: '+no)
+        );
+      })(),
+      rptType === 'thursday_tests' && (function(){
+        var avgs = filtered.map(function(r){return r.average||0;}).filter(function(v){return v>0;});
+        var overall = avgs.length ? Math.round(avgs.reduce(function(a,b){return a+b;},0)/avgs.length) : 0;
+        var totalExam = filtered.length;
+        return React.createElement(React.Fragment, null,
+          React.createElement('span', {key:'t',style:{fontSize:10,fontWeight:700,color:'#333'}}, '\u0627\u0645\u062A\u062D\u0627\u0646\u0627\u062A: '+totalExam),
+          React.createElement('span', {key:'a',style:{fontSize:10,fontWeight:700,color:overall>=60?'#10b981':'#ef4444'}}, '\u0627\u0648\u0633\u0637: '+overall+'%')
+        );
+      })(),
+      rptType === 'hifz_progress' && (function(){
+        var entries = filtered.length;
+        var maxParas = filtered.reduce(function(m,r){return Math.max(m,r.paras||0);},0);
+        return React.createElement(React.Fragment, null,
+          React.createElement('span', {key:'e',style:{fontSize:10,fontWeight:700,color:'#333'}}, '\u0627\u0646\u062F\u0631\u0627\u062C\u0627\u062A: '+entries),
+          React.createElement('span', {key:'m',style:{fontSize:10,fontWeight:700,color:'#059669'}}, '\u0632\u06CC\u0627\u062F\u06C1 \u067E\u0627\u0631\u06D2: '+maxParas)
+        );
+      })()
     ),
 
     // Data table

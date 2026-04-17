@@ -127,6 +127,15 @@ const PRINCIPAL_PHONE = '';  // Set principal phone number here
 const CLASS_UR = {oola:'اولیٰ',sania:'ثانیہ',salisa:'ثالثہ',rabia:'رابعہ',khamisa:'خامسہ',fazilat:'فضیلت',hifz:'حفظ'};
 /** Grade order for معائنہ cards (matches درجہ dropdown — not save-time order). */
 const CLASS_ORDER = Object.keys(CLASS_UR);
+const exports_list = [
+  {id:'student_attendance',l:'📋 مضمون وار حاضری',cols:'date,teacher_name,subject_name,class,student_id,status,created_at'},
+  {id:'daily_attendance',l:'🕐 یومیہ حاضری',cols:'date,slot,marked_by_name,student_id,status,created_at'},
+  {id:'teacher_attendance',l:'👨‍🏫 اساتذہ حاضری',cols:'date,teacher_id,teacher_name,status,approved,approved_by,created_at'},
+  {id:'daily_reports',l:'📝 رپورٹس',cols:'date,teacher_name,subject_name,class,target_page,actual_page,complete,reason,created_at'},
+  {id:'thursday_tests',l:'✍️ امتحانات',cols:'date,examiner_name,subject_name,class,excellent,good,weak,fail,average,created_at'},
+  {id:'hifz_progress',l:'📖 حفظ',cols:'date,student_name,paras,soorah,aayat,qari_id,created_at'},
+  {id:'students',l:'👥 طلبا فہرست',cols:'id,name,parent,phone,residence,class,qari_id,status,hifz_paras'},
+];
 const TODAY = new Date().toISOString().split('T')[0];
 
 // ═══════════════════════════════════════════
@@ -592,6 +601,7 @@ let activeTab = 'overview';
 const TAB_ACCOUNTABILITY = 'admin';
 /** Student attendance tab filters — `var` so inline onchange/oninput can see it */
 var sAttendUi = { class: 'all', status: 'all', search: '' };
+var exportView = { table: null, data: null, loading: false, filter: { teacher: '', cls: '', status: '', slot: '', search: '' } };
 
 function escAttr(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -1918,30 +1928,203 @@ function render() {
   // TAB: EXPORT
   // ═══════════════════════════════════════════
   if (activeTab === 'export') {
-    html += '<div class="section"><h2>📥 ڈیٹا ایکسپورٹ</h2>';
+    var expFromEl = document.getElementById('expFrom');
+    var expToEl = document.getElementById('expTo');
+    var expFromVal = (expFromEl && expFromEl.value) ? expFromEl.value : TODAY;
+    var expToVal = (expToEl && expToEl.value) ? expToEl.value : TODAY;
+    html += '<div class="section"><h2>📥 ڈیٹا — مشاہدہ و ایکسپورٹ</h2>';
     html += '<div class="filter-bar">';
-    html += '<input type="date" id="expFrom" value="'+TODAY+'">';
+    html += '<input type="date" id="expFrom" value="'+escAttr(expFromVal)+'">';
     html += '<span style="color:#8a9ab5">→</span>';
-    html += '<input type="date" id="expTo" value="'+TODAY+'">';
+    html += '<input type="date" id="expTo" value="'+escAttr(expToVal)+'">';
     html += '</div>';
-    const exports = [
-      {id:'student_attendance',l:'📋 مضمون وار حاضری',cols:'date,teacher_name,subject_name,class,student_id,status,created_at'},
-      {id:'daily_attendance',l:'🕐 یومیہ حاضری',cols:'date,slot,marked_by_name,student_id,status,created_at'},
-      {id:'teacher_attendance',l:'👨‍🏫 اساتذہ حاضری',cols:'date,teacher_id,teacher_name,status,approved,approved_by,created_at'},
-      {id:'daily_reports',l:'📝 رپورٹس',cols:'date,teacher_name,subject_name,class,target_page,actual_page,complete,reason,created_at'},
-      {id:'thursday_tests',l:'✍️ امتحانات',cols:'date,examiner_name,subject_name,class,excellent,good,weak,fail,average,created_at'},
-      {id:'hifz_progress',l:'📖 حفظ',cols:'date,student_name,paras,soorah,aayat,qari_id,created_at'},
-      {id:'students',l:'👥 طلبا فہرست',cols:'id,name,parent,phone,residence,class,qari_id,status,hifz_paras'},
-    ];
+
     html += '<div class="grid">';
-    exports.forEach(e => {
-      html += `<div class="card" style="cursor:pointer" onclick="exportCSV('${e.id}','${e.cols}')">
-        <div style="font-size:24px;margin-bottom:6px">📥</div>
-        <div style="font-weight:700;font-size:12px">${e.l}</div>
-        <div style="font-size:9px;color:#8a9ab5;margin-top:4px">CSV ڈاؤنلوڈ</div>
-      </div>`;
+    exports_list.forEach(function(e) {
+      var isActive = exportView.table === e.id;
+      html += '<div class="card" style="' + (isActive ? 'border:2px solid var(--gd)' : '') + '">';
+      html += '<div style="font-size:20px;margin-bottom:4px">' + escHtml(Array.from(e.l)[0] || '') + '</div>';
+      html += '<div style="font-weight:700;font-size:11px;margin-bottom:8px">' + escHtml(Array.from(e.l).slice(1).join('')) + '</div>';
+      html += '<div style="display:flex;gap:4px">';
+      html += '<button class="btn btn-gd btn-sm" style="flex:1;font-size:9px" onclick="fetchExportView(\'' + e.id + '\',\'' + e.cols + '\')">👁 مشاہدہ</button>';
+      html += '<button class="btn btn-sm" style="flex:1;font-size:9px;background:var(--dk3);color:var(--wh)" onclick="exportCSV(\'' + e.id + '\',\'' + e.cols + '\')">📥 CSV</button>';
+      html += '</div></div>';
     });
-    html += '</div></div>';
+    html += '</div>';
+
+    if (exportView.loading) {
+      html += '<div class="section"><div class="loading">⏳ لوڈ ہو رہا ہے...</div></div>';
+    } else if (exportView.table && exportView.data) {
+      var vt = exportView.table;
+      var vd = exportView.data;
+      var exp = exports_list.find(function(e) { return e.id === vt; });
+      var expLabel = exp ? exp.l : vt;
+
+      html += '<div class="section">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
+      html += '<h2 style="margin:0">' + escHtml(expLabel) + ' — ' + vd.length + ' سطریں</h2>';
+      html += '<div style="display:flex;gap:6px">';
+      html += '<button class="btn btn-gd btn-sm" onclick="exportFilteredCSV()">📥 فلٹر شدہ CSV</button>';
+      html += '<button class="btn btn-rd btn-sm" onclick="clearExportView()">✗ بند</button>';
+      html += '</div></div>';
+
+      var f = exportView.filter;
+
+      if (['student_attendance','daily_reports','thursday_tests','teacher_attendance','hifz_progress'].indexOf(vt) >= 0) {
+        var tLabel = vt === 'hifz_progress' ? 'تمام قاری' : 'تمام اساتذہ';
+        var qOnly = (DATA.teachers || []).filter(function(t) { return t.role === 'qari'; });
+        var tList = vt === 'hifz_progress' ? (qOnly.length ? qOnly : (DATA.teachers || [])) : (DATA.teachers || []);
+        html += '<div class="filter-bar" style="margin-bottom:8px">';
+        html += '<select onchange="setExpFilter(\'teacher\',this.value)" style="flex:1">';
+        html += '<option value="">— ' + tLabel + ' —</option>';
+        tList.forEach(function(t) {
+          html += '<option value="' + escAttr(t.id) + '"' + (f.teacher === t.id ? ' selected' : '') + '>' + escHtml(t.name || t.id) + '</option>';
+        });
+        html += '</select></div>';
+      }
+
+      if (['student_attendance','daily_reports','thursday_tests','students'].indexOf(vt) >= 0) {
+        html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
+        html += '<button class="btn btn-sm" style="font-size:9px;' + (!f.cls ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'\')">سب</button>';
+        CLASS_ORDER.forEach(function(cid) {
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.cls === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'' + cid + '\')">' + (CLASS_UR[cid] || cid) + '</button>';
+        });
+        html += '</div>';
+      }
+
+      if (['student_attendance','daily_attendance'].indexOf(vt) >= 0) {
+        html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
+        [{v:'',l:'سب',c:'#8a9ab5'},{v:'P',l:'حاضر',c:'var(--gr)'},{v:'A',l:'غائب',c:'var(--rd)'},{v:'L',l:'رخصت',c:'var(--bl)'}].forEach(function(s) {
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
+        });
+        html += '</div>';
+      }
+
+      if (vt === 'teacher_attendance') {
+        html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
+        [{v:'',l:'سب',c:'#8a9ab5'},{v:'present',l:'حاضر',c:'var(--gr)'},{v:'late',l:'تاخیر',c:'var(--yl)'},{v:'absent',l:'غائب',c:'var(--rd)'},{v:'leave',l:'رخصت',c:'var(--bl)'}].forEach(function(s) {
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
+        });
+        html += '</div>';
+      }
+
+      if (vt === 'daily_reports') {
+        html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
+        [{v:'',l:'سب',c:'#8a9ab5'},{v:'ہاں',l:'مکمل',c:'var(--gr)'},{v:'جزوی',l:'جزوی',c:'var(--yl)'},{v:'نہیں',l:'نہیں',c:'var(--rd)'}].forEach(function(s) {
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
+        });
+        html += '</div>';
+      }
+
+      if (vt === 'daily_attendance') {
+        html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
+        [{v:'',l:'سب'},{v:'fajr',l:'فجر'},{v:'salam',l:'سلام'},{v:'zuhr',l:'ظہر'},{v:'asr',l:'عصر'},{v:'maghrib',l:'مغرب'},{v:'isha',l:'عشاء'}].forEach(function(s) {
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.slot === s.v ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'slot\',\'' + s.v + '\')">' + s.l + '</button>';
+        });
+        html += '</div>';
+      }
+
+      if (vt === 'students') {
+        html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
+        [{v:'',l:'سب',c:'#8a9ab5'},{v:'active',l:'فعال',c:'var(--gr)'},{v:'left',l:'رخصت',c:'var(--rd)'}].forEach(function(s) {
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
+        });
+        html += '</div>';
+      }
+
+      html += '<input type="search" id="expViewSearch" class="search" placeholder="🔍 تلاش..." value="' + escAttr(f.search) + '" oninput="setExpFilter(\'search\',this.value)" style="margin-bottom:10px">';
+
+      var filtered = applyExportFilters(vd, vt);
+
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:var(--dk);border-radius:10px;font-size:10px;font-weight:700">';
+      if (['student_attendance','daily_attendance'].indexOf(vt) >= 0) {
+        var pC = filtered.filter(function(r){return r.status==='P';}).length;
+        var aC = filtered.filter(function(r){return r.status==='A';}).length;
+        var lC = filtered.filter(function(r){return r.status==='L';}).length;
+        var tot = pC+aC+lC;
+        html += '<span style="color:var(--gr)">حاضر: '+pC+'</span>';
+        html += '<span style="color:var(--rd)">غائب: '+aC+'</span>';
+        html += '<span style="color:var(--bl)">رخصت: '+lC+'</span>';
+        html += '<span style="color:var(--gd)">حاضری: '+(tot>0?Math.round(pC/tot*100):0)+'%</span>';
+      }
+      if (vt === 'teacher_attendance') {
+        var pr=filtered.filter(function(r){return r.status==='present';}).length;
+        var lt=filtered.filter(function(r){return r.status==='late';}).length;
+        var ab=filtered.filter(function(r){return r.status==='absent';}).length;
+        var lv=filtered.filter(function(r){return r.status==='leave';}).length;
+        html += '<span style="color:var(--gr)">حاضر: '+pr+'</span>';
+        html += '<span style="color:var(--yl)">تاخیر: '+lt+'</span>';
+        html += '<span style="color:var(--rd)">غائب: '+ab+'</span>';
+        html += '<span style="color:var(--bl)">رخصت: '+lv+'</span>';
+      }
+      if (vt === 'daily_reports') {
+        var yes=filtered.filter(function(r){return r.complete==='ہاں';}).length;
+        var par=filtered.filter(function(r){return r.complete==='جزوی';}).length;
+        var no=filtered.filter(function(r){return r.complete==='نہیں';}).length;
+        html += '<span style="color:var(--gr)">مکمل: '+yes+'</span>';
+        html += '<span style="color:var(--yl)">جزوی: '+par+'</span>';
+        html += '<span style="color:var(--rd)">نہیں: '+no+'</span>';
+      }
+      if (vt === 'thursday_tests') {
+        var avgs=filtered.map(function(r){return r.average||0;}).filter(function(v){return v>0;});
+        var ov=avgs.length?Math.round(avgs.reduce(function(a,b){return a+b;},0)/avgs.length):0;
+        html += '<span style="color:var(--gd)">امتحانات: '+filtered.length+'</span>';
+        html += '<span style="color:'+(ov>=60?'var(--gr)':'var(--rd)')+'">اوسط: '+ov+'%</span>';
+      }
+      if (vt === 'hifz_progress') {
+        var mx=filtered.reduce(function(m,r){return Math.max(m,r.paras||0);},0);
+        html += '<span style="color:var(--gd)">اندراجات: '+filtered.length+'</span>';
+        html += '<span style="color:var(--gr)">زیادہ پارے: '+mx+'</span>';
+      }
+      if (vt === 'students') {
+        var act=filtered.filter(function(r){return r.status==='active';}).length;
+        html += '<span style="color:var(--gr)">فعال: '+act+'</span>';
+        html += '<span style="color:var(--gd)">کل: '+filtered.length+'</span>';
+      }
+      html += '<span style="color:#8a9ab5">دکھایا: '+filtered.length+'/'+vd.length+'</span>';
+      html += '</div>';
+
+      if (!filtered.length) {
+        html += '<div style="text-align:center;padding:30px;color:#8a9ab5;font-size:12px">اس فلٹر کے لیے کوئی اندراج نہیں</div>';
+      } else {
+        var cols = exp ? exp.cols.split(',') : Object.keys(filtered[0]);
+        html += '<div class="scroll-table" style="max-height:500px"><table class="tbl"><thead><tr>';
+        cols.forEach(function(c) { html += '<th>' + escHtml(c) + '</th>'; });
+        html += '</tr></thead><tbody>';
+        filtered.slice(0, 200).forEach(function(r) {
+          html += '<tr>';
+          cols.forEach(function(c) {
+            var val = r[c] != null ? String(r[c]) : '';
+            var style = '';
+            if (c === 'status') {
+              if (val === 'P' || val === 'present') style = 'color:var(--gr);font-weight:700';
+              else if (val === 'A' || val === 'absent') style = 'color:var(--rd);font-weight:700';
+              else if (val === 'L' || val === 'leave') style = 'color:var(--bl);font-weight:700';
+              else if (val === 'late') style = 'color:var(--yl);font-weight:700';
+            }
+            if (c === 'complete') {
+              if (val === 'ہاں') style = 'color:var(--gr);font-weight:700';
+              else if (val === 'جزوی') style = 'color:var(--yl);font-weight:700';
+              else if (val === 'نہیں') style = 'color:var(--rd);font-weight:700';
+            }
+            if (c === 'class' && CLASS_UR[val]) {
+              var badge = '<span class="class-badge ' + escAttr(val) + '">' + escHtml(CLASS_UR[val]) + '</span>';
+              html += '<td>' + badge + '</td>';
+              return;
+            }
+            html += '<td style="' + style + '">' + escHtml(val) + '</td>';
+          });
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        if (filtered.length > 200) {
+          html += '<div style="text-align:center;padding:10px;color:#8a9ab5;font-size:10px">صرف پہلی 200 سطریں دکھائی گئیں — مکمل ڈیٹا CSV سے حاصل کریں</div>';
+        }
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
   }
 
   document.getElementById('app').innerHTML = html;
@@ -1960,6 +2143,14 @@ function render() {
       inp.focus();
       const L = sAttendUi.search.length;
       try { inp.setSelectionRange(L, L); } catch (e) {}
+    }
+  }
+  if (activeTab === 'export' && exportView.table && exportView.filter.search) {
+    var expSearch = document.getElementById('expViewSearch');
+    if (expSearch) {
+      expSearch.focus();
+      var L2 = exportView.filter.search.length;
+      try { expSearch.setSelectionRange(L2, L2); } catch (e2) {}
     }
   }
 }
@@ -2026,6 +2217,96 @@ async function exportCSV(table, colStr) {
     a.click(); URL.revokeObjectURL(url);
     toast('✅ ڈاؤنلوڈ — '+data.length+' سطریں');
   } catch(e) { toast('❌ '+e.message); }
+}
+
+async function fetchExportView(table, colStr) {
+  const from = document.getElementById('expFrom')?.value || TODAY;
+  const to = document.getElementById('expTo')?.value || TODAY;
+  exportView.table = table;
+  exportView.data = null;
+  exportView.loading = true;
+  exportView.filter = { teacher: '', cls: '', status: '', slot: '', search: '' };
+  render();
+  try {
+    var orderPart = table === 'students' ? 'order=name.asc' : 'order=created_at.desc';
+    let params = 'select=' + colStr + '&' + orderPart + '&limit=500';
+    if (table !== 'students') params += '&date=gte.' + from + '&date=lte.' + to;
+    const data = await sb(table, params);
+    exportView.data = Array.isArray(data) ? data : [];
+    exportView.loading = false;
+    render();
+  } catch (e) {
+    exportView.loading = false;
+    exportView.data = [];
+    toast('❌ ' + e.message);
+    render();
+  }
+}
+
+function clearExportView() {
+  exportView.table = null;
+  exportView.data = null;
+  exportView.loading = false;
+  exportView.filter = { teacher: '', cls: '', status: '', slot: '', search: '' };
+  render();
+}
+
+function setExpFilter(key, val) {
+  exportView.filter[key] = val;
+  render();
+}
+
+function applyExportFilters(data, table) {
+  if (!data || !data.length) return data;
+  var f = exportView.filter;
+  var out = data.slice();
+  if (f.teacher) {
+    var tRec = (DATA.teachers || []).find(function(t) { return String(t.id) === String(f.teacher); });
+    var tName = tRec && tRec.name ? String(tRec.name) : '';
+    out = out.filter(function(r) {
+      var tid = String(f.teacher);
+      return String(r.teacher_id) === tid || String(r.examiner_id) === tid || String(r.qari_id) === tid || String(r.marked_by) === tid
+        || (tName && (r.teacher_name === tName || r.examiner_name === tName || r.marked_by_name === tName));
+    });
+  }
+  if (f.cls) {
+    out = out.filter(function(r) {
+      return (r['class'] || r.class_id || '') === f.cls;
+    });
+  }
+  if (f.status) {
+    out = out.filter(function(r) {
+      return r.status === f.status || r.complete === f.status;
+    });
+  }
+  if (f.slot) {
+    out = out.filter(function(r) { return r.slot === f.slot; });
+  }
+  if (f.search) {
+    var q = f.search.toLowerCase();
+    out = out.filter(function(r) { return JSON.stringify(r).toLowerCase().indexOf(q) >= 0; });
+  }
+  return out;
+}
+
+function exportFilteredCSV() {
+  if (!exportView.data || !exportView.data.length || !exportView.table) { toast('⚠️ خالی'); return; }
+  var exp = exports_list.find(function(e) { return e.id === exportView.table; });
+  if (!exp) return;
+  var filtered = applyExportFilters(exportView.data, exportView.table);
+  if (!filtered.length) { toast('⚠️ فلٹر شدہ ڈیٹا خالی'); return; }
+  var cols = exp.cols.split(',');
+  var header = cols.join(',');
+  var rows = filtered.map(function(r) { return cols.map(function(c) { return '"' + (String(r[c] || '')).replace(/"/g, '""') + '"'; }).join(','); });
+  var csv = '\uFEFF' + header + '\n' + rows.join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = exportView.table + '_filtered.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ فلٹر شدہ ڈاؤنلوڈ — ' + filtered.length + ' سطریں');
 }
 
 // ═══════════════════════════════════════════
