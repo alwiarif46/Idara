@@ -99,6 +99,13 @@ function App() {
     e: '',
     type: 'class'
   });
+  const [newMT, setNewMT] = useState({id:'', n:'', role:'teacher', email:''});
+  const [newMSec, setNewMSec] = useState({id:'', name:'', display_name:'', classes_included:''});
+  const [newMSub, setNewMSub] = useState({id:'', n:'', modern_class:'', s:'', e:''});
+  const [newMAsg, setNewMAsg] = useState({t:'', sub:'', sec:'', p:''});
+  const [newMStu, setNewMStu] = useState({id:'', n:'', parent:'', phone:'', residence:'', modern_class:'', section_id:''});
+  const [mStuFilter, setMStuFilter] = useState('all');
+  const [mStuSearch, setMStuSearch] = useState('');
   const [dashFilter, setDashFilter] = useState('all');
   const [confirmDel, setConfirmDel] = useState(null);
   const [pinEdit, setPinEdit] = useState({
@@ -109,6 +116,7 @@ function App() {
   const [ttView, setTtView] = useState(0);
   const [ttClass, setTtClass] = useState('');
   const [ttOpen, setTtOpen] = useState(null);
+  const [mTtOpen, setMTtOpen] = useState(null);
   const [ttSubTab, setTtSubTab] = useState('progress');
   const [repOpen, setRepOpen] = useState(null);
   const [dAttSlot, setDAttSlot] = useState('fajr');
@@ -124,6 +132,14 @@ function App() {
   const [showStudForm, setShowStudForm] = useState(false);
   const [studFormEditId, setStudFormEditId] = useState(null);
   const [newStud, setNewStud] = useState({id:'',n:'',parent:'',phone:'',residence:'',c:'hifz',qari:'T8',status:'active'});
+
+  const [modernTeachers, setModernTeachers] = useState([]);
+  const [modernSections, setModernSections] = useState([]);
+  const [modernSubjects, setModernSubjects] = useState([]);
+  const [modernPeriods, setModernPeriods] = useState([]);
+  const [modernAssignments, setModernAssignments] = useState([]);
+  const [modernStudents, setModernStudents] = useState([]);
+  const [allTeachers, setAllTeachers] = useState([]);
 
   const [thWk, setThWk] = useState(null);
   const [sAttend, setSAttendRaw] = useState({});
@@ -231,6 +247,19 @@ function App() {
 
       setCfgRaw(cfg);
       saveConfig(cfg);
+
+      try {
+        var modernData = await fetchModernDataFromSupabase(url, key);
+        setModernTeachers(modernData.modernTeachers);
+        setModernSections(modernData.modernSections);
+        setModernSubjects(modernData.modernSubjects);
+        setModernPeriods(modernData.modernPeriods);
+        setModernAssignments(modernData.modernAssignments);
+        setModernStudents(modernData.modernStudents);
+        console.log('[BOOT] Modern data:', modernData.modernTeachers.length, 'teachers,', modernData.modernAssignments.length, 'assignments,', modernData.modernStudents.length, 'students');
+      } catch (e) {
+        console.warn('[BOOT] Modern data fetch failed (non-critical):', e.message || e);
+      }
 
       var initialStud = cfg.students && cfg.students.length ? cfg.students :
         (savedStudents && savedStudents.length ? savedStudents.map(normalizeStudentRow).filter(Boolean) : []);
@@ -590,10 +619,28 @@ function App() {
     }
   }, [cfg, user, setReps, setSAttend, setDAttend, setHifzLogs]);
 
+  const refreshModernRemoteData = useCallback(async function() {
+    if (!cfg || !cfg.supabase_url || !cfg.supabase_key) return;
+    try {
+      var md = await fetchModernDataFromSupabase(cfg.supabase_url, cfg.supabase_key);
+      setModernTeachers(md.modernTeachers);
+      setModernSections(md.modernSections);
+      setModernSubjects(md.modernSubjects);
+      setModernPeriods(md.modernPeriods);
+      setModernAssignments(md.modernAssignments);
+      setModernStudents(md.modernStudents);
+    } catch (e) { console.warn('[modern] refresh failed', e); }
+  }, [cfg && cfg.supabase_url, cfg && cfg.supabase_key]);
+
   const refreshAllRemoteData = useCallback(async () => {
     await refreshStudentsFromDb();
     await refreshLiveDataFromSupabase();
-  }, [refreshStudentsFromDb, refreshLiveDataFromSupabase]);
+    await refreshModernRemoteData();
+  }, [refreshStudentsFromDb, refreshLiveDataFromSupabase, refreshModernRemoteData]);
+
+  const unifiedTeachers = useMemo(function() {
+    return buildUnifiedTeacherList((cfg && cfg.teachers) || [], modernTeachers);
+  }, [cfg, modernTeachers]);
 
   useEffect(() => {
     if (loading || !cfg || !cfg.supabase_url || !cfg.supabase_key) return;
@@ -723,8 +770,8 @@ function App() {
       switch (type) {
         case 'daily_report': {
           const rows = payload.entries.map(e => ({
-            date: payload.date, teacher_id: payload.teacher_id, teacher_name: payload.teacher_name || '',
-            subject_id: e.subject_id, subject_name: e.subject_name || '', class: e.class_id || '',
+            date: payload.date, teacher_id: payload.teacher_id || null, teacher_name: payload.teacher_name || '',
+            subject_id: e.subject_id || null, subject_name: e.subject_name || '', class: e.class_id || '',
             period_id: e.period || null, target_page: e.target_page, actual_page: e.actual_page,
             complete: e.complete || '', reason: e.reason_code || ''
           }));
@@ -733,10 +780,10 @@ function App() {
         }
         case 'thursday_test': {
           const rows = payload.blocks.map(b => ({
-            date: payload.date, week_num: payload.week, examiner_id: payload.teacher_id,
+            date: payload.date, week_num: payload.week, examiner_id: payload.teacher_id || null,
             examiner_name: payload.examiner_name || '',
-            subject_id: b.subject_id, subject_name: b.subject_name || '', class: b.class_id || '',
-            period_id: b.period || null, subject_teacher_id: b.subject_teacher_id || '',
+            subject_id: b.subject_id || null, subject_name: b.subject_name || '', class: b.class_id || '',
+            period_id: b.period || null, subject_teacher_id: b.subject_teacher_id || null,
             subject_teacher_name: b.subject_teacher_name || '', portion: b.portion || '',
             excellent: b.excellent||0, good: b.good||0, weak: b.weak||0,
             fail: b.fail||0, absent: b.absent||0, average: b.average||0,
@@ -747,18 +794,18 @@ function App() {
         }
         case 'hifz_progress': {
           await sbPost('hifz_progress', {
-            date: payload.date, student_id: payload.student_id, student_name: payload.student_name || '',
+            date: payload.date, student_id: payload.student_id || null, student_name: payload.student_name || '',
             paras: payload.paras||0, soorah: payload.soorah||'', aayat: payload.aayat||0,
-            daur_para: payload.daur_para||'', qari_id: payload.qari_id||'', notes: payload.notes||''
+            daur_para: payload.daur_para||'', qari_id: payload.qari_id || null, notes: payload.notes||''
           }, 'date,student_id');
           break;
         }
         case 'student_attendance': {
           const att = payload.attendance;
           const rows = Object.keys(att).map(sid => ({
-            date: payload.date, teacher_id: payload.teacher_id||'', teacher_name: payload.teacher_name||'',
-            subject_id: payload.subject_id||'', subject_name: payload.subject_name||'',
-            class: payload.class_id||'', student_id: sid, status: att[sid]
+            date: payload.date, teacher_id: payload.teacher_id || null, teacher_name: payload.teacher_name||'',
+            subject_id: payload.subject_id || null, subject_name: payload.subject_name||'',
+            class: payload.class_id||'', student_id: sid || null, status: att[sid]
           }));
           await sbPost('student_attendance', rows, 'date,teacher_id,subject_id,student_id');
           break;
@@ -766,8 +813,8 @@ function App() {
         case 'daily_attendance': {
           const att2 = payload.attendance;
           const rows = Object.keys(att2).map(sid => ({
-            date: payload.date, slot: payload.slot||'', marked_by: payload.marked_by||'',
-            marked_by_name: payload.marked_by_name||'', student_id: sid, status: att2[sid]
+            date: payload.date, slot: payload.slot||'', marked_by: payload.marked_by || null,
+            marked_by_name: payload.marked_by_name||'', student_id: sid || null, status: att2[sid]
           }));
           await sbPost('daily_attendance', rows, 'date,slot,student_id');
           break;
@@ -775,8 +822,8 @@ function App() {
         case 'teacher_attendance': {
           const ta = payload.attendance;
           const rows = Object.keys(ta).map(tid => ({
-            date: payload.date, teacher_id: tid, teacher_name: '',
-            status: ta[tid], marked_by: payload.teacher_id||'admin', approved: false
+            date: payload.date, teacher_id: tid || null, teacher_name: '',
+            status: ta[tid], marked_by: payload.teacher_id || null, approved: false
           }));
           await sbPost('teacher_attendance', rows, 'date,teacher_id');
           break;
@@ -940,6 +987,67 @@ function App() {
       total: tot
     };
   }).filter(Boolean).sort((a, b) => a.p - b.p) : [];
+  const myModernA = useMemo(function () {
+    if (!user) return [];
+    var td = inst.teaching_days || 42;
+    return modernAssignments.filter(function (a) {
+      return a.t === user.id;
+    }).map(function (a) {
+      var sub = modernSubjects.find(function (s) {
+        return s.id === a.sub;
+      });
+      if (!sub) return null;
+      var sec = modernSections.find(function (s) {
+        return s.id === a.sec;
+      });
+      var per = modernPeriods.find(function (p) {
+        return Number(p.id) === Number(a.p);
+      });
+      var tot = (sub.e || 0) - (sub.s || 0);
+      return {
+        t: a.t,
+        sub: sub,
+        sec: sec,
+        p: a.p,
+        per: per,
+        cls: {
+          id: sec ? sec.id : '?',
+          n: sec ? sec.display_name : '?',
+          c: '#dbeafe',
+          a: '#2563eb'
+        },
+        target: tot > 0 ? sub.s + Math.round(tot / td * tDay) : 0,
+        total: tot,
+        _src: 'modern'
+      };
+    }).filter(Boolean).sort(function (a, b) {
+      return Number(a.p) - Number(b.p);
+    });
+  }, [user, modernAssignments, modernSubjects, modernSections, modernPeriods, inst.teaching_days, tDay]);
+  const myAllA = useMemo(function () {
+    var all = [];
+    myA.forEach(function (a) {
+      var per = periods.find(function (p) {
+        return p.id === a.p;
+      });
+      all.push({
+        ...a,
+        per: per || a.per,
+        _src: 'religious',
+        _sortTime: per ? per.s : '99:99'
+      });
+    });
+    myModernA.forEach(function (a) {
+      all.push({
+        ...a,
+        _sortTime: a.per ? a.per.s : '99:99'
+      });
+    });
+    all.sort(function (a, b) {
+      return String(a._sortTime).localeCompare(String(b._sortTime));
+    });
+    return all;
+  }, [myA, myModernA, periods]);
   const myThu = user ? thuMap.filter(w => w.assignments.some(a => a.t === user.id)).map(w => ({...w, myAsg: w.assignments.filter(a => a.t === user.id).sort((a,b)=>a.p-b.p)})) : [];
   const upd = (sid, f, v) => {
     const n = {
@@ -1212,6 +1320,48 @@ function App() {
       flash('\u2713 \u0642\u0637\u0627\u0631 \u2014 ' + entries.length + ' \u0645\u0636\u0645\u0648\u0646');
     }
   };
+  const submitModernD = async () => {
+    if (!user || !myModernA.length) return;
+    var tName = '';
+    var tObj = modernTeachers.find(function (t) {
+      return t.id === user.id;
+    });
+    if (tObj) tName = tObj.n;
+    if (!tName && teachers) {
+      var rObj = teachers.find(function (t) {
+        return t.id === user.id;
+      });
+      if (rObj) tName = rObj.n;
+    }
+    var todayDt = new Date().toISOString().split('T')[0];
+    var entries = myModernA.map(function (a) {
+      var rp = r(a.sub.id);
+      var raw = rp.actual;
+      if (raw === '' || raw == null) return null;
+      var actualNum = parseInt(String(raw).trim(), 10);
+      if (Number.isNaN(actualNum)) return null;
+      return {
+        date: todayDt,
+        teacher_id: user.id,
+        teacher_name: tName,
+        subject_id: a.sub.id,
+        subject_name: a.sub.n || '',
+        section_id: a.sec ? a.sec.id : '',
+        period_id: a.p || null,
+        target_page: a.target,
+        actual_page: actualNum,
+        complete: rp.complete || '',
+        reason: rp.reason || ''
+      };
+    }).filter(Boolean);
+    if (!entries.length) return;
+    try {
+      await sbPost('modern_daily_reports', entries, 'date,teacher_id,subject_id');
+      flash('\u2705 \u062c\u062f\u06cc\u062f \u0631\u067e\u0648\u0631\u0679 \u0645\u062d\u0641\u0648\u0638 \u2014 ' + entries.length + ' \u0645\u0636\u0645\u0648\u0646');
+    } catch (e) {
+      flash('\u274c \u062c\u062f\u06cc\u062f: ' + (e.message || String(e)));
+    }
+  };
   const submitTh = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const autoWk = thuMap.find(w => w.dt >= todayStr) || thuMap[thuMap.length-1];
@@ -1398,7 +1548,7 @@ function App() {
             style:{width:'100%',padding:10,borderRadius:12,border:'1px solid '+ST.gd+'30',background:'rgba(0,0,0,0.3)',
               color:'#e0d9c8',fontSize:13,fontFamily:'inherit',marginBottom:14,outline:'none',direction:'rtl',boxSizing:'border-box'}},
             React.createElement('option',{value:''},'استاد / قاری منتخب کریں'),
-            teachers.map(t=>React.createElement('option',{key:t.id,value:t.id},t.n))
+            unifiedTeachers.map(t=>React.createElement('option',{key:t.id,value:t.id},t.n))
           ),
           selT && React.createElement(React.Fragment,null,
             React.createElement('div',{style:{display:'flex',gap:7,justifyContent:'center',marginBottom:12,direction:'ltr'}},
@@ -1419,10 +1569,10 @@ function App() {
               },k))
             ),
             BT('لاگِن ✓',()=>{
-              var t=teachers.find(function(x){return x.id===selT;});
+              var t=unifiedTeachers.find(function(x){return x.id===selT;});
               if(!t){setErr('غلط');return;}
               if(pin!==(t.pin||pins[selT]||'1234')){setErr('غلط پن');return;}
-              setUser({id:t.id,n:t.n,role:t.role,exam:!!t.exam});
+              setUser({id:t.id,n:t.n,role:t.role,exam:!!t.exam,_scopes:t._scopes||['religious']});
               setScr('main');setTab('home');setPin('');
             })
           )
@@ -1602,6 +1752,26 @@ function App() {
     l: 'رپورٹس / ایکسپورٹ',
     k: 'reports'
   }, {
+    ic: '🌐',
+    l: 'جدید اساتذہ',
+    k: 'mTeachers'
+  }, {
+    ic: '📐',
+    l: 'سیکشنز (جدید)',
+    k: 'mSections'
+  }, {
+    ic: '📘',
+    l: 'جدید مضامین',
+    k: 'mSubjects'
+  }, {
+    ic: '📋',
+    l: 'جدید تفویض',
+    k: 'mAssign'
+  }, {
+    ic: '👨‍🎓',
+    l: 'جدید طلبا',
+    k: 'mStudents'
+  }, {
     ic: '🔁',
     l: 'ری سیٹ',
     k: 'reset'
@@ -1764,7 +1934,7 @@ function App() {
       fontSize: 11,
       marginTop: 2
     }
-  }, isAd ? `${teachers.length} اساتذہ • ${subjects.length} مضامین` : `${myA.length} مضامین • ${myA.filter(a => r(a.sub.id).actual).length} مکمل`), isEx && myThu.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, isAd ? `${teachers.length} اساتذہ • ${subjects.length} مضامین` : `${myAllA.length} مضامین • ${myAllA.filter(a => r(a.sub.id).actual).length} مکمل`), isEx && myThu.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 6,
       background: 'rgba(255,255,255,0.06)',
@@ -1993,8 +2163,52 @@ function App() {
       ),
       React.createElement('div', {style:{fontSize:24}}, '→')
     ),
-    !isAd && !isQari && myA.map((a, i) => /*#__PURE__*/React.createElement(React.Fragment, {
-    key: a.sub.id
+    !isAd && !isQari && myAllA.map((a, i) => a._src === 'modern' ? /*#__PURE__*/React.createElement("div", {
+    key: 'm_' + i + '_' + a.sub.id,
+    onClick: () => {
+      setTab('report');
+    },
+    style: {
+      background: '#fff',
+      borderRadius: 11,
+      padding: '11px 13px',
+      marginBottom: 5,
+      borderRight: '4px solid #2563eb',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700
+    }
+  }, "\uD83C\uDF10 ", a.sub.n), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: '#8a9a8a'
+    }
+  }, (a.sec ? a.sec.display_name : '\u062C\u062F\u06CC\u062F') + ' \u2022 ' + (a.per ? a.per.s + '\u2013' + a.per.e : 'P' + a.p))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 800,
+      color: '#2563eb'
+    }
+  }, "\u0635", a.target), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      background: r(a.sub.id).actual ? '#10b981' : '#e5e0d5',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#fff',
+      fontSize: 11
+    }
+  }, r(a.sub.id).actual ? '\u2713' : '')) : /*#__PURE__*/React.createElement(React.Fragment, {
+    key: 'r_' + a.sub.id + '_' + i
   }, /*#__PURE__*/React.createElement("div", {
     onClick: () => setTab('report'),
     style: {
@@ -2233,9 +2447,339 @@ function App() {
       )
     );
   }),
+  myModernA.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 800,
+      color: '#2563eb',
+      marginBottom: 8,
+      padding: '6px 10px',
+      background: '#dbeafe',
+      borderRadius: 8
+    }
+  }, "\uD83C\uDF10 \u062C\u062F\u06CC\u062F \u0645\u0636\u0627\u0645\u06CC\u0646"), myModernA.map(function (a, i) {
+    var rp = r(a.sub.id);
+    var part = rp.complete === '\u062C\u0632\u0648\u06CC' || rp.complete === '\u0646\u06C1\u06CC\u06BA';
+    return /*#__PURE__*/React.createElement(Card, {
+      key: 'mr_' + i,
+      style: {
+        border: '1px solid ' + (rp.complete === '\u06C1\u0627\u06BA' ? '#10b981' : '#dbeafe')
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: '#dbeafe',
+        color: '#2563eb',
+        padding: '1px 7px',
+        borderRadius: 5,
+        fontSize: 8,
+        fontWeight: 700
+      }
+    }, a.sec ? a.sec.display_name : '\u062C\u062F\u06CC\u062F'), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 800
+      }
+    }, a.sub.n)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 7,
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: '#999',
+        marginBottom: 2
+      }
+    }, "\u06C1\u062F\u0641"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 7,
+        borderRadius: 7,
+        background: '#dbeafe',
+        fontSize: 14,
+        fontWeight: 800,
+        color: '#2563eb',
+        textAlign: 'center'
+      }
+    }, "\u0635", a.target)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: '#999',
+        marginBottom: 2
+      }
+    }, "\u062D\u0642\u06CC\u0642\u06CC"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: rp.actual || '',
+      onChange: function (e) {
+        upd(a.sub.id, 'actual', e.target.value);
+      },
+      placeholder: "\u2014",
+      style: {
+        width: '100%',
+        padding: 7,
+        borderRadius: 7,
+        border: '1.5px solid #d5d0c5',
+        fontSize: 14,
+        fontWeight: 800,
+        textAlign: 'center',
+        fontFamily: 'inherit',
+        outline: 'none',
+        background: '#faf8f3',
+        boxSizing: 'border-box'
+      }
+    }))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 4
+      }
+    }, ['\u06C1\u0627\u06BA', '\u062C\u0632\u0648\u06CC', '\u0646\u06C1\u06CC\u06BA'].map(function (o) {
+      return /*#__PURE__*/React.createElement("button", {
+        key: o,
+        onClick: function () {
+          upd(a.sub.id, 'complete', o);
+        },
+        style: {
+          flex: 1,
+          padding: 6,
+          borderRadius: 7,
+          border: 'none',
+          fontSize: 10,
+          fontWeight: 700,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          background: rp.complete === o ? (o === '\u06C1\u0627\u06BA' ? '#10b981' : o === '\u062C\u0632\u0648\u06CC' ? '#f59e0b' : '#ef4444') : '#f0ebe0',
+          color: rp.complete === o ? '#fff' : '#6b7c6b'
+        }
+      }, o);
+    })), part && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 3,
+        marginTop: 5
+      }
+    }, ['\u063A\u06CC\u0631 \u062D\u0627\u0636\u0631\u06CC', '\u0648\u0642\u062A', '\u0645\u0631\u0627\u062C\u0639\u06C1', '\u062A\u0627\u062E\u06CC\u0631', '\u062F\u06CC\u06AF\u0631'].map(function (rv) {
+      return /*#__PURE__*/React.createElement("button", {
+        key: rv,
+        onClick: function () {
+          upd(a.sub.id, 'reason', rv);
+        },
+        style: {
+          padding: '3px 7px',
+          borderRadius: 5,
+          border: 'none',
+          fontSize: 8,
+          fontWeight: 600,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          background: rp.reason === rv ? ST.dk : '#f0ebe0',
+          color: rp.reason === rv ? ST.gd : '#6b7c6b'
+        }
+      }, rv);
+    })), (function () {
+      var secStudents = modernStudents.filter(function (s) {
+        return a.sec && s.section_id === a.sec.id && s.status !== 'left';
+      });
+      var todayDt = new Date().toISOString().split('T')[0];
+      var maKey = 'm_' + (a.sec ? a.sec.id : '') + '_' + todayDt;
+      var maData = sAttend[maKey] || {};
+      var mpCt = secStudents.filter(function (s) {
+        return maData[s.id] === 'P';
+      }).length;
+      var maCt = secStudents.filter(function (s) {
+        return maData[s.id] === 'A';
+      }).length;
+      var mlCt = secStudents.filter(function (s) {
+        return maData[s.id] === 'L';
+      }).length;
+      var markAllM = function (st) {
+        var nd = {};
+        secStudents.forEach(function (s) {
+          nd[s.id] = st;
+        });
+        setSAttend(function (prev) {
+          return {
+            ...prev,
+            [maKey]: {
+              ...(prev[maKey] || {}),
+              ...nd
+            }
+          };
+        });
+      };
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 14,
+          paddingTop: 12,
+          borderTop: '1.5px solid #dbeafe'
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          fontWeight: 700,
+          color: '#2563eb',
+          marginBottom: 8
+        }
+      }, "\uD83D\uDCCB \u062D\u0627\u0636\u0631\u06CC " + (a.sec ? a.sec.display_name : '') + ' (' + secStudents.length + ')'), secStudents.length === 0 ? /*#__PURE__*/React.createElement("div", {
+        style: {
+          textAlign: 'center',
+          padding: 12,
+          color: '#999',
+          fontSize: 10
+        }
+      }, "\u0637\u0644\u0628\u0627 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA") : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          gap: 4,
+          marginBottom: 8
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: function () {
+          markAllM('P');
+        },
+        style: {
+          flex: 1,
+          padding: 5,
+          borderRadius: 6,
+          border: 'none',
+          fontSize: 9,
+          fontWeight: 700,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          background: '#d1fae5',
+          color: '#065f46'
+        }
+      }, "\u0633\u0628 \u062D\u0627\u0636\u0631"), /*#__PURE__*/React.createElement("button", {
+        onClick: function () {
+          markAllM('A');
+        },
+        style: {
+          flex: 1,
+          padding: 5,
+          borderRadius: 6,
+          border: 'none',
+          fontSize: 9,
+          fontWeight: 700,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          background: '#fee2e2',
+          color: '#991b1b'
+        }
+      }, "\u0633\u0628 \u063A\u0627\u0626\u0628")), secStudents.map(function (s) {
+        var st = maData[s.id] || '';
+        return /*#__PURE__*/React.createElement("div", {
+          key: s.id,
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 0',
+            borderBottom: '1px solid #f0ebe0'
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            flex: 1,
+            fontSize: 12,
+            fontWeight: 600
+          }
+        }, s.n), ['P', 'A', 'L'].map(function (v) {
+          return /*#__PURE__*/React.createElement("button", {
+            key: v,
+            onClick: function () {
+              setSAttend(function (prev) {
+                return {
+                  ...prev,
+                  [maKey]: {
+                    ...(prev[maKey] || {}),
+                    [s.id]: v
+                  }
+                };
+              });
+            },
+            style: {
+              width: 30,
+              height: 26,
+              borderRadius: 6,
+              border: 'none',
+              fontSize: 10,
+              fontWeight: 800,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              background: st === v ? v === 'P' ? '#10b981' : v === 'A' ? '#ef4444' : '#3b82f6' : '#f0ebe0',
+              color: st === v ? '#fff' : '#999'
+            }
+          }, v === 'P' ? '\u062D' : v === 'A' ? '\u063A' : '\u0631');
+        }));
+      }), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 8
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10,
+          color: '#888'
+        }
+      }, mpCt + '\u062D ' + maCt + '\u063A ' + mlCt + '\u0631'), /*#__PURE__*/React.createElement(Btn, {
+        small: true,
+        color: '#1e40af',
+        onClick: async function () {
+          if (!Object.keys(maData).length) {
+            flash('\u26A0\uFE0F \u062E\u0627\u0644\u06CC');
+            return;
+          }
+          var rows = Object.keys(maData).map(function (sid) {
+            var stu = modernStudents.find(function (x) {
+              return x.id === sid;
+            });
+            return {
+              date: todayDt,
+              student_id: sid,
+              student_name: stu ? stu.n : '',
+              teacher_id: user.id,
+              subject_id: a.sub.id,
+              section_id: a.sec ? a.sec.id : '',
+              period_id: a.p || null,
+              status: maData[sid]
+            };
+          });
+          try {
+            await sbPost('modern_student_attendance', rows, 'date,student_id,subject_id,teacher_id');
+            flash('\u2705 \u062D\u0627\u0636\u0631\u06CC \u0645\u062D\u0641\u0648\u0638 \u2014 ' + rows.length + ' \u0637\u0644\u0628\u0627');
+          } catch (e) {
+            flash('\u274C ' + (e.message || String(e)));
+          }
+        }
+      }, "\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC"))));
+    })());
+  })),
   /*#__PURE__*/React.createElement(Btn, {
     full: true,
-    onClick: submitD
+    onClick: async function () {
+      await submitD();
+      await submitModernD();
+    }
   }, "\u0627\u0631\u0633\u0627\u0644 \u0631\u067E\u0648\u0631\u0679 \u2713")), 
 tab === 'thu' && isEx && React.createElement('div', null,
   React.createElement(Ttl, {icon:'\uD83D\uDCCB', text:'\u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646'}),
@@ -2584,7 +3128,111 @@ tab === 'thu' && isEx && React.createElement('div', null,
               background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')',
               borderRadius:10}
           },'������ نماز و کھانا — '+breakP.s+'–'+breakP.e),
-          after.map(p=>PCard(p))
+          after.map(p=>PCard(p)),
+          myModernA.length > 0 && React.createElement('div', {style:{marginTop:12}},
+            React.createElement('div', {style:{textAlign:'center',padding:'8px 0',margin:'4px 0 8px',fontSize:11,color:'#fff',fontWeight:700,
+              background:'linear-gradient(135deg, #1e40af, #2563eb)',borderRadius:10}},
+              '\uD83C\uDF10 \u062C\u062F\u06CC\u062F \u062A\u0639\u0644\u06CC\u0645 \u2014 \u0634\u0627\u0645 \u06A9\u06CC \u0634\u0641\u0679'),
+            myModernA.map(function(a, i){
+              var rp = r(a.sub.id);
+              var perLabel = a.per ? a.per.s + '\u2013' + a.per.e : 'P' + a.p;
+              var isOpen = mTtOpen === i;
+              var secStudents = modernStudents.filter(function(s){
+                return a.sec && s.section_id === a.sec.id && s.status !== 'left';
+              });
+              var todayDt = new Date().toISOString().split('T')[0];
+              var maKey = 'm_' + (a.sec ? a.sec.id : '') + '_' + todayDt;
+              var maData = sAttend[maKey] || {};
+              return React.createElement('div', {key:'mt_'+i, style:{marginBottom: isOpen ? 12 : 8}},
+                React.createElement('div', {
+                  onClick:function(){setMTtOpen(isOpen ? null : i);},
+                  style:{background:'#fff',borderRadius: isOpen ? '13px 13px 0 0' : 13, padding:'13px 15px',
+                    boxShadow:'0 2px 8px rgba(0,0,0,0.08)',borderRight:'4px solid #2563eb',
+                    display:'flex',alignItems:'center',gap:10,cursor:'pointer'}
+                },
+                  React.createElement('div', {style:{width:38,height:38,borderRadius:10,background:'#dbeafe',
+                    display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:'#2563eb'}}, 'P'+a.p),
+                  React.createElement('div', {style:{flex:1}},
+                    React.createElement('div', {style:{fontWeight:800,fontSize:14}}, a.sub.n),
+                    React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:2}},
+                      React.createElement('span', {style:{fontSize:11,color:'#777'}}, a.sec ? a.sec.display_name : ''),
+                      React.createElement('span', {style:{fontSize:10,color:'#9ca3af',direction:'ltr',fontFamily:'monospace'}}, perLabel)
+                    )
+                  ),
+                  React.createElement('div', {style:{display:'flex',flexDirection:'column',alignItems:'center',gap:2}},
+                    rp.actual ? React.createElement('div', {style:{width:22,height:22,borderRadius:6,background:'#10b981',
+                      display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:10}}, '\u2713') : null,
+                    React.createElement('span', {style:{fontSize:12,color:'#bbb'}}, isOpen ? '\u25B2' : '\u25BC')
+                  )
+                ),
+                isOpen && React.createElement('div', {style:{background:'#fff',borderRadius:'0 0 13px 13px',padding:'12px 15px',
+                  boxShadow:'0 2px 8px rgba(0,0,0,0.08)',borderRight:'4px solid #2563eb',marginTop:-1}},
+                  React.createElement('div', {style:{fontSize:11,fontWeight:700,color:'#2563eb',marginBottom:8}}, '\uD83D\uDCDD \u067E\u06CC\u0634\u0631\u0641\u062A'),
+                  React.createElement('div', {style:{display:'flex',gap:7,marginBottom:8}},
+                    React.createElement('div', {style:{flex:1}},
+                      React.createElement('div', {style:{fontSize:8,color:'#999'}}, '\u06C1\u062F\u0641'),
+                      React.createElement('div', {style:{padding:7,borderRadius:7,background:'#dbeafe',fontSize:14,fontWeight:800,color:'#2563eb',textAlign:'center'}}, '\u0635'+a.target)
+                    ),
+                    React.createElement('div', {style:{flex:1}},
+                      React.createElement('div', {style:{fontSize:8,color:'#999'}}, '\u062D\u0642\u06CC\u0642\u06CC'),
+                      React.createElement('input', {type:'number', value:rp.actual||'',
+                        onChange:function(e){upd(a.sub.id,'actual',e.target.value);},
+                        placeholder:'\u2014', style:{width:'100%',padding:7,borderRadius:7,border:'1.5px solid #d5d0c5',fontSize:14,fontWeight:800,textAlign:'center',fontFamily:'inherit',outline:'none',background:'#faf8f3',boxSizing:'border-box'}})
+                    )
+                  ),
+                  React.createElement('div', {style:{display:'flex',gap:4,marginBottom:4}},
+                    ['\u06C1\u0627\u06BA','\u062C\u0632\u0648\u06CC','\u0646\u06C1\u06CC\u06BA'].map(function(o){return React.createElement('button', {key:o,
+                      onClick:function(){upd(a.sub.id,'complete',o);},
+                      style:{flex:1,padding:6,borderRadius:7,border:'none',fontSize:10,fontWeight:700,fontFamily:'inherit',cursor:'pointer',
+                        background:rp.complete===o?(o==='\u06C1\u0627\u06BA'?'#10b981':o==='\u062C\u0632\u0648\u06CC'?'#f59e0b':'#ef4444'):'#f0ebe0',
+                        color:rp.complete===o?'#fff':'#6b7c6b'}}, o);})
+                  ),
+                  React.createElement('div', {style:{marginTop:14,paddingTop:12,borderTop:'1.5px solid #dbeafe'}},
+                    React.createElement('div', {style:{fontSize:11,fontWeight:700,color:'#2563eb',marginBottom:8}},
+                      '\uD83D\uDCCB \u062D\u0627\u0636\u0631\u06CC (' + secStudents.length + ')'),
+                    secStudents.length === 0
+                      ? React.createElement('div', {style:{textAlign:'center',padding:8,color:'#999',fontSize:10}}, '\u0637\u0644\u0628\u0627 \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA')
+                      : React.createElement('div', null,
+                          React.createElement('div', {style:{display:'flex',gap:4,marginBottom:8}},
+                            React.createElement('button', {onClick:function(){
+                              var nd={};secStudents.forEach(function(s){nd[s.id]='P';});
+                              setSAttend(function(prev){return{...prev,[maKey]:{...(prev[maKey]||{}),...nd}};});
+                            }, style:{flex:1,padding:5,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#d1fae5',color:'#065f46'}}, '\u0633\u0628 \u062D\u0627\u0636\u0631'),
+                            React.createElement('button', {onClick:function(){
+                              var nd={};secStudents.forEach(function(s){nd[s.id]='A';});
+                              setSAttend(function(prev){return{...prev,[maKey]:{...(prev[maKey]||{}),...nd}};});
+                            }, style:{flex:1,padding:5,borderRadius:6,border:'none',fontSize:9,fontWeight:700,fontFamily:'inherit',cursor:'pointer',background:'#fee2e2',color:'#991b1b'}}, '\u0633\u0628 \u063A\u0627\u0626\u0628')
+                          ),
+                          secStudents.map(function(s){
+                            var st = maData[s.id] || '';
+                            return React.createElement('div', {key:s.id, style:{display:'flex',alignItems:'center',gap:6,padding:'5px 0',borderBottom:'1px solid #f0ebe0'}},
+                              React.createElement('span', {style:{flex:1,fontSize:12,fontWeight:600}}, s.n),
+                              ['P','A','L'].map(function(v){return React.createElement('button', {key:v,
+                                onClick:function(){setSAttend(function(prev){return{...prev,[maKey]:{...(prev[maKey]||{}),[s.id]:v}};});},
+                                style:{width:30,height:26,borderRadius:6,border:'none',fontSize:10,fontWeight:800,fontFamily:'inherit',cursor:'pointer',
+                                  background:st===v?(v==='P'?'#10b981':v==='A'?'#ef4444':'#3b82f6'):'#f0ebe0',
+                                  color:st===v?'#fff':'#999'}
+                              }, v==='P'?'\u062D':v==='A'?'\u063A':'\u0631');})
+                            );
+                          }),
+                          React.createElement(Btn, {small:true, full:true, color:'#1e40af', style:{marginTop:8}, onClick: async function(){
+                            if(!Object.keys(maData).length){flash('\u26A0\uFE0F \u062E\u0627\u0644\u06CC');return;}
+                            var rows = Object.keys(maData).map(function(sid){
+                              var stu = modernStudents.find(function(x){return x.id===sid;});
+                              return {date:todayDt,student_id:sid,student_name:stu?stu.n:'',teacher_id:user.id,
+                                subject_id:a.sub.id,section_id:a.sec?a.sec.id:'',period_id:a.p||null,status:maData[sid]};
+                            });
+                            try{
+                              await sbPost('modern_student_attendance', rows, 'date,student_id,subject_id,teacher_id');
+                              flash('\u2705 \u062D\u0627\u0636\u0631\u06CC \u0645\u062D\u0641\u0648\u0638 \u2014 ' + rows.length);
+                            }catch(e){flash('\u274C '+(e.message||String(e)));}
+                          }}, '\u0627\u0631\u0633\u0627\u0644 \u062D\u0627\u0636\u0631\u06CC')
+                        )
+                  )
+                )
+              );
+            })
+          )
         );
       })()
     ),
@@ -2960,7 +3608,8 @@ tab === 'thu' && isEx && React.createElement('div', null,
             const key = hifzEntry.sid+'_'+today;
             const entry = {...hifzEntry.data, saved_at: new Date().toISOString()};
             setHifzLogs(prev=>({...prev,[key]:JSON.stringify(entry)}));
-            syncPost('hifz_progress',{student_id:hifzEntry.sid,student_name:hifzEntry.studentName,date:today,...hifzEntry.data});
+            var hStudent = students.find(function(s){return s.id === hifzEntry.sid;});
+            syncPost('hifz_progress', {...hifzEntry.data, student_id:hifzEntry.sid, student_name:hifzEntry.studentName, date:today, qari_id:hStudent ? (hStudent.qari || null) : null});
             flash('✓ محفوظ');
             setHifzEntry(null);
           },
@@ -4370,7 +5019,374 @@ tab === 'thu' && isEx && React.createElement('div', null,
     !rptData && React.createElement('div', {style:{textAlign:'center',padding:30,color:'#bbb',fontSize:12}},
       '📅 تاریخ منتخب کریں اور 🔍 لوڈ دبائیں')
   );
-})(), admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+})(),
+admSub === 'mTeachers' && React.createElement('div', null,
+  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    React.createElement(Bk, {onClick: goHome}),
+    React.createElement(Ttl, {icon:'🌐', text:'جدید اساتذہ (' + modernTeachers.length + ')'}),
+    React.createElement(Btn, {small:true, color:ST.gd, onClick:function(){setShowForm(showForm==='mt'?null:'mt');}}, showForm==='mt'?'✗':'+')
+  ),
+  showForm==='mt' && React.createElement(Card, {style:{border:'2px solid '+ST.gd+'40',marginBottom:10}},
+    React.createElement('div', {style:{fontSize:12,fontWeight:700,color:ST.gd,marginBottom:8}}, 'نیا استاد'),
+    React.createElement('div', {style:{display:'flex',gap:6,marginBottom:6}},
+      React.createElement(Inp, {value:newMT.id, onChange:function(v){setNewMT(function(p){return{...p,id:v};});}, placeholder:'ID (مثلاً MS1)', style:{flex:1,direction:'ltr'}}),
+      React.createElement(Inp, {value:newMT.n, onChange:function(v){setNewMT(function(p){return{...p,n:v};});}, placeholder:'نام', style:{flex:2}})
+    ),
+    React.createElement(Inp, {value:newMT.email, onChange:function(v){setNewMT(function(p){return{...p,email:v};});}, placeholder:'email@gmail.com', style:{direction:'ltr',marginBottom:8}}),
+    React.createElement(Btn, {full:true, color:'#10b981', onClick: async function(){
+      if(!newMT.id.trim()||!newMT.n.trim()){flash('⚠️ ID اور نام ضروری');return;}
+      if(modernTeachers.find(function(t){return t.id===newMT.id.trim();})){flash('⚠️ ID موجود');return;}
+      try{
+        await sbPost('modern_teachers', {id:newMT.id.trim(), name:newMT.n.trim(), role:newMT.role||'teacher', email:(newMT.email||'').trim(), pin:'1234'}, 'id');
+        setModernTeachers(function(prev){return[...prev, normalizeModernTeacherRow({id:newMT.id.trim(),name:newMT.n.trim(),role:'teacher',email:(newMT.email||'').trim(),pin:'1234'})].filter(Boolean);});
+        setNewMT({id:'',n:'',role:'teacher',email:''});
+        setShowForm(null);
+        flash('✓ شامل');
+      }catch(e){flash('✗ '+e.message);}
+    }}, '✓ شامل')
+  ),
+  modernTeachers.map(function(t){
+    return React.createElement(Card, {key:t.id, style:{display:'flex',alignItems:'center',gap:10,padding:'10px 13px'}},
+      React.createElement('div', {style:{width:34,height:34,borderRadius:8,background:'#dbeafe',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}}, '🌐'),
+      React.createElement('div', {style:{flex:1}},
+        React.createElement('div', {style:{fontSize:12,fontWeight:700}}, t.n),
+        React.createElement('div', {style:{fontSize:8,color:'#999'}}, t.id + (t.email ? ' • '+t.email : ''))
+      ),
+      React.createElement('button', {onClick: async function(){
+        if(!window.confirm('حذف کریں؟ '+t.n)) return;
+        try{
+          var dr = await fetch(cfg.supabase_url+'/rest/v1/modern_teachers?id=eq.'+encodeURIComponent(t.id),{
+            method:'DELETE', headers:{'apikey':cfg.supabase_key,'Authorization':'Bearer '+cfg.supabase_key,'Prefer':'return=minimal'}
+          });
+          if(!dr.ok) throw new Error(await dr.text()||String(dr.status));
+          setModernTeachers(function(prev){return prev.filter(function(x){return x.id!==t.id;});});
+          flash('✓ حذف');
+        }catch(e){flash('✗ '+e.message);}
+      }, style:{width:26,height:26,borderRadius:6,border:'none',fontSize:10,cursor:'pointer',background:'#fef2f2',color:'#ef4444'}}, '✗')
+    );
+  }),
+  modernTeachers.length===0 && React.createElement('div', {style:{textAlign:'center',padding:30,color:'#999',fontSize:12}}, 'کوئی جدید استاد نہیں — اوپر + دبائیں')
+),
+admSub === 'mSections' && React.createElement('div', null,
+  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    React.createElement(Bk, {onClick: goHome}),
+    React.createElement(Ttl, {icon:'📐', text:'سیکشنز (' + modernSections.length + ')'}),
+    React.createElement(Btn, {small:true, color:ST.gd, onClick:function(){setShowForm(showForm==='msec'?null:'msec');}}, showForm==='msec'?'✗':'+')
+  ),
+  React.createElement(Card, {style:{background:'linear-gradient(135deg,'+ST.dk+','+ST.gn+')'}},
+    React.createElement('div', {style:{color:ST.gd,fontSize:11,fontWeight:700}}, 'سیکشن = مشترکہ جماعت'),
+    React.createElement('div', {style:{color:ST.sg,fontSize:9,marginTop:2}}, 'مثال: جونیئر (3+4+5) — ایک کلاس میں تین جماعتیں۔ اگلے سال تبدیل کر سکتے ہیں۔')
+  ),
+  showForm==='msec' && React.createElement(Card, {style:{border:'2px solid '+ST.gd+'40',marginBottom:10}},
+    React.createElement('div', {style:{fontSize:12,fontWeight:700,color:ST.gd,marginBottom:8}}, 'نیا سیکشن'),
+    React.createElement(Inp, {value:newMSec.id, onChange:function(v){setNewMSec(function(p){return{...p,id:v};});}, placeholder:'ID (مثلاً SEC-A)', style:{direction:'ltr',marginBottom:6}}),
+    React.createElement(Inp, {value:newMSec.name, onChange:function(v){setNewMSec(function(p){return{...p,name:v};});}, placeholder:'نام (مثلاً junior)', style:{direction:'ltr',marginBottom:6}}),
+    React.createElement(Inp, {value:newMSec.display_name, onChange:function(v){setNewMSec(function(p){return{...p,display_name:v};});}, placeholder:'ظاہری نام (مثلاً جونیئر 3-4-5)', style:{marginBottom:6}}),
+    React.createElement(Inp, {value:newMSec.classes_included, onChange:function(v){setNewMSec(function(p){return{...p,classes_included:v};});}, placeholder:'جماعتیں — کاما سے الگ (مثلاً 3,4,5)', style:{direction:'ltr',marginBottom:8}}),
+    React.createElement(Btn, {full:true, color:'#10b981', onClick: async function(){
+      if(!newMSec.id.trim()||!newMSec.name.trim()||!newMSec.classes_included.trim()){flash('⚠️ تمام خانے ضروری');return;}
+      if(modernSections.find(function(s){return s.id===newMSec.id.trim();})){flash('⚠️ ID موجود');return;}
+      var classArr = newMSec.classes_included.split(',').map(function(c){return c.trim();}).filter(Boolean);
+      if(!classArr.length){flash('⚠️ کم از کم ایک جماعت');return;}
+      try{
+        await sbPost('modern_sections', {id:newMSec.id.trim(), name:newMSec.name.trim(), display_name:(newMSec.display_name||newMSec.name).trim(), classes_included:classArr, is_active:true}, 'id');
+        setModernSections(function(prev){return[...prev, normalizeModernSectionRow({id:newMSec.id.trim(),name:newMSec.name.trim(),display_name:(newMSec.display_name||newMSec.name).trim(),classes_included:classArr,is_active:true})].filter(Boolean);});
+        setNewMSec({id:'',name:'',display_name:'',classes_included:''});
+        setShowForm(null);
+        flash('✓ شامل');
+      }catch(e){flash('✗ '+e.message);}
+    }}, '✓ شامل')
+  ),
+  modernSections.map(function(sec){
+    return React.createElement(Card, {key:sec.id, style:{padding:'12px 14px',borderRight:'4px solid #7c3aed'}},
+      React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+        React.createElement('div', null,
+          React.createElement('div', {style:{fontSize:14,fontWeight:800}}, sec.display_name),
+          React.createElement('div', {style:{fontSize:9,color:'#999',marginTop:2}}, sec.id+' • '+sec.name)
+        ),
+        React.createElement('button', {onClick: async function(){
+          if(!window.confirm('حذف کریں؟ '+sec.display_name)) return;
+          try{
+            var dr2 = await fetch(cfg.supabase_url+'/rest/v1/modern_sections?id=eq.'+encodeURIComponent(sec.id),{
+              method:'DELETE', headers:{'apikey':cfg.supabase_key,'Authorization':'Bearer '+cfg.supabase_key,'Prefer':'return=minimal'}
+            });
+            if(!dr2.ok) throw new Error(await dr2.text()||String(dr2.status));
+            setModernSections(function(prev){return prev.filter(function(x){return x.id!==sec.id;});});
+            flash('✓ حذف');
+          }catch(e){flash('✗ '+e.message);}
+        }, style:{width:26,height:26,borderRadius:6,border:'none',fontSize:10,cursor:'pointer',background:'#fef2f2',color:'#ef4444'}}, '✗')
+      ),
+      React.createElement('div', {style:{display:'flex',flexWrap:'wrap',gap:4,marginTop:8}},
+        (sec.classes_included||[]).map(function(c){
+          return React.createElement('span', {key:c, style:{background:'#e0d0f0',color:'#7c3aed',padding:'2px 8px',borderRadius:6,fontSize:10,fontWeight:700}}, 'کلاس '+c);
+        })
+      )
+    );
+  }),
+  modernSections.length===0 && React.createElement('div', {style:{textAlign:'center',padding:30,color:'#999',fontSize:12}}, 'کوئی سیکشن نہیں — مشترکہ جماعتیں بنائیں')
+),
+admSub === 'mSubjects' && React.createElement('div', null,
+  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    React.createElement(Bk, {onClick: goHome}),
+    React.createElement(Ttl, {icon:'📘', text:'جدید مضامین (' + modernSubjects.length + ')'}),
+    React.createElement(Btn, {small:true, color:ST.gd, onClick:function(){setShowForm(showForm==='msub'?null:'msub');}}, showForm==='msub'?'✗':'+')
+  ),
+  showForm==='msub' && React.createElement(Card, {style:{border:'2px solid '+ST.gd+'40',marginBottom:10}},
+    React.createElement('div', {style:{fontSize:12,fontWeight:700,color:ST.gd,marginBottom:8}}, 'نیا مضمون'),
+    React.createElement('div', {style:{display:'flex',gap:6,marginBottom:6}},
+      React.createElement(Inp, {value:newMSub.id, onChange:function(v){setNewMSub(function(p){return{...p,id:v};});}, placeholder:'ID (مثلاً M-MATH-5)', style:{flex:1,direction:'ltr'}}),
+      React.createElement(Inp, {value:newMSub.n, onChange:function(v){setNewMSub(function(p){return{...p,n:v};});}, placeholder:'نام (مثلاً Mathematics)', style:{flex:2}})
+    ),
+    React.createElement(Inp, {value:newMSub.modern_class, onChange:function(v){setNewMSub(function(p){return{...p,modern_class:v};});}, placeholder:'جماعت (مثلاً 5, 6, 7...)', style:{direction:'ltr',marginBottom:6}}),
+    React.createElement('div', {style:{display:'flex',gap:6,marginBottom:8}},
+      React.createElement(Inp, {type:'number', value:newMSub.s, onChange:function(v){setNewMSub(function(p){return{...p,s:v};});}, placeholder:'شروع صفحہ', style:{flex:1,direction:'ltr',textAlign:'center'}}),
+      React.createElement(Inp, {type:'number', value:newMSub.e, onChange:function(v){setNewMSub(function(p){return{...p,e:v};});}, placeholder:'آخری صفحہ', style:{flex:1,direction:'ltr',textAlign:'center'}})
+    ),
+    React.createElement(Btn, {full:true, color:'#10b981', onClick: async function(){
+      if(!newMSub.id.trim()||!newMSub.n.trim()||!newMSub.modern_class.trim()){flash('⚠️ ID، نام اور جماعت ضروری');return;}
+      if(modernSubjects.find(function(s){return s.id===newMSub.id.trim();})){flash('⚠️ ID موجود');return;}
+      var startP = parseInt(newMSub.s)||0;
+      var endP = parseInt(newMSub.e)||0;
+      try{
+        await sbPost('modern_subjects', {id:newMSub.id.trim(), name:newMSub.n.trim(), modern_class:newMSub.modern_class.trim(), start_page:startP, end_page:endP}, 'id');
+        setModernSubjects(function(prev){return[...prev, normalizeModernSubjectRow({id:newMSub.id.trim(),name:newMSub.n.trim(),modern_class:newMSub.modern_class.trim(),start_page:startP,end_page:endP})].filter(Boolean);});
+        setNewMSub({id:'',n:'',modern_class:'',s:'',e:''});
+        setShowForm(null);
+        flash('✓ شامل');
+      }catch(e){flash('✗ '+e.message);}
+    }}, '✓ شامل')
+  ),
+  (function(){
+    var byClass = {};
+    modernSubjects.forEach(function(s){
+      var k = s.modern_class || '?';
+      if(!byClass[k]) byClass[k] = [];
+      byClass[k].push(s);
+    });
+    var classKeys = Object.keys(byClass).sort(function(a,b){return (parseInt(a)||99)-(parseInt(b)||99);});
+    if(!classKeys.length) return React.createElement('div', {style:{textAlign:'center',padding:30,color:'#999',fontSize:12}}, 'کوئی جدید مضمون نہیں — اوپر + دبائیں');
+    return classKeys.map(function(cls){
+      return React.createElement('div', {key:cls, style:{marginBottom:10}},
+        React.createElement(Bdg, {text:'کلاس '+cls+' ('+byClass[cls].length+')', bg:'#dbeafe', color:'#1e40af'}),
+        byClass[cls].map(function(s){
+          return React.createElement(Card, {key:s.id, style:{display:'flex',alignItems:'center',gap:8,padding:'8px 11px',borderRight:'3px solid #2563eb',marginTop:3}},
+            React.createElement('div', {style:{flex:1}},
+              React.createElement('div', {style:{fontSize:11,fontWeight:700}}, s.n),
+              React.createElement('div', {style:{fontSize:8,color:'#999'}}, s.id + (s.s||s.e ? ' • ص'+s.s+'–'+s.e+' ('+(s.e-s.s)+')' : ''))
+            ),
+            React.createElement('button', {onClick: async function(){
+              if(!window.confirm('حذف کریں؟ '+s.n)) return;
+              try{
+                var dr3 = await fetch(cfg.supabase_url+'/rest/v1/modern_subjects?id=eq.'+encodeURIComponent(s.id),{
+                  method:'DELETE', headers:{'apikey':cfg.supabase_key,'Authorization':'Bearer '+cfg.supabase_key,'Prefer':'return=minimal'}
+                });
+                if(!dr3.ok) throw new Error(await dr3.text()||String(dr3.status));
+                setModernSubjects(function(prev){return prev.filter(function(x){return x.id!==s.id;});});
+                flash('✓ حذف');
+              }catch(e){flash('✗ '+e.message);}
+            }, style:{width:22,height:22,borderRadius:5,border:'none',fontSize:9,cursor:'pointer',background:'#fef2f2',color:'#ef4444'}}, '✗')
+          );
+        })
+      );
+    });
+  })()
+),
+admSub === 'mAssign' && React.createElement('div', null,
+  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    React.createElement(Bk, {onClick: goHome}),
+    React.createElement(Ttl, {icon:'📋', text:'جدید تفویض (' + modernAssignments.length + ')'}),
+    React.createElement(Btn, {small:true, color:ST.gd, onClick:function(){setShowForm(showForm==='masg'?null:'masg');}}, showForm==='masg'?'✗':'+')
+  ),
+  showForm==='masg' && React.createElement(Card, {style:{border:'2px solid '+ST.gd+'40',marginBottom:10}},
+    React.createElement('div', {style:{fontSize:12,fontWeight:700,color:ST.gd,marginBottom:8}}, 'نئی تفویض'),
+    React.createElement(Sel, {value:newMAsg.t, onChange:function(v){setNewMAsg(function(p){return{...p,t:v};});}, style:{marginBottom:6}},
+      React.createElement('option', {value:''}, '— استاد —'),
+      modernTeachers.map(function(t){
+        var count = modernAssignments.filter(function(a){return a.t===t.id;}).length;
+        return React.createElement('option', {key:t.id, value:t.id}, t.n+' ('+count+')');
+      })
+    ),
+    React.createElement(Sel, {value:newMAsg.sub, onChange:function(v){setNewMAsg(function(p){return{...p,sub:v};});}, style:{marginBottom:6}},
+      React.createElement('option', {value:''}, '— مضمون —'),
+      modernSubjects.map(function(s){
+        return React.createElement('option', {key:s.id, value:s.id}, s.n+' (کلاس '+s.modern_class+')');
+      })
+    ),
+    React.createElement(Sel, {value:newMAsg.sec, onChange:function(v){setNewMAsg(function(p){return{...p,sec:v};});}, style:{marginBottom:6}},
+      React.createElement('option', {value:''}, '— سیکشن —'),
+      modernSections.map(function(sec){
+        return React.createElement('option', {key:sec.id, value:sec.id}, sec.display_name+' ('+(sec.classes_included||[]).join(',')+')');
+      })
+    ),
+    React.createElement(Sel, {value:newMAsg.p, onChange:function(v){setNewMAsg(function(p){return{...p,p:v};});}, style:{marginBottom:8}},
+      React.createElement('option', {value:''}, '— پیریڈ —'),
+      modernPeriods.filter(function(p){return p.type!=='break';}).map(function(p){
+        return React.createElement('option', {key:p.id, value:String(p.id)}, 'P'+p.id+': '+p.s+'–'+p.e);
+      })
+    ),
+    React.createElement(Btn, {full:true, color:'#10b981', onClick: async function(){
+      if(!newMAsg.t||!newMAsg.sub||!newMAsg.sec||!newMAsg.p){flash('⚠️ تمام خانے ضروری');return;}
+      var pid = parseInt(String(newMAsg.p), 10);
+      if(modernAssignments.find(function(a){return a.t===newMAsg.t && Number(a.p)===pid;})){flash('⚠️ استاد اس پیریڈ میں مصروف');return;}
+      if(modernAssignments.find(function(a){return a.sec===newMAsg.sec && Number(a.p)===pid;})){flash('⚠️ سیکشن اس پیریڈ میں مصروف');return;}
+      try{
+        await sbPost('modern_assignments', {teacher_id:newMAsg.t, subject_id:newMAsg.sub, section_id:newMAsg.sec, period_id:pid});
+        var hdr = {apikey:cfg.supabase_key, Authorization:'Bearer '+cfg.supabase_key};
+        var rAsg = await fetch(cfg.supabase_url+'/rest/v1/modern_assignments?select=*&order=period_id', {headers:hdr});
+        if(!rAsg.ok) throw new Error(await rAsg.text()||String(rAsg.status));
+        var rows = await rAsg.json();
+        if(Array.isArray(rows)) setModernAssignments(rows.map(normalizeModernAssignmentRow).filter(Boolean));
+        setNewMAsg({t:'',sub:'',sec:'',p:''});
+        setShowForm(null);
+        flash('✓ تفویض شامل');
+      }catch(e){flash('✗ '+e.message);}
+    }}, '✓ تفویض')
+  ),
+  (function(){
+    var bySec = {};
+    modernAssignments.forEach(function(a){
+      var k = a.sec || '?';
+      if(!bySec[k]) bySec[k] = [];
+      bySec[k].push(a);
+    });
+    var secKeys = Object.keys(bySec);
+    if(!secKeys.length) return React.createElement('div', {style:{textAlign:'center',padding:30,color:'#999',fontSize:12}}, 'کوئی تفویض نہیں — استاد، مضمون، سیکشن بنائیں، پھر تفویض کریں');
+    return secKeys.map(function(secId){
+      var sec = modernSections.find(function(s){return s.id===secId;});
+      var secName = sec ? sec.display_name : secId;
+      var items = bySec[secId].sort(function(a,b){return Number(a.p)-Number(b.p);});
+      return React.createElement('div', {key:secId, style:{marginBottom:12}},
+        React.createElement(Bdg, {text:secName+' ('+items.length+')', bg:'#e0d0f0', color:'#7c3aed'}),
+        items.map(function(a){
+          var ak = String(a.t)+'_'+String(a.sub)+'_'+String(a.sec)+'_'+String(a.p);
+          var t = modernTeachers.find(function(x){return x.id===a.t;});
+          var sub = modernSubjects.find(function(x){return x.id===a.sub;});
+          var per = modernPeriods.find(function(x){return Number(x.id)===Number(a.p);});
+          return React.createElement(Card, {key:ak, style:{display:'flex',alignItems:'center',gap:8,padding:'9px 11px',borderRight:'3px solid #2563eb',marginTop:3}},
+            React.createElement('div', {style:{width:32,height:32,borderRadius:8,background:'#dbeafe',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:'#2563eb'}}, 'P'+a.p),
+            React.createElement('div', {style:{flex:1}},
+              React.createElement('div', {style:{fontSize:11,fontWeight:700}}, sub?sub.n:a.sub),
+              React.createElement('div', {style:{fontSize:9,color:'#888'}}, (t?t.n:a.t)+' • '+(per?per.s+'–'+per.e:'P'+a.p))
+            ),
+            React.createElement('button', {onClick: async function(){
+              if(!window.confirm('حذف؟')) return;
+              try{
+                var drA = await fetch(cfg.supabase_url+'/rest/v1/modern_assignments?teacher_id=eq.'+encodeURIComponent(a.t)+'&subject_id=eq.'+encodeURIComponent(a.sub)+'&section_id=eq.'+encodeURIComponent(a.sec)+'&period_id=eq.'+encodeURIComponent(String(a.p)),{
+                  method:'DELETE', headers:{'apikey':cfg.supabase_key,'Authorization':'Bearer '+cfg.supabase_key,'Prefer':'return=minimal'}
+                });
+                if(!drA.ok) throw new Error(await drA.text()||String(drA.status));
+                setModernAssignments(function(prev){return prev.filter(function(x){return !(x.t===a.t && x.sub===a.sub && x.sec===a.sec && Number(x.p)===Number(a.p));});});
+                flash('✓ حذف');
+              }catch(e){flash('✗ '+e.message);}
+            }, style:{width:22,height:22,borderRadius:5,border:'none',fontSize:9,cursor:'pointer',background:'#fef2f2',color:'#ef4444'}}, '✗')
+          );
+        })
+      );
+    });
+  })()
+),
+admSub === 'mStudents' && React.createElement('div', null,
+  React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+    React.createElement(Bk, {onClick: goHome}),
+    React.createElement(Ttl, {icon:'👨‍🎓', text:'جدید طلبا (' + modernStudents.length + ')'}),
+    React.createElement(Btn, {small:true, color:ST.gd, onClick:function(){setShowForm(showForm==='mstu'?null:'mstu');}}, showForm==='mstu'?'✗':'+')
+  ),
+  React.createElement('div', {style:{display:'flex',gap:4,overflowX:'auto',marginBottom:8,paddingBottom:4}},
+    React.createElement('button', {onClick:function(){setMStuFilter('all');}, style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',background:mStuFilter==='all'?ST.dk:'#e5e0d5',color:mStuFilter==='all'?ST.gd:'#555'}}, 'سب'),
+    modernSections.map(function(sec){
+      return React.createElement('button', {key:sec.id, onClick:function(){setMStuFilter(sec.id);}, style:{padding:'4px 10px',borderRadius:16,border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'inherit',flexShrink:0,background:mStuFilter===sec.id?'#7c3aed':'#e5e0d5',color:mStuFilter===sec.id?'#fff':'#555'}}, sec.display_name);
+    })
+  ),
+  React.createElement('input', {value:mStuSearch, onChange:function(e){setMStuSearch(e.target.value);}, placeholder:'نام سے تلاش...', style:{width:'100%',padding:'8px 12px',borderRadius:10,border:'1px solid #ddd',fontSize:12,direction:'rtl',fontFamily:ST.f,marginBottom:10,boxSizing:'border-box'}}),
+  showForm==='mstu' && React.createElement(Card, {style:{border:'2px solid '+ST.gd+'40',marginBottom:10}},
+    React.createElement('div', {style:{fontSize:12,fontWeight:700,color:ST.gd,marginBottom:8}}, 'نیا طالب علم'),
+    React.createElement(Inp, {value:newMStu.id, onChange:function(v){setNewMStu(function(p){return{...p,id:v};});}, placeholder:'ID (مثلاً MS001)', style:{direction:'ltr',marginBottom:6}}),
+    React.createElement(Inp, {value:newMStu.n, onChange:function(v){setNewMStu(function(p){return{...p,n:v};});}, placeholder:'نام *', style:{marginBottom:6}}),
+    React.createElement(Inp, {value:newMStu.parent, onChange:function(v){setNewMStu(function(p){return{...p,parent:v};});}, placeholder:'والد', style:{marginBottom:6}}),
+    React.createElement(Inp, {value:newMStu.phone, onChange:function(v){setNewMStu(function(p){return{...p,phone:v};});}, placeholder:'فون', style:{marginBottom:6}}),
+    React.createElement(Inp, {value:newMStu.residence, onChange:function(v){setNewMStu(function(p){return{...p,residence:v};});}, placeholder:'رہائش', style:{marginBottom:6}}),
+    React.createElement('div', {style:{display:'flex',gap:6,marginBottom:8}},
+      React.createElement('div', {style:{flex:1}},
+        React.createElement('div', {style:{fontSize:9,color:'#999',marginBottom:2}}, 'جماعت (اصل سطح)'),
+        React.createElement(Inp, {value:newMStu.modern_class, onChange:function(v){setNewMStu(function(p){return{...p,modern_class:v};});}, placeholder:'مثلاً 5, 6, 7...', style:{direction:'ltr'}})
+      ),
+      React.createElement('div', {style:{flex:1}},
+        React.createElement('div', {style:{fontSize:9,color:'#999',marginBottom:2}}, 'سیکشن'),
+        React.createElement(Sel, {value:newMStu.section_id, onChange:function(v){setNewMStu(function(p){return{...p,section_id:v};});}},
+          React.createElement('option', {value:''}, '— سیکشن —'),
+          modernSections.map(function(sec){
+            return React.createElement('option', {key:sec.id, value:sec.id}, sec.display_name);
+          })
+        )
+      )
+    ),
+    React.createElement(Btn, {full:true, color:'#10b981', onClick: async function(){
+      if(!newMStu.id.trim()||!newMStu.n.trim()){flash('⚠️ ID اور نام ضروری');return;}
+      if(modernStudents.find(function(s){return s.id===newMStu.id.trim();})){flash('⚠️ ID موجود');return;}
+      try{
+        await sbPost('modern_students', {
+          id:newMStu.id.trim(), name:newMStu.n.trim(), parent:newMStu.parent||'',
+          phone:newMStu.phone||'', residence:newMStu.residence||'',
+          modern_class:newMStu.modern_class||'', section_id:newMStu.section_id||null,
+          status:'active'
+        }, 'id');
+        setModernStudents(function(prev){return[...prev, normalizeModernStudentRow({
+          id:newMStu.id.trim(), name:newMStu.n.trim(), parent:newMStu.parent||'',
+          phone:newMStu.phone||'', residence:newMStu.residence||'',
+          modern_class:newMStu.modern_class||'', section_id:newMStu.section_id||'',
+          status:'active'
+        })].filter(Boolean);});
+        setNewMStu({id:'',n:'',parent:'',phone:'',residence:'',modern_class:'',section_id:''});
+        setShowForm(null);
+        flash('✓ شامل');
+      }catch(e){flash('✗ '+e.message);}
+    }}, '✓ شامل')
+  ),
+  (function(){
+    var filtered = modernStudents
+      .filter(function(s){
+        if(mStuFilter==='all') return true;
+        return s.section_id===mStuFilter;
+      })
+      .filter(function(s){
+        if(!mStuSearch) return true;
+        var q = mStuSearch.toLowerCase();
+        return (s.n||'').toLowerCase().includes(q) || (s.id||'').toLowerCase().includes(q);
+      });
+    if(!filtered.length) return React.createElement('div', {style:{textAlign:'center',padding:30,color:'#999',fontSize:12}}, modernStudents.length===0 ? 'کوئی جدید طالب علم نہیں — اوپر + دبائیں' : 'اس فلٹر میں کوئی طالب علم نہیں');
+    return filtered.map(function(s){
+      var sec = modernSections.find(function(x){return x.id===s.section_id;});
+      return React.createElement(Card, {key:s.id, style:{padding:'10px 13px'}},
+        React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
+          React.createElement('div', {style:{flex:1}},
+            React.createElement('div', {style:{fontSize:13,fontWeight:800}}, s.n),
+            React.createElement('div', {style:{fontSize:9,color:'#999',marginTop:2}}, s.id + ' • کلاس '+s.modern_class + (sec ? ' • '+sec.display_name : '')),
+            s.parent && React.createElement('div', {style:{fontSize:10,color:'#777',marginTop:2}}, 'والد: '+s.parent),
+            s.phone && React.createElement('a', {href:'tel:'+s.phone, style:{fontSize:10,color:ST.dk,textDecoration:'none',display:'block',marginTop:1}}, '📞 '+s.phone)
+          ),
+          React.createElement('div', {style:{display:'flex',gap:4}},
+            React.createElement('button', {onClick: async function(){
+              if(!window.confirm('حذف کریں؟ '+s.n)) return;
+              try{
+                var drS = await fetch(cfg.supabase_url+'/rest/v1/modern_students?id=eq.'+encodeURIComponent(s.id),{
+                  method:'DELETE', headers:{'apikey':cfg.supabase_key,'Authorization':'Bearer '+cfg.supabase_key,'Prefer':'return=minimal'}
+                });
+                if(!drS.ok) throw new Error(await drS.text()||String(drS.status));
+                setModernStudents(function(prev){return prev.filter(function(x){return x.id!==s.id;});});
+                flash('✓ حذف');
+              }catch(e){flash('✗ '+e.message);}
+            }, style:{width:24,height:24,borderRadius:6,border:'none',fontSize:9,cursor:'pointer',background:'#fef2f2',color:'#ef4444'}}, '🗑')
+          )
+        )
+      );
+    });
+  })(),
+  React.createElement('div', {style:{fontSize:10,color:'#888',textAlign:'center',marginTop:10}},
+    modernStudents.length+' طلبا' + (modernSections.length ? ' • '+modernSections.length+' سیکشنز' : '')
+  )
+),
+
+admSub === 'reset' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'space-between',
