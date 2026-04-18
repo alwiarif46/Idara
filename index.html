@@ -7,6 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <meta name="description" content="Imam Azam College — Academic Management App">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.json">
@@ -31,8 +33,26 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 
 <script>
-// Service Worker
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+// One-time: unregister SW + delete iri-* caches (stale index.html still referenced `thuMap` TDZ for some users)
+(function () {
+  var k = 'iri_purge_stale_index_v1';
+  try {
+    if (localStorage.getItem(k)) return;
+    localStorage.setItem(k, '1');
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        rs.forEach(function (r) { r.unregister(); });
+      }).catch(function () {});
+    }
+    if ('caches' in window) {
+      caches.keys().then(function (names) {
+        return Promise.all(names.filter(function (n) { return /^iri-/i.test(n); }).map(function (n) { return caches.delete(n); }));
+      }).catch(function () {});
+    }
+  } catch (e) {}
+})();
+// Service Worker (query busts cached sw.js)
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=iri-app-v14').catch(function () {});
 window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
 window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
 if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
@@ -57,6 +77,34 @@ const {
   useEffect,
   useRef
 } = React;
+
+if (typeof window !== 'undefined') {
+  window.__IRI_INDEX = 'purge-sw-v14-2026-04-17';
+  try { console.log('[iri] index script build', window.__IRI_INDEX); } catch (e) {}
+}
+
+/** Stable empty Thursday bundle — useMemo must not return a fresh object each render when !cfg */
+const EMPTY_THURSDAY_DERIVED = { thuDates: [], thuSch: [], weeks: [], thuEligibleIds: [], thuEligibleAsg: [] };
+
+/** Pure Thursday bundle from cfg — lives outside App so hooks never touch a `thuMap` TDZ. */
+function buildThursdayDerived(cfg) {
+  if (!cfg || !cfg.institution) return EMPTY_THURSDAY_DERIVED;
+  const teachers = cfg.teachers;
+  const assignments = cfg.assignments;
+  if (!Array.isArray(teachers) || !Array.isArray(assignments)) return EMPTY_THURSDAY_DERIVED;
+  try {
+    const thuDates = genThursdays(cfg.institution);
+    const examiners = teachers.filter(t => t.exam).map(t => t.id);
+    const thuSch = genThuSch(thuDates, examiners);
+    const thuEligibleIds = teachers.filter(t => !['T7', 'T8', 'T9'].includes(t.id)).map(t => t.id);
+    const thuEligibleAsg = assignments.filter(a => thuEligibleIds.includes(a.t));
+    const weeks = genThuMap(thuEligibleAsg, thuEligibleIds, thuDates);
+    return { thuDates, thuSch, weeks, thuEligibleIds, thuEligibleAsg };
+  } catch (e) {
+    console.warn('[buildThursdayDerived]', e);
+    return EMPTY_THURSDAY_DERIVED;
+  }
+}
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -142,6 +190,8 @@ function App() {
   const [allTeachers, setAllTeachers] = useState([]);
 
   const [thWk, setThWk] = useState(null);
+  const [thuStore, setThuStore] = useState({});
+  const [thOpen, setThOpen] = useState(null);
   const [sAttend, setSAttendRaw] = useState({});
   const [tAttend, setTAttendRaw] = useState({});
   const [attExpand, setAttExpand] = useState({});
@@ -167,6 +217,8 @@ function App() {
   const [studentDelUndo, setStudentDelUndo] = useState(null);
   // Early-bind CL so hooks before the full destructuring never hit TDZ
   const CL = (cfg && cfg.classes) || [];
+
+  const thursdayDerived = useMemo(() => buildThursdayDerived(cfg), [cfg]);
 
   // Wrapped setters that auto-persist
   const setCfg = useCallback(updater => {
@@ -435,24 +487,23 @@ function App() {
     };
   }, []);
 
-  // Init Thursday test grids — one per assignment slot, persisted per week
-  const [thuStore, setThuStore] = useState({});
-  const [thOpen, setThOpen] = useState(null);
+  // Init Thursday test grids — one per assignment slot, persisted per week (uses module fn — no thuMap binding in App)
   useEffect(() => {
-    if (cfg && thuMap.length > 0 && user) {
-      const store = {};
-      for (const w of thuMap) {
-        const myA = w.assignments.filter(a => a.t === user.id).sort((a,b) => a.p - b.p);
-        store[w.wk] = myA.map(a => ({
-          sub: a.sub, p: a.p, origT: a.origT,
-          ptn: '',
-          grid: Array.from({length: 15}, (_, i) => ({num: i+1, nm: '', sc: [null,null,null,null,null], ab: false})),
-          nt: '', sg: ''
-        }));
-      }
-      setThuStore(store);
+    if (!cfg || !user) return;
+    const weeks = buildThursdayDerived(cfg).weeks;
+    if (!weeks.length) return;
+    const store = {};
+    for (const w of weeks) {
+      const myA = w.assignments.filter(a => a.t === user.id).sort((a,b) => a.p - b.p);
+      store[w.wk] = myA.map(a => ({
+        sub: a.sub, p: a.p, origT: a.origT,
+        ptn: '',
+        grid: Array.from({length: 15}, (_, i) => ({num: i+1, nm: '', sc: [null,null,null,null,null], ab: false})),
+        nt: '', sg: ''
+      }));
     }
-  }, [cfg && cfg.assignments && cfg.assignments.length, user && user.id]);
+    setThuStore(store);
+  }, [cfg, user && user.id]);
   const flash = useCallback(m => {
     setToast(m);
     setTimeout(() => setToast(''), 2500);
@@ -965,12 +1016,8 @@ function App() {
   const cT = (s, tot, td) => s + Math.round(tot / inst.teaching_days * (td !== undefined && td !== null ? td : tDay));
   const gS = id => subjects.find(s => s.id === id);
   const cPer = periods.filter(p => p.type !== 'break');
-  const examiners = teachers.filter(t => t.exam).map(t => t.id);
-  const thuDates = genThursdays(inst);
-  const thuSch = genThuSch(thuDates, examiners);
-  const thuEligibleIds = teachers.filter(t => !['T7','T8','T9'].includes(t.id)).map(t => t.id);
-  const thuEligibleAsg = assignments.filter(a => thuEligibleIds.includes(a.t));
-  const thuMap = genThuMap(thuEligibleAsg, thuEligibleIds, thuDates);
+  const { thuDates, thuSch, thuEligibleIds, thuEligibleAsg } = thursdayDerived;
+  const thuWeeks = thursdayDerived.weeks;
   const tA = tid => assignments.filter(a => a.t === tid).length;
   const pA = pid => assignments.filter(a => a.p === pid).length;
   const unassigned = subjects.filter(s => !assignments.some(a => a.sub === s.id));
@@ -1052,7 +1099,7 @@ function App() {
     });
     return all;
   }, [myA, myModernA, periods]);
-  const myThu = user ? thuMap.filter(w => w.assignments.some(a => a.t === user.id)).map(w => ({...w, myAsg: w.assignments.filter(a => a.t === user.id).sort((a,b)=>a.p-b.p)})) : [];
+  const myThu = user ? thuWeeks.filter(w => w.assignments.some(a => a.t === user.id)).map(w => ({...w, myAsg: w.assignments.filter(a => a.t === user.id).sort((a,b)=>a.p-b.p)})) : [];
   const upd = (sid, f, v) => {
     const n = {
       ...reps,
@@ -1368,7 +1415,7 @@ function App() {
   };
   const submitTh = () => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const autoWk = thuMap.find(w => w.dt >= todayStr) || thuMap[thuMap.length-1];
+    const autoWk = thuWeeks.find(w => w.dt >= todayStr) || thuWeeks[thuWeeks.length-1];
     const selWk = thWk || autoWk;
     if (!selWk) { flash('⚠️'); return; }
     const slots = thuStore[selWk.wk] || [];
@@ -1947,7 +1994,7 @@ function App() {
       fontSize: 9,
       color: '#f59e0b'
     }
-  }, "\uD83D\uDCCB \u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646\u0627\u062A: ", thuMap.length, " \u06C1\u0641\u062A\u06D2 \u2022 ", myThu.length > 0 ? myThu[0].myAsg.length : 0, " \u067E\u06CC\u0631\u06CC\u0688/\u06C1\u0641\u062A\u06C1")),
+  }, "\uD83D\uDCCB \u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646\u0627\u062A: ", thuWeeks.length, " \u06C1\u0641\u062A\u06D2 \u2022 ", myThu.length > 0 ? myThu[0].myAsg.length : 0, " \u067E\u06CC\u0631\u06CC\u0688/\u06C1\u0641\u062A\u06C1")),
 
   // ── Prayer Times Card ──
   prayerTimes && (() => {
@@ -2789,14 +2836,14 @@ tab === 'thu' && isEx && React.createElement('div', null,
   React.createElement(Ttl, {icon:'\uD83D\uDCCB', text:'\u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646'}),
   (() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const autoWk = thuMap.find(w => w.dt >= todayStr) || thuMap[thuMap.length-1];
+    const autoWk = thuWeeks.find(w => w.dt >= todayStr) || thuWeeks[thuWeeks.length-1];
     const selWk = thWk || autoWk;
     const selWkNum = selWk ? selWk.wk : 0;
     const slots = thuStore[selWkNum] || [];
     const gT = id => teachers.find(t => t.id === id);
     return React.createElement('div', null,
       React.createElement('div', {style:{display:'flex',gap:5,overflowX:'auto',marginBottom:10,paddingBottom:4}},
-        thuMap.map(w => {
+        thuWeeks.map(w => {
           const active = selWkNum === w.wk;
           const myCount = (w.assignments || []).filter(a => a.t === (user && user.id)).length;
           return React.createElement('button', {
@@ -4020,9 +4067,9 @@ tab === 'thu' && isEx && React.createElement('div', null,
   ),
   (() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const [expWk, setExpWk] = [thWk && thWk.wk, w => setThWk(thuMap.find(x=>x.wk===w)||null)];
-    return thuMap.map(w => {
-      const isCur = w.dt >= todayStr && (!thuMap.find(x => x.dt >= todayStr && x.wk < w.wk));
+    const [expWk, setExpWk] = [thWk && thWk.wk, w => setThWk(thuWeeks.find(x=>x.wk===w)||null)];
+    return thuWeeks.map(w => {
+      const isCur = w.dt >= todayStr && (!thuWeeks.find(x => x.dt >= todayStr && x.wk < w.wk));
       const isPast = w.dt < todayStr;
       const isExp = expWk === w.wk;
       const myAsgCount = w.assignments.length;

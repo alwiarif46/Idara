@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iri-app-v9';
+const CACHE_NAME = 'iri-app-v14';
 
 /** Offline shell: split modules from index.html (bump CACHE_NAME when this list changes). */
 const PRECACHE_URLS = [
@@ -33,13 +33,17 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // For everything else: network first, cache fallback
+  // For everything else: network first, cache fallback — never cache HTML / navigations (stale index caused thuMap TDZ)
   event.respondWith(
     fetch(event.request)
       .then(response => {
         if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          const u = event.request.url;
+          const isDoc = event.request.mode === 'navigate' || /\.html($|\?)/.test(u);
+          if (!isDoc) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
         }
         return response;
       })
