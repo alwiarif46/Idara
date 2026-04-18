@@ -1402,6 +1402,39 @@ function render() {
     const scoreColor = pct>=80?'var(--gr)':pct>=50?'var(--yl)':'var(--rd)';
     const isSubmitted = !!rpt.submitted_at;
 
+    // Same 10 rules as filled/total — list what is still needed for 100%
+    const pendingFor100 = [];
+    const addPending = function (label, anchorId) {
+      pendingFor100.push({ label: label, anchor: anchorId });
+    };
+    if (rpt.absent_students_entered == null) addPending('غائب طلبا کا درست عدد درج کریں', 'acc_anchor_verify');
+    if (rpt.behind_subjects_entered == null) addPending('ہدف سے پیچھے مضامین کا عدد درج کریں', 'acc_anchor_verify');
+    if (!rpt.coverage_details) addPending('غائب اساتذہ کی کوریج / بندوبست کی تفصیل لکھیں', 'acc_anchor_verify');
+    if (!((rpt.class_visited || '').length >= 3 && classObsScoringOk(rpt.class_observations))) {
+      var _visOk = (rpt.class_visited || '').length >= 3;
+      addPending(_visOk ? 'کلاس معائنے (ہر درجے 3×سوال-جواب) مکمل کریں' : 'کون سی کلاس دیکھی + کم از کم 3 حروف کا ذیلی نوٹ', _visOk ? 'acc_anchor_inspection' : 'acc_anchor_class_visit');
+    }
+    if (!absentActionsScoringOk(rpt.absent_actions || '', absentListDedup)) addPending('غائب طلبا — اقدامات کا فارم مکمل کریں', 'acc_anchor_absent_actions');
+    if (!hifzNotesScoringOk(rpt.hifz_notes || '', hifzRoster)) addPending('حفظ یاد / قاری نوٹس مکمل کریں', 'acc_anchor_hifz');
+    if ((rpt.general_remarks || '').length < 5) addPending('عمومی ملاحظات — کم از کم 5 حروف', 'acc_anchor_remarks');
+    if (!rpt.called_parents) addPending('چیک لسٹ: غائب طلبا کے والدین سے رابطہ', 'acc_anchor_chk_parents');
+    if (!rpt.checked_hifz) addPending('چیک لسٹ: حفظ پیشرفت خود دیکھی', 'acc_anchor_chk_hifz');
+    if (!rpt.reviewed_thursday) addPending(isThursday ? 'چیک لسٹ: جمعرات امتحانی نتائج' : 'چیک لسٹ: جمعرات نتائج (جمعرات کو یہ خانہ فعال ہوتا ہے)', isThursday ? 'acc_anchor_chk_thu' : 'acc_anchor_checklist');
+
+    var pending100Html = '';
+    if (pendingFor100.length) {
+      pending100Html = '<div style="margin-top:14px;text-align:right;border-top:1px solid #1f3d5e;padding-top:12px">' +
+        '<div style="font-size:11px;font-weight:800;color:#fdba74;margin-bottom:8px;line-height:1.45">100% تک باقی (' + pendingFor100.length + ' / ' + total + ') — نیچے ٹیپ کریں:</div>' +
+        '<ul style="list-style:none;margin:0;padding:0;font-size:11px;line-height:1.55;color:var(--wh)">' +
+        pendingFor100.map(function (it) {
+          var aid = String(it.anchor || '').replace(/'/g, '');
+          return '<li style="margin-bottom:6px"><button type="button" class="btn btn-sm" style="width:100%;text-align:right;padding:10px 12px;font-size:11px;font-weight:700;background:var(--dk3);border:1px solid #b45309;color:var(--wh);border-radius:10px;cursor:pointer;font-family:inherit" onclick="window.scrollToAccSection && window.scrollToAccSection(\'' + aid + '\')">\u2190 ' + escHtml(it.label) + '</button></li>';
+        }).join('') +
+        '</ul></div>';
+    } else {
+      pending100Html = '<div style="font-size:11px;color:var(--gr);margin-top:12px;font-weight:700;line-height:1.45">\u2713 100% \u2014 تمام ' + total + ' خانے پورے ہیں\u06D4 اب رپورٹ جمع کرائیں\u06D4</div>';
+    }
+
     // ── Score Header ──
     html += `<div class="section" style="text-align:center;border:2px solid ${scoreColor}">
       <div style="font-size:56px;font-weight:800;color:${scoreColor}">${pct}%</div>
@@ -1411,6 +1444,7 @@ function render() {
       <div style="width:100%;height:8px;background:var(--dk);border-radius:4px;margin-top:10px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${scoreColor};border-radius:4px;transition:.5s"></div>
       </div>
+      ${pending100Html}
     </div>`;
 
     // ═══ Section A: Auto-Verified Status (read-only) ═══
