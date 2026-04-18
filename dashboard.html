@@ -600,7 +600,11 @@ let activeTab = 'overview';
  */
 const TAB_ACCOUNTABILITY = 'admin';
 /** Student attendance tab filters — `var` so inline onchange/oninput can see it */
-var sAttendUi = { class: 'all', status: 'all', search: '' };
+var sAttendUi = { class: 'all', status: 'all', search: '', date: TODAY, subject: 'all' };
+/** Cached rows when viewing student_attendance for a date other than TODAY */
+var sAttendHistorical = { date: '', rows: null, loading: false };
+/** Teacher attendance tab — evidence grid class filter (`var` for inline onclick) */
+var tVerifyFilter = 'all';
 var exportView = { table: null, data: null, loading: false, filter: { teacher: '', cls: '', status: '', slot: '', search: '' } };
 
 function escAttr(s) {
@@ -626,6 +630,36 @@ function sAttendGroupKey(r, assignments) {
   const p = sAttendInferPeriod(r, assignments);
   const pPart = p == null ? 'null' : String(p);
   return pPart + '|' + (r.subject_id || '') + '|' + (r.teacher_id || '');
+}
+
+async function ensureSAttendRowsForUiDate() {
+  var d = sAttendUi.date || TODAY;
+  if (d === TODAY) return;
+  if (sAttendHistorical.loading) return;
+  if (sAttendHistorical.date === d && sAttendHistorical.rows != null) return;
+  sAttendHistorical.loading = true;
+  sAttendHistorical.date = d;
+  sAttendHistorical.rows = null;
+  render();
+  try {
+    var rows = await sb('student_attendance', 'select=*&date=eq.' + d + '&order=created_at.desc&limit=500');
+    sAttendHistorical.rows = Array.isArray(rows) ? rows : [];
+  } catch (e) {
+    toast('❌ ' + e.message);
+    sAttendHistorical.rows = [];
+  }
+  sAttendHistorical.loading = false;
+  render();
+}
+
+function onSAttendDateChange(val) {
+  sAttendUi.date = val || TODAY;
+  if ((sAttendUi.date || TODAY) === TODAY) {
+    sAttendHistorical = { date: '', rows: null, loading: false };
+  } else {
+    sAttendHistorical = { date: '', rows: null, loading: false };
+  }
+  render();
 }
 
 /** Unique students marked absent (A) today — one row per child in accountability follow-up. */
@@ -1718,15 +1752,209 @@ function render() {
       html += `<button class="btn btn-gd" onclick="approveAll()">✅ سب منظور کریں (${pending.length})</button>`;
     }
     html += '</div>';
+
+    // ═══ Evidence-based Verification Grid ═══
+    html += '<div class="section"><h2>📊 تصدیق — مضمون و پیریڈ وار</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px;line-height:1.5">جب کسی استاد نے طلبا کی حاضری لگائی یا رپورٹ جمع کی، تو یہ ثبوت ہے کہ وہ کلاس میں تھے۔ سرخ = کوئی ثبوت نہیں۔</div>';
+
+    html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">';
+    html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === 'all' ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'all\';render();">سب درجے</button>';
+    CLASS_ORDER.forEach(function(cid) {
+      html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'' + cid + '\';render();">' + (CLASS_UR[cid] || cid) + '</button>';
+    });
+    html += '</div>';
+
+    var evidenceAtt = new Set();
+    (sAttToday || []).forEach(function(r) {
+      if (r.teacher_id != null && r.subject_id != null) evidenceAtt.add(String(r.teacher_id) + '|' + String(r.subject_id));
+    });
+    var evidenceRep = new Set();
+    (reportsToday || []).forEach(function(r) {
+      if (r.teacher_id != null && r.subject_id != null) evidenceRep.add(String(r.teacher_id) + '|' + String(r.subject_id));
+    });
+
+    var verifyRows = [];
+    (assignments || []).forEach(function(a) {
+      if (a.teacher_id == null || a.subject_id == null) return;
+      var sub = (subjects || []).find(function(s) { return String(s.id) === String(a.subject_id); });
+      if (!sub) return;
+      var cls = sub.class || sub.class_id || '';
+      if (tVerifyFilter !== 'all' && cls !== tVerifyFilter) return;
+      var t = (teachers || []).find(function(x) { return String(x.id) === String(a.teacher_id); });
+      var per = (periods || []).find(function(p) { return String(p.id) === String(a.period_id); });
+      var key = String(a.teacher_id) + '|' + String(a.subject_id);
+      var hasAtt = evidenceAtt.has(key);
+      var hasRep = evidenceRep.has(key);
+      var verified = hasAtt || hasRep;
+      var tAtt = (tAttToday || []).find(function(x) { return String(x.teacher_id) === String(a.teacher_id); });
+      var selfStatus = tAtt ? tAtt.status : null;
+      verifyRows.push({
+        teacherId: a.teacher_id,
+        teacherName: t ? t.name : a.teacher_id,
+        subjectId: a.subject_id,
+        subjectName: sub.name || a.subject_id,
+        cls: cls,
+        periodId: a.period_id,
+        periodLabel: per ? (per.start_time + '–' + per.end_time) : ('P' + (a.period_id != null ? a.period_id : '?')),
+        verified: verified,
+        hasAtt: hasAtt,
+        hasRep: hasRep,
+        selfStatus: selfStatus
+      });
+    });
+
+    var clsRank = {};
+    CLASS_ORDER.forEach(function(c, i) { clsRank[c] = i; });
+    verifyRows.sort(function(a, b) {
+      var ca = clsRank[a.cls] != null ? clsRank[a.cls] : 99;
+      var cb = clsRank[b.cls] != null ? clsRank[b.cls] : 99;
+      if (ca !== cb) return ca - cb;
+      var pa = a.periodId != null && !Number.isNaN(Number(a.periodId)) ? Number(a.periodId) : 99;
+      var pb = b.periodId != null && !Number.isNaN(Number(b.periodId)) ? Number(b.periodId) : 99;
+      if (pa !== pb) return pa - pb;
+      return String(a.teacherName).localeCompare(String(b.teacherName), 'ur');
+    });
+
+    var vTotal = verifyRows.length;
+    var vGreen = verifyRows.filter(function(r) { return r.verified; }).length;
+    var vRed = vTotal - vGreen;
+    var vPct = vTotal > 0 ? Math.round(vGreen / vTotal * 100) : 0;
+    var summaryColor = vPct >= 80 ? 'var(--gr)' : vPct >= 50 ? 'var(--yl)' : 'var(--rd)';
+
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px;background:var(--dk);border-radius:12px;border:1px solid ' + summaryColor + '">';
+    html += '<div style="text-align:center;flex:1;min-width:80px"><div style="font-size:28px;font-weight:800;color:' + summaryColor + '">' + vPct + '%</div><div style="font-size:9px;color:#8a9ab5">تصدیق شدہ</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gr)">' + vGreen + '</div><div style="font-size:9px;color:#8a9ab5">ثبوت ✓</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--rd)">' + vRed + '</div><div style="font-size:9px;color:#8a9ab5">بغیر ثبوت</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gd)">' + vTotal + '</div><div style="font-size:9px;color:#8a9ab5">کل تفویضات</div></div>';
+    html += '</div>';
+
+    if (!verifyRows.length) {
+      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">اس فلٹر کے لیے کوئی تفویض نہیں</div>';
+    } else {
+      var byClass = {};
+      verifyRows.forEach(function(r) {
+        var k = r.cls || '?';
+        if (!byClass[k]) byClass[k] = [];
+        byClass[k].push(r);
+      });
+      var classKeys = Object.keys(byClass);
+      classKeys.sort(function(a, b) {
+        return (clsRank[a] != null ? clsRank[a] : 99) - (clsRank[b] != null ? clsRank[b] : 99);
+      });
+
+      classKeys.forEach(function(cls) {
+        var rows = byClass[cls];
+        var clsVerified = rows.filter(function(r) { return r.verified; }).length;
+        var clsTotal = rows.length;
+        var clsPct = clsTotal > 0 ? Math.round(clsVerified / clsTotal * 100) : 0;
+        var clsColor = clsPct >= 80 ? 'var(--gr)' : clsPct >= 50 ? 'var(--yl)' : 'var(--rd)';
+
+        html += '<div style="margin-bottom:14px;border:1px solid #1f3d5e;border-radius:12px;overflow:hidden">';
+        html += '<div style="background:var(--dk3);padding:10px 12px;display:flex;justify-content:space-between;align-items:center">';
+        html += '<div style="display:flex;align-items:center;gap:8px"><span class="class-badge ' + escAttr(cls) + '">' + escHtml(CLASS_UR[cls] || cls) + '</span>';
+        html += '<span style="font-size:12px;font-weight:700;color:var(--gd)">' + clsVerified + '/' + clsTotal + '</span></div>';
+        html += '<span style="font-size:11px;font-weight:800;color:' + clsColor + '">' + clsPct + '%</span>';
+        html += '</div>';
+
+        html += '<div class="scroll-table" style="max-height:300px"><table class="tbl"><thead><tr>';
+        html += '<th>پیریڈ</th><th>استاد</th><th>مضمون</th><th>خود رپورٹ</th><th>حاضری ✓</th><th>رپورٹ ✓</th><th>تصدیق</th>';
+        html += '</tr></thead><tbody>';
+
+        rows.forEach(function(r) {
+          var selfBadge = '';
+          if (r.selfStatus === 'present') selfBadge = '<span class="badge p">حاضر</span>';
+          else if (r.selfStatus === 'absent') selfBadge = '<span class="badge a">غائب</span>';
+          else if (r.selfStatus === 'leave') selfBadge = '<span class="badge l">رخصت</span>';
+          else if (r.selfStatus === 'late') selfBadge = '<span class="badge late">تاخیر</span>';
+          else selfBadge = '<span style="color:#555">—</span>';
+
+          var attIcon = r.hasAtt ? '<span style="color:var(--gr);font-weight:800">✓</span>' : '<span style="color:#555">✗</span>';
+          var repIcon = r.hasRep ? '<span style="color:var(--gr);font-weight:800">✓</span>' : '<span style="color:#555">✗</span>';
+
+          var vBadge = '';
+          if (r.verified) {
+            vBadge = '<span class="badge p">ثابت ✓</span>';
+          } else if (r.selfStatus === 'absent' || r.selfStatus === 'leave') {
+            vBadge = '<span class="badge l">معذور</span>';
+          } else {
+            vBadge = '<span class="badge a">بغیر ثبوت</span>';
+          }
+
+          var rowBg = '';
+          if (!r.verified && (!r.selfStatus || r.selfStatus === 'present')) rowBg = 'background:#ea433515';
+
+          html += '<tr style="' + rowBg + '">';
+          html += '<td style="font-weight:700">P' + (r.periodId != null ? r.periodId : '?') + '<div style="font-size:8px;color:#8a9ab5">' + escHtml(r.periodLabel) + '</div></td>';
+          html += '<td>' + escHtml(r.teacherName) + '</td>';
+          html += '<td>' + escHtml(r.subjectName) + '</td>';
+          html += '<td>' + selfBadge + '</td>';
+          html += '<td style="text-align:center">' + attIcon + '</td>';
+          html += '<td style="text-align:center">' + repIcon + '</td>';
+          html += '<td>' + vBadge + '</td>';
+          html += '</tr>';
+        });
+
+        html += '</tbody></table></div></div>';
+      });
+    }
+
+    var discrepancies = verifyRows.filter(function(r) {
+      return !r.verified && r.selfStatus === 'present';
+    });
+    if (discrepancies.length > 0) {
+      html += '<div style="margin-top:12px;padding:14px;background:#ea433522;border:1.5px solid #ea4335;border-radius:12px">';
+      html += '<div style="font-weight:800;font-size:13px;color:var(--rd);margin-bottom:8px">⚠️ تضاد — حاضر بتایا مگر ثبوت نہیں (' + discrepancies.length + ')</div>';
+      html += '<div style="font-size:10px;color:#fdba74;margin-bottom:10px">ان اساتذہ نے خود کو حاضر بتایا لیکن نہ طلبا کی حاضری لگائی نہ رپورٹ جمع کی</div>';
+      discrepancies.forEach(function(r) {
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--dk);border-radius:8px;margin-bottom:4px;min-height:40px">';
+        html += '<div><span style="font-weight:700;font-size:12px">' + escHtml(r.teacherName) + '</span>';
+        html += '<span style="font-size:10px;color:#8a9ab5;margin-right:8px"> • ' + escHtml(r.subjectName) + ' • P' + (r.periodId != null ? r.periodId : '?') + '</span></div>';
+        html += '<span class="class-badge ' + escAttr(r.cls) + '">' + escHtml(CLASS_UR[r.cls] || r.cls) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
   }
 
   // ═══════════════════════════════════════════
   // TAB: STUDENT ATTENDANCE
   // ═══════════════════════════════════════════
   if (activeTab === 'sAttend') {
-    html += '<div class="section"><h2>👥 آج طلبا کی حاضری</h2>';
+    var sDateElKeep = document.getElementById('sAttendDate');
+    if (sDateElKeep && sDateElKeep.value) sAttendUi.date = sDateElKeep.value;
+
+    var sAttendD = sAttendUi.date || TODAY;
+    var rawRows;
+    if (sAttendD === TODAY) {
+      rawRows = DATA.sAttToday || [];
+    } else if (sAttendHistorical.loading && sAttendHistorical.date === sAttendD) {
+      rawRows = [];
+    } else if (sAttendHistorical.date === sAttendD && sAttendHistorical.rows != null) {
+      rawRows = sAttendHistorical.rows;
+    } else {
+      rawRows = [];
+      if (!sAttendHistorical.loading) {
+        setTimeout(function() { ensureSAttendRowsForUiDate(); }, 0);
+      }
+    }
+
+    html += '<div class="section"><h2>' + (sAttendD === TODAY ? '👥 آج طلبا کی حاضری' : '👥 طلبا کی حاضری — ' + escHtml(sAttendD)) + '</h2>';
+
+    if (sAttendD !== TODAY && sAttendHistorical.loading) {
+      html += '<div class="loading" style="margin-bottom:10px">⏳ ' + escHtml(sAttendD) + ' کا ڈیٹا لوڈ ہو رہا ہے...</div>';
+    }
 
     html += '<div class="filter-bar">';
+    html += '<input type="date" id="sAttendDate" value="' + escAttr(sAttendUi.date || TODAY) + '" onchange="onSAttendDateChange(this.value)" title="تاریخ">';
+    html += '<select id="sSubjectFilter" onchange="sAttendUi.subject=this.value;render();" style="min-width:120px">';
+    html += '<option value="all"' + (sAttendUi.subject === 'all' ? ' selected' : '') + '>— تمام مضامین —</option>';
+    (subjects || []).slice().sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ur'); }).forEach(function(s) {
+      var sid = String(s.id);
+      html += '<option value="' + escAttr(sid) + '"' + (String(sAttendUi.subject) === sid ? ' selected' : '') + '>' + escHtml(s.name || sid) + '</option>';
+    });
+    html += '</select>';
     html += '<select id="sClassFilter" onchange="sAttendUi.class=this.value;render();">';
     html += `<option value="all"${sAttendUi.class === 'all' ? ' selected' : ''}>سب درجے</option>`;
     Object.keys(CLASS_UR).forEach(c => {
@@ -1745,8 +1973,16 @@ function render() {
     const classF = sAttendUi.class;
     const statusF = sAttendUi.status;
     const searchF = (sAttendUi.search || '').toLowerCase().trim();
+    const subjF = sAttendUi.subject;
 
-    let filtered = sAttToday.slice();
+    let filtered = rawRows.slice();
+    if (subjF !== 'all') {
+      var subMeta = (subjects || []).find(function(s) { return String(s.id) === String(subjF); });
+      var subName = subMeta && subMeta.name ? String(subMeta.name) : '';
+      filtered = filtered.filter(function(r) {
+        return String(r.subject_id) === String(subjF) || (subName && String(r.subject_name || '') === subName);
+      });
+    }
     if (classF !== 'all') filtered = filtered.filter(r => sAttendRowClass(r, students) === classF);
     if (statusF !== 'all') filtered = filtered.filter(r => r.status === statusF);
     if (searchF) {

@@ -1038,7 +1038,8 @@ function App() {
       total: tot
     };
   }).filter(Boolean).sort((a, b) => a.p - b.p) : [];
-  const myModernA = useMemo(function () {
+  // Must NOT be useMemo here: hooks cannot run after `if (loading||!cfg) return` above (React #310).
+  const myModernA = (function () {
     if (!user) return [];
     var td = inst.teaching_days || 42;
     return modernAssignments.filter(function (a) {
@@ -1074,8 +1075,8 @@ function App() {
     }).filter(Boolean).sort(function (a, b) {
       return Number(a.p) - Number(b.p);
     });
-  }, [user, modernAssignments, modernSubjects, modernSections, modernPeriods, inst.teaching_days, tDay]);
-  const myAllA = useMemo(function () {
+  })();
+  const myAllA = (function () {
     var all = [];
     myA.forEach(function (a) {
       var per = periods.find(function (p) {
@@ -1098,7 +1099,7 @@ function App() {
       return String(a._sortTime).localeCompare(String(b._sortTime));
     });
     return all;
-  }, [myA, myModernA, periods]);
+  })();
   const myThu = user ? thuWeeks.filter(w => w.assignments.some(a => a.t === user.id)).map(w => ({...w, myAsg: w.assignments.filter(a => a.t === user.id).sort((a,b)=>a.p-b.p)})) : [];
   const upd = (sid, f, v) => {
     const n = {
