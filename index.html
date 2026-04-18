@@ -51,8 +51,26 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     }
   } catch (e) {}
 })();
+// One-time (v15): old shells cached `useMemo` after loading gate → React #310; force fresh index + SW
+(function () {
+  var k = 'iri_purge_react310_sw_v15';
+  try {
+    if (localStorage.getItem(k)) return;
+    localStorage.setItem(k, '1');
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        rs.forEach(function (r) { r.unregister(); });
+      }).catch(function () {});
+    }
+    if ('caches' in window) {
+      caches.keys().then(function (names) {
+        return Promise.all(names.filter(function (n) { return /^iri-/i.test(n); }).map(function (n) { return caches.delete(n); }));
+      }).catch(function () {});
+    }
+  } catch (e) {}
+})();
 // Service Worker (query busts cached sw.js)
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=iri-app-v14').catch(function () {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=iri-app-v15').catch(function () {});
 window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
 window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
 if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
@@ -79,7 +97,7 @@ const {
 } = React;
 
 if (typeof window !== 'undefined') {
-  window.__IRI_INDEX = 'purge-sw-v14-2026-04-17';
+  window.__IRI_INDEX = 'purge-sw-v15-2026-04-16-react310';
   try { console.log('[iri] index script build', window.__IRI_INDEX); } catch (e) {}
 }
 
