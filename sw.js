@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iri-app-v15';
+const CACHE_NAME = 'iri-app-v16';
 
 /** Offline shell: split modules from index.html (bump CACHE_NAME when this list changes). */
 const PRECACHE_URLS = [

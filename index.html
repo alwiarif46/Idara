@@ -51,9 +51,9 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     }
   } catch (e) {}
 })();
-// One-time (v15): old shells cached `useMemo` after loading gate → React #310; force fresh index + SW
+// One-time (v16): loading gate moved after all derived code — bust any HTML cache still on v15
 (function () {
-  var k = 'iri_purge_react310_sw_v15';
+  var k = 'iri_purge_react310_sw_v16';
   try {
     if (localStorage.getItem(k)) return;
     localStorage.setItem(k, '1');
@@ -70,7 +70,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   } catch (e) {}
 })();
 // Service Worker (query busts cached sw.js)
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=iri-app-v15').catch(function () {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=iri-app-v16').catch(function () {});
 window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
 window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
 if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
@@ -97,7 +97,7 @@ const {
 } = React;
 
 if (typeof window !== 'undefined') {
-  window.__IRI_INDEX = 'purge-sw-v15-2026-04-16-react310';
+  window.__IRI_INDEX = 'purge-sw-v16-2026-04-16-no-mid-return';
   try { console.log('[iri] index script build', window.__IRI_INDEX); } catch (e) {}
 }
 
@@ -528,6 +528,7 @@ function App() {
   }, []);
   // ── Supabase REST helper ──
   const sbPost = async (table, rows, conflictCols) => {
+    if (!cfg || !cfg.supabase_url || !cfg.supabase_key) throw new Error('⚠');
     let url = cfg.supabase_url + '/rest/v1/' + table;
     if (conflictCols) url += '?on_conflict=' + conflictCols;
     const r = await fetch(url, {
@@ -823,7 +824,7 @@ function App() {
   }, []);
 
   const syncPost = async (type, payload) => {
-    if (!cfg.supabase_url || !cfg.supabase_key) {
+    if (!cfg || !cfg.supabase_url || !cfg.supabase_key) {
       flash('⚠️ URL نہیں');
       return { success: false };
     }
@@ -940,7 +941,7 @@ function App() {
     }
   };
   const processQ = async () => {
-    if (!syncQ.length || !cfg.supabase_url) return;
+    if (!syncQ.length || !cfg || !cfg.supabase_url) return;
     const it = syncQ[0];
     const r = await syncPost(it.type, it.payload);
     if (r.success) {
@@ -957,7 +958,7 @@ function App() {
     const subObj = subjectId ? gS(subjectId) : null;
     const pl = { teacher_id: user ? user.id : '', teacher_name: tName, class_id: classId, subject_id: subjectId || '', subject_name: subObj ? subObj.n : '', date: todayDt, attendance: att };
     console.log('[ATTEND] sending:', JSON.stringify(pl));
-    if (cfg.supabase_url) {
+    if (cfg && cfg.supabase_url) {
       flash('⏳ بھیج رہے ہیں...');
       try {
         const res = await syncPost('student_attendance', pl);
@@ -978,7 +979,7 @@ function App() {
     const tName = user ? (teachers.find(t => t.id === user.id) || {}).n || '' : '';
     const pl = { marked_by: user ? user.id : '', marked_by_name: tName, slot: slot, date: todayDt, attendance: att };
     console.log('[DATTEND] sending:', JSON.stringify(pl));
-    if (cfg.supabase_url) {
+    if (cfg && cfg.supabase_url) {
       flash('⏳ بھیج رہے ہیں...');
       try {
         const res = await syncPost('daily_attendance', pl);
@@ -994,35 +995,20 @@ function App() {
     }, 300000);
     return () => clearInterval(iv);
   }, [syncQ, cfg && cfg.supabase_url]);
-  if (loading || !cfg) return /*#__PURE__*/React.createElement("div", {
-    style: {
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: `linear-gradient(170deg,${ST.dk},#132b20)`,
-      fontFamily: ST.f
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      color: ST.gd,
-      fontSize: 18,
-      fontWeight: 700
-    }
-  }, "\u062C\u0627\u0631\u06CC \u06C1\u06D2..."));
 
-  // ── Derived ──
-  const {
-    institution: inst,
-    subjects,
-    teachers,
-    assignments,
-    periods,
-    pins,
-    scoring,
-    dashboard: dashCfg,
-    admin_creds: adminCreds
-  } = cfg;
+  // ── Derived (null-safe; same code runs every render — loading gate is only at final return, prevents React #310) ──
+  const inst = (cfg && cfg.institution) || {
+    name_ur: '', name_en: '', term_start: '2020-01-01', term_end: '2030-12-31',
+    teaching_days: 42, off_day: 5, revision_day: 4, holidays: []
+  };
+  const subjects = (cfg && cfg.subjects) || [];
+  const teachers = (cfg && cfg.teachers) || [];
+  const assignments = (cfg && cfg.assignments) || [];
+  const periods = (cfg && cfg.periods) || [];
+  const pins = (cfg && cfg.pins) || {};
+  const scoring = (cfg && cfg.scoring) || { excellent: 80, good: 60, weak: 40 };
+  const dashCfg = (cfg && cfg.dashboard) || { yellow: -5 };
+  const adminCreds = (cfg && cfg.admin_creds) || { username: 'admin', password: 'idara2026' };
   const tDay = calcTD(inst);
   const todayIsoForAtt = new Date().toISOString().split('T')[0];
   const attByDate = { ...teacherAttHist };
@@ -1056,7 +1042,6 @@ function App() {
       total: tot
     };
   }).filter(Boolean).sort((a, b) => a.p - b.p) : [];
-  // Must NOT be useMemo here: hooks cannot run after `if (loading||!cfg) return` above (React #310).
   const myModernA = (function () {
     if (!user) return [];
     var td = inst.teaching_days || 42;
@@ -1859,6 +1844,23 @@ function App() {
     ...(isAd?[{id:'adm',ic:'\u2699',l:'\u0627\u06CC\u0688\u0645\u0646'}]:[])
   ];
   const goHome = () => { setTab('home'); setAdmSub(null); setShowForm(null); };
+
+  if (loading || !cfg) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: `linear-gradient(170deg,${ST.dk},#132b20)`,
+      fontFamily: ST.f
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: ST.gd,
+      fontSize: 18,
+      fontWeight: 700
+    }
+  }, "\u062C\u0627\u0631\u06CC \u06C1\u06D2..."));
 
   return /*#__PURE__*/React.createElement("div", {
     style: {
