@@ -2406,7 +2406,7 @@ function render() {
       if (!filtered.length) {
         html += '<div style="text-align:center;padding:30px;color:#8a9ab5;font-size:12px">'+dashT('common.noneFilter')+'</div>';
       } else {
-        var cols = exp ? exp.cols.splidashT(',') : Object.keys(filtered[0]);
+        var cols = exp ? exp.cols.split(',') : Object.keys(filtered[0]);
         html += '<div class="scroll-table" style="max-height:500px"><table class="tbl"><thead><tr>';
         cols.forEach(function(c) { html += '<th>' + escHtml(c) + '</th>'; });
         html += '</tr></thead><tbody>';
