@@ -337,6 +337,8 @@
     }
     return s;
   };
+  /** Stable alias for principal dashboard `render()` — avoids accidental shadowing of the name `t`. */
+  window.dashTranslate = window.t;
 
   window.dashSortLocale = function () {
     if (window.dashboardLocale === 'en') return 'en';
