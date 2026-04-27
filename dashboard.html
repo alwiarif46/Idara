@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0c1a2e">
 <title>ڈیش بورڈ — ادارہ تحقیقات اسلامی</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -18,6 +19,7 @@
 }
 body{font-family:'Noto Sans Arabic',sans-serif;background:var(--dk);color:var(--wh);min-height:100vh;direction:rtl;
   -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
+body.dash-locale-en{font-family:'Noto Sans','Noto Sans Arabic',sans-serif;direction:ltr}
 .container{max-width:1200px;margin:0 auto;padding:10px}
 .header{background:linear-gradient(135deg,var(--dk2),var(--dk3));border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .header h1{font-size:18px;color:var(--gd);font-weight:800}
@@ -137,7 +139,9 @@ const exports_list = [
   {id:'students',l:'👥 طلبا فہرست',cols:'id,name,parent,phone,residence,class,qari_id,status,hifz_paras'},
 ];
 const TODAY = new Date().toISOString().split('T')[0];
-
+</script>
+<script src="dashboard-i18n.js"></script>
+<script>
 // ═══════════════════════════════════════════
 // SUPABASE HELPERS
 // ═══════════════════════════════════════════
@@ -162,7 +166,9 @@ function now() {
   return d.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
 }
 function todayIST() {
-  return new Date().toLocaleDateString('ur-PK',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Kolkata'});
+  const loc = typeof dashSortLocale === 'function' ? dashSortLocale() : 'ur';
+  const tag = loc === 'en' ? 'en-IN' : loc === 'ar' ? 'ar-SA' : 'ur-PK';
+  return new Date().toLocaleDateString(tag,{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Kolkata'});
 }
 
 // ═══════════════════════════════════════════
@@ -192,7 +198,8 @@ async function loadAll() {
     DATA = {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary,adminTasks,adminScores,adminReport};
     return DATA;
   } catch(e) {
-    document.getElementById('app').innerHTML = '<div class="loading">❌ Supabase سے رابطہ ناکام<br><small>'+e.message+'</small></div>';
+    var em = String(e.message||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    document.getElementById('app').innerHTML = '<div class="loading">❌ '+t('load.fail')+'<br><small>'+em+'</small></div>';
     throw e;
   }
 }
@@ -383,20 +390,20 @@ function formatVisitStructuredCardInner(v) {
 }
 
 function formatVisitObsCardBody(v, omitGradeBadge) {
-  const title = v.legacy ? 'پرانا نوٹ' : (CLASS_UR[v.classId] || v.classId);
+  const title = v.legacy ? (typeof t==='function'?t('visit.oldNote'):'\u067E\u0631\u0627\u0646\u0627 \u0646\u0648\u0679') : (typeof classLabel==='function'?classLabel(v.classId):CLASS_UR[v.classId]) || v.classId;
   const bid = v.legacy ? '' : v.classId;
   const delArg = v.legacy ? "''" : "'" + bid + "'";
   const edCall = v.legacy ? "''" : "'" + bid + "'";
   const head = omitGradeBadge && !v.legacy
     ? `<div style="display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:6px">
-        <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${edCall})">\u062A\u062F\u0648\u06CC\u0646</button>
-        <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">\u062D\u0630\u0641</button>
+        <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${edCall})">${typeof t==='function'?t('visit.edit'):'\u062A\u062F\u0648\u06CC\u0646'}</button>
+        <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">${typeof t==='function'?t('visit.delete'):'\u062D\u0630\u0641'}</button>
       </div>`
     : `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
         <span class="class-badge ${bid}">${escHtml(title)}</span>
         <span style="display:flex;gap:4px;flex-shrink:0">
-          <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${edCall})">\u062A\u062F\u0648\u06CC\u0646</button>
-          <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">\u062D\u0630\u0641</button>
+          <button type="button" class="btn btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.editClassVisitObs(${edCall})">${typeof t==='function'?t('visit.edit'):'\u062A\u062F\u0648\u06CC\u0646'}</button>
+          <button type="button" class="btn btn-rd btn-sm" style="font-size:9px;padding:4px 8px;min-height:32px" onclick="window.removeClassVisitObs(${delArg})">${typeof t==='function'?t('visit.delete'):'\u062D\u0630\u0641'}</button>
         </span>
       </div>`;
   const body = v.structured
@@ -414,18 +421,18 @@ function formatVisitObsCardsHtml(visits) {
   const extras = sorted.filter(v => !v.legacy && !known.has(v.classId));
 
   if (!legacy.length && !byGrade.size && !extras.length) {
-    return '<span style="color:#8a9ab5;font-size:11px">\u0627\u0628\u06BE\u06CC \u06A9\u0648\u0626\u06CC \u062F\u0631\u062C\u06D2 \u0648\u0627\u0631 \u0645\u0639\u0627\u0626\u0646\u06C1 \u0646\u06C1\u06CC\u06BA \u2014 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA\u060C \u06AF\u0631\u062F \u0645\u06CC\u06BA 3 \u0633\u0648\u0627\u0644-\u062C\u0648\u0627\u0628 \u0628\u06BE\u0631\u06CC\u06BA\u060C \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA</span>';
+    return '<span style="color:#8a9ab5;font-size:11px">'+(typeof t==='function'?t('visit.empty'):'')+'</span>';
   }
 
   const blocks = [];
   legacy.forEach(v => {
-    blocks.push(`<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a9ab5;margin-bottom:6px">\u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646 (\u062F\u0631\u062C\u06D2 \u0648\u0627\u0631 \u0646\u06C1\u06CC\u06BA)</div>${formatVisitObsCardBody(v)}</div>`);
+    blocks.push(`<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a9ab5;margin-bottom:6px">${typeof t==='function'?t('visit.legacyHdr'):''}</div>${formatVisitObsCardBody(v)}</div>`);
   });
 
   for (const cid of CLASS_ORDER) {
     const v = byGrade.get(cid);
     if (!v) continue;
-    const name = CLASS_UR[cid] || cid;
+    const name = (typeof classLabel==='function'?classLabel(cid):CLASS_UR[cid]) || cid;
     blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #243652">
       <div style="font-weight:800;font-size:12px;color:var(--gd);margin-bottom:8px;display:flex;align-items:center;gap:8px"><span class="class-badge ${cid}">${escHtml(name)}</span></div>
       ${formatVisitObsCardBody(v, true)}
@@ -433,7 +440,7 @@ function formatVisitObsCardsHtml(visits) {
   }
 
   extras.forEach(v => {
-    const name = CLASS_UR[v.classId] || v.classId;
+    const name = (typeof classLabel==='function'?classLabel(v.classId):CLASS_UR[v.classId]) || v.classId;
     const xid = v.classId;
     blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #243652">
       <div style="font-weight:800;font-size:12px;color:var(--gd);margin-bottom:8px"><span class="class-badge ${xid}">${escHtml(name)}</span></div>
@@ -467,7 +474,7 @@ function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, sub
     if (!su) continue;
     miss.push({ k, tname: te ? te.name : tid, subn: su.name || sid, cls: su.class, p: a.period_id });
   }
-  miss.sort((x, y) => (x.tname + x.subn).localeCompare(y.tname + y.subn, 'ur'));
+  miss.sort((x, y) => (x.tname + x.subn).localeCompare(y.tname + y.subn, dashSortLocale()));
   return miss;
 }
 
@@ -645,7 +652,7 @@ async function ensureSAttendRowsForUiDate() {
     var rows = await sb('student_attendance', 'select=*&date=eq.' + d + '&order=created_at.desc&limit=500');
     sAttendHistorical.rows = Array.isArray(rows) ? rows : [];
   } catch (e) {
-    toast('❌ ' + e.message);
+    toast(t('toast.failed') + ': ' + e.message);
     sAttendHistorical.rows = [];
   }
   sAttendHistorical.loading = false;
@@ -726,11 +733,11 @@ function absentActionsScoringOk(raw, absentDeduped) {
 
 function absentActionsHintText(raw, absentDeduped) {
   const list = absentDeduped || [];
-  if (!list.length) return '\u2014 \u0622\u062C \u06A9\u0648\u0626\u06CC \u063A\u0627\u0626\u0628 \u0646\u06C1\u06CC\u06BA';
+  if (!list.length) return t('acc.hint.noneAbsent');
   const parsed = tryParseAbsentActionsJson(raw);
   if (!parsed) {
     const n = (typeof raw === 'string' ? raw.trim().length : 0);
-    return n + '/10 \u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646' + (n >= 10 ? ' \u2713' : '');
+    return t('acc.hint.legacyChars', { n }) + (n >= 10 ? ' \u2713' : '');
   }
   const bySid = {};
   (parsed.rows || []).forEach(r => {
@@ -741,7 +748,7 @@ function absentActionsHintText(raw, absentDeduped) {
     const row = bySid[a.student_id];
     if (row && absentActionRowValid(row, String(row.path || '').trim())) ok++;
   }
-  return ok + '/' + list.length + ' \u0637\u0644\u0628\u0627' + (ok === list.length ? ' \u2713' : '');
+  return t('acc.hint.absentProgress', { ok, total: list.length }) + (ok === list.length ? ' \u2713' : '');
 }
 
 window.syncAbsentActionsToHidden = function () {
@@ -788,7 +795,7 @@ window.syncAbsentActionsToHidden = function () {
       for (const row of rows) {
         if (absentActionRowValid(row, String(row.path || '').trim())) ok++;
       }
-      hint.textContent = ok + '/' + n + ' \u0637\u0644\u0628\u0627' + (ok === n ? ' \u2713' : '');
+      hint.textContent = t('acc.hint.absentProgress', { ok, total: n }) + (ok === n ? ' \u2713' : '');
     }
   }
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
@@ -872,7 +879,7 @@ function hifzRosterStudents(students) {
       paras: s.hifz_paras != null && String(s.hifz_paras).trim() !== '' ? String(s.hifz_paras).trim() : ''
     });
   }
-  out.sort((a, b) => String(a.name).localeCompare(String(b.name), 'ur'));
+  out.sort((a, b) => String(a.name).localeCompare(String(b.name), dashSortLocale()));
   return out;
 }
 
@@ -909,17 +916,17 @@ function hifzNotesScoringOk(raw, roster) {
 }
 
 function hifzNotesHintText(raw, roster) {
-  if (!roster.length) return '\u2014 \u062D\u0641\u0638 \u0637\u0644\u0628\u0627 \u0641\u06C1\u0631\u0633\u062A \u0645\u06CC\u06BA \u0646\u06C1\u06CC\u06BA';
+  if (!roster.length) return t('acc.hint.noHifzRoster');
   const parsed = tryParseHifzNotesJson(raw);
   if (!parsed) {
     const n = (typeof raw === 'string' ? raw.trim().length : 0);
-    return n + '/10 \u067E\u0631\u0627\u0646\u0627' + (n >= 10 ? ' \u2713' : '');
+    return t('acc.hint.legacyChars', { n }) + (n >= 10 ? ' \u2713' : '');
   }
   let ok = 0;
   for (const e of parsed.entries || []) {
     if (hifzMemoryEntryValid(e)) ok++;
   }
-  return ok + ' \u0633\u0644\u0627\u0679 \u0645\u06A9\u0645\u0644' + (ok > 0 ? ' \u2713' : '');
+  return t('acc.hint.hifzSlotsOk', { ok }) + (ok > 0 ? ' \u2713' : '');
 }
 
 window.syncHifzNotesToHidden = function () {
@@ -1089,19 +1096,18 @@ window.accountabilityProgressFromDom = function () {
   const remarksOk = v('acc_remarks').length >= 5;
 
   const sections = [
-    { key: 'verify', label: '\u0642\u0627\u0628\u0644 \u062A\u0635\u062F\u06CC\u0642 \u2014 \u063A\u0627\u0626\u0628\u060C \u067E\u06CC\u0686\u06D2\u060C \u0628\u0646\u062F\u0648\u0628\u0633\u062A', labelEn: 'Verifiable (absent / behind / coverage)', done: absentNumOk && behindNumOk && covOk, anchor: 'acc_anchor_verify' },
-    { key: 'class', label: '\u06A9\u0644\u0627\u0633 \u062F\u06CC\u06A9\u06BE\u0646\u0627 + \u0645\u0639\u0627\u0626\u0646\u06C1 (3\u00D7Q&A)', labelEn: 'Class visit + inspection', done: classBlockOk, anchor: classAnchor },
-    { key: 'absent_act', label: '\u063A\u0627\u0626\u0628 \u0637\u0644\u0628\u0627 \u2014 \u0627\u0642\u062F\u0627\u0645', labelEn: 'Absent students follow-up', done: absentActOk, anchor: 'acc_anchor_absent_actions' },
-    { key: 'hifz', label: '\u062D\u0641\u0638 \u06CC\u0627\u062F / \u0642\u0627\u0631\u06CC', labelEn: 'Hifz recall', done: hifzOk, anchor: 'acc_anchor_hifz' },
-    { key: 'remarks', label: '\u0639\u0645\u0648\u0645\u06CC \u0645\u0644\u0627\u062D\u0638\u0627\u062A', labelEn: 'General remarks', done: remarksOk, anchor: 'acc_anchor_remarks' },
-    { key: 'chk_parents', label: '\u0686\u06CC\u06A9: \u063A\u0627\u0626\u0628 \u0637\u0644\u0628\u0627 \u2014 \u0648\u0627\u0644\u062F\u06CC\u0646 \u0633\u06D2 \u0631\u0627\u0628\u0637\u06C1', labelEn: 'Confirm: parent calls', done: ck('acc_chk_parents'), anchor: 'acc_anchor_chk_parents' },
-    { key: 'chk_hifz', label: '\u0686\u06CC\u06A9: \u062D\u0641\u0638 \u062E\u0648\u062F \u062F\u06CC\u06A9\u06BE\u06CC', labelEn: 'Confirm: hifz seen', done: ck('acc_chk_hifz'), anchor: 'acc_anchor_chk_hifz' }
+    { key: 'verify', labelKey: 'acc.sec.verify', done: absentNumOk && behindNumOk && covOk, anchor: 'acc_anchor_verify' },
+    { key: 'class', labelKey: 'acc.sec.class', done: classBlockOk, anchor: classAnchor },
+    { key: 'absent_act', labelKey: 'acc.sec.absent_act', done: absentActOk, anchor: 'acc_anchor_absent_actions' },
+    { key: 'hifz', labelKey: 'acc.sec.hifz', done: hifzOk, anchor: 'acc_anchor_hifz' },
+    { key: 'remarks', labelKey: 'acc.sec.remarks', done: remarksOk, anchor: 'acc_anchor_remarks' },
+    { key: 'chk_parents', labelKey: 'acc.sec.chk_parents', done: ck('acc_chk_parents'), anchor: 'acc_anchor_chk_parents' },
+    { key: 'chk_hifz', labelKey: 'acc.sec.chk_hifz', done: ck('acc_chk_hifz'), anchor: 'acc_anchor_chk_hifz' }
   ];
   if (isThu) {
     sections.push({
       key: 'chk_thu',
-      label: '\u0686\u06CC\u06A9: \u062C\u0645\u0639\u0631\u0627\u062A \u0627\u0645\u062A\u062D\u0627\u0646',
-      labelEn: 'Confirm: Thursday tests',
+      labelKey: 'acc.sec.chk_thu',
       done: ck('acc_chk_thu'),
       anchor: 'acc_anchor_chk_thu'
     });
@@ -1144,13 +1150,13 @@ window.refreshAccountabilityChecklist = function () {
     banner.style.background = '#34a85322';
     banner.style.borderColor = '#34a85388';
     banner.style.color = 'var(--gr)';
-    banner.textContent = '\u2713 \u0633\u0627\u0631\u06D2 \u0633\u06CC\u06A9\u0634\u0646 \u0645\u06A9\u0645\u0644 \u2014 Complete';
+    banner.textContent = typeof t === 'function' ? t('chk.banner.done') : '\u2713';
     if (btn) btn.style.display = 'none';
   } else {
     banner.style.background = '#ea433522';
     banner.style.borderColor = '#ea433588';
     banner.style.color = '#fdba74';
-    banner.innerHTML = '\u26A0 \u0630\u06CC\u0644 \u0633\u06CC\u06A9\u0634\u0646 \u0645\u06A9\u0645\u0644 \u0646\u06C1\u06CC\u06BA \u2014 Please complete the highlighted rows below, or tap the button to scroll to the first incomplete part.';
+    banner.innerHTML = typeof t === 'function' ? t('chk.banner.pending') : '\u26A0';
     if (btn) btn.style.display = 'block';
   }
   rowsEl.innerHTML = p.sections.map(s => {
@@ -1159,7 +1165,7 @@ window.refreshAccountabilityChecklist = function () {
     const aid = String(s.anchor || '').replace(/'/g, '');
     return `<button type="button" class="acc-checklist-row" data-acc-anchor="${escAttr(aid)}" style="display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--dk);border:1px solid ${s.done ? '#1f3d5e' : '#b45309'};border-radius:10px;cursor:pointer;font-family:inherit;color:var(--wh);text-align:right" onclick="window.scrollToAccSection('${aid}')">
       <span style="font-size:16px;color:${col};flex-shrink:0">${icon}</span>
-      <span style="flex:1;font-size:12px;font-weight:700">${escHtml(s.label)}<br><span style="font-size:9px;color:#8a9ab5;font-weight:600">${escHtml(s.labelEn)}</span></span>
+      <span style="flex:1;font-size:12px;font-weight:700">${escHtml(typeof t==='function'?t(s.labelKey):s.labelKey)}</span>
     </button>`;
   }).join('');
 };
@@ -1209,25 +1215,30 @@ function render() {
   html += `
   <div class="header">
     <div>
-      <h1>📊 ادارہ تحقیقات اسلامی</h1>
-      <div class="sub">${todayIST()} • ${now()} IST</div>
+      <h1>${t('header.title')}</h1>
+      <div class="sub">${todayIST()} • ${now()} ${t('common.ist')}</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div class="live"><span class="dot"></span> زندہ</div>
-      <button class="btn btn-gd btn-sm" onclick="refresh()">🔄 تازہ</button>
-      ${PRINCIPAL_PHONE ? `<a href="tel:${PRINCIPAL_PHONE}" class="call-btn">📞 پرنسپل</a>` : ''}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="lang-switch" style="display:flex;gap:4px;align-items:center">
+        <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='en'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('en')">${t('lang.en')}</button>
+        <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='ur'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('ur')">${t('lang.ur')}</button>
+        <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='ar'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('ar')">${t('lang.ar')}</button>
+      </div>
+      <div class="live"><span class="dot"></span> ${t('header.live')}</div>
+      <button class="btn btn-gd btn-sm" onclick="refresh()">${t('header.refresh')}</button>
+      ${PRINCIPAL_PHONE ? `<a href="tel:${PRINCIPAL_PHONE}" class="call-btn">${t('header.principal')}</a>` : ''}
     </div>
   </div>`;
 
   // ── TABS ──
   const tabList = [
-    {id:'overview',l:'📊 جائزہ'},
-    {id:TAB_ACCOUNTABILITY,l:'📋 ذمہ داریاں'},
-    {id:'tAttend',l:'👨‍🏫 اساتذہ حاضری'},
-    {id:'sAttend',l:'👥 طلبا حاضری'},
-    {id:'reports',l:'📝 رپورٹس'},
-    {id:'behind',l:'📉 ہدف سے پیچھے'},
-    {id:'export',l:'📥 ایکسپورٹ'},
+    {id:'overview',l:t('tab.overview')},
+    {id:TAB_ACCOUNTABILITY,l:t('tab.accountability')},
+    {id:'tAttend',l:t('tab.tAttend')},
+    {id:'sAttend',l:t('tab.sAttend')},
+    {id:'reports',l:t('tab.reports')},
+    {id:'behind',l:t('tab.behind')},
+    {id:'export',l:t('tab.export')},
   ];
   html += '<div class="tabs">';
   tabList.forEach(t => {
@@ -1242,19 +1253,19 @@ function render() {
 
     // Scorecards
     html += '<div class="grid">';
-    html += `<div class="card gr"><div class="num">${tPresent}</div><div class="lbl">اساتذہ حاضر</div></div>`;
-    html += `<div class="card rd"><div class="num">${tAbsent}</div><div class="lbl">اساتذہ غائب/رخصت</div></div>`;
-    html += `<div class="card bl"><div class="num">${sPresent}</div><div class="lbl">طلبا حاضر</div></div>`;
-    html += `<div class="card rd"><div class="num">${sAbsent}</div><div class="lbl">طلبا غائب</div></div>`;
-    html += `<div class="card gr"><div class="num">${rComplete}</div><div class="lbl">مکمل رپورٹس</div></div>`;
-    html += `<div class="card yl"><div class="num">${rPartial}</div><div class="lbl">جزوی رپورٹس</div></div>`;
-    html += `<div class="card bl"><div class="num">${students.length}</div><div class="lbl">کل طلبا</div></div>`;
-    html += `<div class="card"><div class="num">${subjects.length}</div><div class="lbl">کل مضامین</div></div>`;
+    html += `<div class="card gr"><div class="num">${tPresent}</div><div class="lbl">${t('ov.teachersPresent')}</div></div>`;
+    html += `<div class="card rd"><div class="num">${tAbsent}</div><div class="lbl">${t('ov.teachersAbsent')}</div></div>`;
+    html += `<div class="card bl"><div class="num">${sPresent}</div><div class="lbl">${t('ov.studentsPresent')}</div></div>`;
+    html += `<div class="card rd"><div class="num">${sAbsent}</div><div class="lbl">${t('ov.studentsAbsent')}</div></div>`;
+    html += `<div class="card gr"><div class="num">${rComplete}</div><div class="lbl">${t('ov.reportsFull')}</div></div>`;
+    html += `<div class="card yl"><div class="num">${rPartial}</div><div class="lbl">${t('ov.reportsPartial')}</div></div>`;
+    html += `<div class="card bl"><div class="num">${students.length}</div><div class="lbl">${t('ov.totalStudents')}</div></div>`;
+    html += `<div class="card"><div class="num">${subjects.length}</div><div class="lbl">${t('ov.totalSubjects')}</div></div>`;
     html += '</div>';
 
     // Current Period
     html += '<div class="current-period">';
-    html += `<h2>🕐 ابھی — ${curPeriod ? 'پیریڈ '+curPeriod.id+' ('+curPeriod.start_time+'–'+curPeriod.end_time+')' : 'کوئی پیریڈ نہیں'}</h2>`;
+    html += `<h2>🕐 ${t('ov.nowPeriod')} — ${curPeriod ? t('ov.period')+' '+curPeriod.id+' ('+curPeriod.start_time+'–'+curPeriod.end_time+')' : t('ov.noPeriod')}</h2>`;
     if (curPeriod) {
       const curAssignments = assignments.filter(a => a.period_id === curPeriod.id);
       if (curAssignments.length) {
@@ -1265,20 +1276,20 @@ function render() {
           const isAbsent = tAtt && (tAtt.status==='absent'||tAtt.status==='leave');
           html += `<div class="period-card" style="${isAbsent?'border:2px solid var(--rd);opacity:.7':''}">
             <div>
-              <div class="teacher">${t?t.name:a.teacher_id} ${isAbsent?'<span class="badge a">غائب</span>':''}</div>
+              <div class="teacher">${t?t.name:a.teacher_id} ${isAbsent?'<span class="badge a">'+t('ov.absent')+'</span>':''}</div>
               <div class="subject">${s?s.name:a.subject_id}</div>
             </div>
-            <span class="class-badge ${s?s.class:''}">${s?CLASS_UR[s.class]||s.class:''}</span>
+            <span class="class-badge ${s?s.class:''}">${s?classLabel(s.class)||s.class:''}</span>
           </div>`;
         });
       } else {
-        html += '<div style="color:#8a9ab5;font-size:12px">اس پیریڈ میں کوئی تفویض نہیں</div>';
+        html += '<div style="color:#8a9ab5;font-size:12px">'+t('ov.noAssignCur')+'</div>';
       }
     } else {
-      html += '<div style="color:#8a9ab5;font-size:12px">ابھی تدریسی وقت نہیں — ';
+      html += '<div style="color:#8a9ab5;font-size:12px">'+t('ov.notTeaching')+' — ';
       const nextP = periods.find(p=>p.type!=='break'&&p.start_time.padStart(5,'0')>now());
-      if (nextP) html += 'اگلا پیریڈ: '+nextP.start_time;
-      else html += 'آج کے پیریڈ ختم';
+      if (nextP) html += t('ov.nextPeriod')+': '+nextP.start_time;
+      else html += t('ov.periodsDone');
       html += '</div>';
     }
     html += '</div>';
@@ -1290,21 +1301,21 @@ function render() {
       const border = hasPending ? '1.5px solid #fdba74' : '1.5px solid #34a85355';
       const bg = hasPending ? 'linear-gradient(135deg,#3d2608,#1a3350)' : 'linear-gradient(135deg,#0d3d2e,#1a3350)';
       html += `<div class="section" style="background:${bg};border:${border}">`;
-      html += `<h2>${hasPending ? '📝 آج کی رپورٹس باقی' : '✓ آج سب رپورٹس موصول'}</h2>`;
+      html += `<h2>${hasPending ? t('ov.pendingReports') : t('ov.allReportsIn')}</h2>`;
       if (hasPending) {
         html += '<div style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch">';
         pendingRep.forEach(pr => {
-          const clsUr = CLASS_UR[pr.cls] || pr.cls || '';
+          const clsUr = classLabel(pr.cls) || pr.cls || '';
           html += `<div class="period-card" style="border-right:4px solid #f97316;margin-bottom:6px">
             <div>
               <div class="teacher">${pr.tname}</div>
-              <div class="subject">${pr.subn}${clsUr ? ' • ' + clsUr : ''} · پیریڈ ${pr.p}</div>
+              <div class="subject">${pr.subn}${clsUr ? ' • ' + clsUr : ''} · ${t('ov.period')} ${pr.p}</div>
             </div>
           </div>`;
         });
         html += '</div>';
       } else {
-        html += '<div style="color:#8a9ab5;font-size:12px">تمام تفویض شدہ مضامین کے لیے آج کی روزانہ رپورٹس جمع ہیں (غائب/رخصت اساتذہ شمار نہیں)۔</div>';
+        html += '<div style="color:#8a9ab5;font-size:12px">'+t('ov.allReportsNote')+'</div>';
       }
       html += '</div>';
     }
@@ -1312,7 +1323,7 @@ function render() {
     // Absent Teachers Today
     const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
     if (absentTeachers.length) {
-      html += '<div class="section"><h2>⚠️ آج غائب/رخصت اساتذہ</h2>';
+      html += '<div class="section"><h2>'+t('ov.absentTeachers')+'</h2>';
       absentTeachers.forEach(r => {
         const t = teachers.find(x=>x.id===r.teacher_id);
         const tAssignments = assignments.filter(a=>a.teacher_id===r.teacher_id).map(a => {
@@ -1321,8 +1332,8 @@ function render() {
         });
         html += `<div class="period-card" style="border-right:4px solid var(--rd)">
           <div>
-            <div class="teacher">${t?t.name:r.teacher_id} <span class="badge ${r.status==='absent'?'a':'l'}">${r.status==='absent'?'غائب':'رخصت'}</span></div>
-            <div class="subject">متاثر: ${tAssignments.join(' • ')}</div>
+            <div class="teacher">${t?t.name:r.teacher_id} <span class="badge ${r.status==='absent'?'a':'l'}">${r.status==='absent'?t('ov.absent'):t('ov.leave')}</span></div>
+            <div class="subject">${t('ov.affected')}: ${tAssignments.join(' • ')}</div>
           </div>
         </div>`;
       });
@@ -1332,7 +1343,7 @@ function render() {
     // Class-wise Absent Students
     const absentStudents = sAttToday.filter(r=>r.status==='A');
     if (absentStudents.length) {
-      html += '<div class="section"><h2>❌ غائب طلبا — درجہ وار</h2>';
+      html += '<div class="section"><h2>'+t('ov.absentStudentsTitle')+'</h2>';
       const byClass = {};
       absentStudents.forEach(r => {
         const cls = r.class || 'unknown';
@@ -1343,7 +1354,7 @@ function render() {
       Object.keys(byClass).forEach(cls => {
         html += `<div style="margin-bottom:12px">
           <div style="font-weight:700;font-size:12px;margin-bottom:6px">
-            <span class="class-badge ${cls}">${CLASS_UR[cls]||cls}</span> — ${byClass[cls].length} غائب
+            <span class="class-badge ${cls}">${classLabel(cls)||cls}</span> — ${byClass[cls].length} ${t('ov.absentCount')}
           </div>`;
         byClass[cls].forEach(r => {
           const st = r.studentObj;
@@ -1352,7 +1363,7 @@ function render() {
             <span style="font-size:11px">${st?st.name:r.student_id}</span>
             <div style="display:flex;gap:6px;align-items:center">
               <span style="font-size:9px;color:#8a9ab5">${r.subject_name||''}</span>
-              ${phone ? `<a href="tel:${phone}" class="call-btn" style="font-size:9px">📞 ولی</a>` : ''}
+              ${phone ? `<a href="tel:${phone}" class="call-btn" style="font-size:9px">${t('ov.parentCall')}</a>` : ''}
             </div>
           </div>`;
         });
@@ -1384,7 +1395,7 @@ function render() {
     const isThursday = new Date().getDay() === 4;
     const actualAbsent = absentListDedup.length;
     const actualBehind = behindSubjects.length;
-    const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:rtl;min-height:44px;box-sizing:border-box;'+s;
+    const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:'+(typeof dashboardLocale!=='undefined'&&dashboardLocale==='en'?'ltr':'rtl')+';min-height:44px;box-sizing:border-box;'+s;
 
     // Calculate score from filled fields
     let filled = 0, total = 10;
@@ -1407,24 +1418,24 @@ function render() {
     const addPending = function (label, anchorId) {
       pendingFor100.push({ label: label, anchor: anchorId });
     };
-    if (rpt.absent_students_entered == null) addPending('غائب طلبا کا درست عدد درج کریں', 'acc_anchor_verify');
-    if (rpt.behind_subjects_entered == null) addPending('ہدف سے پیچھے مضامین کا عدد درج کریں', 'acc_anchor_verify');
-    if (!rpt.coverage_details) addPending('غائب اساتذہ کی کوریج / بندوبست کی تفصیل لکھیں', 'acc_anchor_verify');
+    if (rpt.absent_students_entered == null) addPending(t('acc.pending.enter_absent'), 'acc_anchor_verify');
+    if (rpt.behind_subjects_entered == null) addPending(t('acc.pending.enter_behind'), 'acc_anchor_verify');
+    if (!rpt.coverage_details) addPending(t('acc.pending.coverage'), 'acc_anchor_verify');
     if (!((rpt.class_visited || '').length >= 3 && classObsScoringOk(rpt.class_observations))) {
       var _visOk = (rpt.class_visited || '').length >= 3;
-      addPending(_visOk ? 'کلاس معائنے (ہر درجے 3×سوال-جواب) مکمل کریں' : 'کون سی کلاس دیکھی + کم از کم 3 حروف کا ذیلی نوٹ', _visOk ? 'acc_anchor_inspection' : 'acc_anchor_class_visit');
+      addPending(_visOk ? t('acc.pending.visit_qa') : t('acc.pending.visit_note'), _visOk ? 'acc_anchor_inspection' : 'acc_anchor_class_visit');
     }
-    if (!absentActionsScoringOk(rpt.absent_actions || '', absentListDedup)) addPending('غائب طلبا — اقدامات کا فارم مکمل کریں', 'acc_anchor_absent_actions');
-    if (!hifzNotesScoringOk(rpt.hifz_notes || '', hifzRoster)) addPending('حفظ یاد / قاری نوٹس مکمل کریں', 'acc_anchor_hifz');
-    if ((rpt.general_remarks || '').length < 5) addPending('عمومی ملاحظات — کم از کم 5 حروف', 'acc_anchor_remarks');
-    if (!rpt.called_parents) addPending('چیک لسٹ: غائب طلبا کے والدین سے رابطہ', 'acc_anchor_chk_parents');
-    if (!rpt.checked_hifz) addPending('چیک لسٹ: حفظ پیشرفت خود دیکھی', 'acc_anchor_chk_hifz');
-    if (!rpt.reviewed_thursday) addPending(isThursday ? 'چیک لسٹ: جمعرات امتحانی نتائج' : 'چیک لسٹ: جمعرات نتائج (جمعرات کو یہ خانہ فعال ہوتا ہے)', isThursday ? 'acc_anchor_chk_thu' : 'acc_anchor_checklist');
+    if (!absentActionsScoringOk(rpt.absent_actions || '', absentListDedup)) addPending(t('acc.pending.absent_form'), 'acc_anchor_absent_actions');
+    if (!hifzNotesScoringOk(rpt.hifz_notes || '', hifzRoster)) addPending(t('acc.pending.hifz_form'), 'acc_anchor_hifz');
+    if ((rpt.general_remarks || '').length < 5) addPending(t('acc.pending.remarks'), 'acc_anchor_remarks');
+    if (!rpt.called_parents) addPending(t('acc.pending.chk_parents'), 'acc_anchor_chk_parents');
+    if (!rpt.checked_hifz) addPending(t('acc.pending.chk_hifz'), 'acc_anchor_chk_hifz');
+    if (!rpt.reviewed_thursday) addPending(isThursday ? t('acc.pending.chk_thu') : t('acc.pending.chk_thu_wait'), isThursday ? 'acc_anchor_chk_thu' : 'acc_anchor_checklist');
 
     var pending100Html = '';
     if (pendingFor100.length) {
       pending100Html = '<div style="margin-top:14px;text-align:right;border-top:1px solid #1f3d5e;padding-top:12px">' +
-        '<div style="font-size:11px;font-weight:800;color:#fdba74;margin-bottom:8px;line-height:1.45">100% تک باقی (' + pendingFor100.length + ' / ' + total + ') — نیچے ٹیپ کریں:</div>' +
+        '<div style="font-size:11px;font-weight:800;color:#fdba74;margin-bottom:8px;line-height:1.45">' + escHtml(t('acc.pending100.remain', { n: pendingFor100.length, total })) + '</div>' +
         '<ul style="list-style:none;margin:0;padding:0;font-size:11px;line-height:1.55;color:var(--wh)">' +
         pendingFor100.map(function (it) {
           var aid = String(it.anchor || '').replace(/'/g, '');
@@ -1432,15 +1443,15 @@ function render() {
         }).join('') +
         '</ul></div>';
     } else {
-      pending100Html = '<div style="font-size:11px;color:var(--gr);margin-top:12px;font-weight:700;line-height:1.45">\u2713 100% \u2014 تمام ' + total + ' خانے پورے ہیں\u06D4 اب رپورٹ جمع کرائیں\u06D4</div>';
+      pending100Html = '<div style="font-size:11px;color:var(--gr);margin-top:12px;font-weight:700;line-height:1.45">' + escHtml(t('acc.pending100.all', { total })) + '</div>';
     }
 
     // ── Score Header ──
     html += `<div class="section" style="text-align:center;border:2px solid ${scoreColor}">
       <div style="font-size:56px;font-weight:800;color:${scoreColor}">${pct}%</div>
-      <div style="font-size:14px;font-weight:700;color:var(--gd);margin:4px 0">آج کی جوابدہی</div>
-      <div style="font-size:11px;color:#8a9ab5">${filled} / ${total} خانے مکمل</div>
-      ${isSubmitted ? `<div style="font-size:10px;color:var(--gr);margin-top:4px">✅ جمع شدہ: ${new Date(rpt.submitted_at).toLocaleTimeString('ur-PK',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})}</div>` : ''}
+      <div style="font-size:14px;font-weight:700;color:var(--gd);margin:4px 0">${escHtml(t('acc.scoreTitle'))}</div>
+      <div style="font-size:11px;color:#8a9ab5">${escHtml(t('acc.scoreSlots', { filled, total }))}</div>
+      ${isSubmitted ? `<div style="font-size:10px;color:var(--gr);margin-top:4px">${escHtml(t('acc.submittedAt', { time: new Date(rpt.submitted_at).toLocaleTimeString(typeof dashTimeLocaleTag === 'function' ? dashTimeLocaleTag() : 'ur-PK', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) }))}</div>` : ''}
       <div style="width:100%;height:8px;background:var(--dk);border-radius:4px;margin-top:10px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${scoreColor};border-radius:4px;transition:.5s"></div>
       </div>
@@ -1448,33 +1459,33 @@ function render() {
     </div>`;
 
     // ═══ Section A: Auto-Verified Status (read-only) ═══
-    html += '<div class="section"><h2>🤖 خودکار حالت — صرف معلومات</h2>';
+    html += '<div class="section"><h2>' + escHtml(t('acc.auto.title')) + '</h2>';
     html += `<div class="period-card" style="border-right:4px solid ${allApproved?'var(--gr)':'var(--rd)'}">
-      <div style="flex:1"><div class="teacher">اساتذہ حاضری</div>
-        <div class="subject">${tAttTotal>0?tAttApproved+'/'+tAttTotal+' منظور':'⏳ ابھی ڈیٹا نہیں'}</div></div>
+      <div style="flex:1"><div class="teacher">${t('acc.auto.tAtt')}</div>
+        <div class="subject">${tAttTotal>0?t('tAtt.approvedFrac',{a:tAttApproved,b:tAttTotal}):t('tAtt.noDataYet')}</div></div>
       <div style="font-size:18px">${allApproved?'✅':'⏳'}</div>
     </div>`;
     html += `<div class="period-card" style="border-right:4px solid ${allReportsIn?'var(--gr)':'var(--rd)'}">
-      <div style="flex:1"><div class="teacher">اساتذہ رپورٹس</div>
-        <div class="subject">${allReportsIn?teachersWithReports.length+' اساتذہ نے رپورٹ دی':'⚠️ نہیں دی: '+missingReports.map(tid=>{const t=teachers.find(x=>x.id===tid);return t?t.name:tid;}).join('، ')}</div></div>
+      <div style="flex:1"><div class="teacher">${t('acc.auto.reports')}</div>
+        <div class="subject">${allReportsIn?teachersWithReports.length+' '+t('acc.auto.repOk'):'\u26A0 '+t('acc.auto.repMissing')+' '+missingReports.map(tid=>{const t=teachers.find(x=>x.id===tid);return t?t.name:tid;}).join(', ')}</div></div>
       <div style="font-size:18px">${allReportsIn?'✅':'❌'}</div>
     </div>`;
     html += '</div>';
 
     // ═══ Section B: Verifiable Fields ═══
-    html += '<div class="section" id="acc_anchor_verify" style="scroll-margin-top:72px"><h2>📊 قابل تصدیق — نظام جانچے گا</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">آپ جو عدد لکھیں گے، نظام حقیقی ڈیٹا سے ملائے گا</div>';
+    html += '<div class="section" id="acc_anchor_verify" style="scroll-margin-top:72px"><h2>' + escHtml(t('acc.verify.title')) + '</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">' + escHtml(t('acc.verify.hint')) + '</div>';
 
     // Absent students count
     const enteredAbsent = rpt.absent_students_entered;
     const absMatch = enteredAbsent != null && enteredAbsent === actualAbsent;
     const absMismatch = enteredAbsent != null && enteredAbsent !== actualAbsent;
     html += `<div style="margin-bottom:14px">
-      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">آج کتنے طلبا غائب ہیں؟</label>
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(t('acc.verify.absentLabel'))}</label>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="number" id="acc_absent" value="${enteredAbsent!=null?enteredAbsent:''}" placeholder="عدد لکھیں" style="${iS('flex:1;')}" min="0">
+        <input type="number" id="acc_absent" value="${enteredAbsent!=null?enteredAbsent:''}" placeholder="${escAttr(t('acc.verify.phNumber'))}" style="${iS('flex:1;')}" min="0">
         <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${absMatch?'#34a85322':absMismatch?'#ea433522':'var(--dk)'};color:${absMatch?'var(--gr)':absMismatch?'var(--rd)':'#8a9ab5'}">
-          ${enteredAbsent!=null?(absMatch?'✅ صحیح':'⚠️ اصل: '+actualAbsent):'📊 اصل: '+actualAbsent}
+          ${enteredAbsent!=null?(absMatch?escHtml(t('acc.verify.correct')):escHtml(t('acc.verify.actual'))+actualAbsent):escHtml(t('acc.verify.actualOnly'))+actualAbsent}
         </div>
       </div>
     </div>`;
@@ -1484,47 +1495,50 @@ function render() {
     const behMatch = enteredBehind != null && enteredBehind === actualBehind;
     const behMismatch = enteredBehind != null && enteredBehind !== actualBehind;
     html += `<div style="margin-bottom:14px">
-      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">کتنے مضامین ہدف سے پیچھے ہیں؟</label>
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(t('acc.verify.behindLabel'))}</label>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="number" id="acc_behind" value="${enteredBehind!=null?enteredBehind:''}" placeholder="عدد لکھیں" style="${iS('flex:1;')}" min="0">
+        <input type="number" id="acc_behind" value="${enteredBehind!=null?enteredBehind:''}" placeholder="${escAttr(t('acc.verify.phNumber'))}" style="${iS('flex:1;')}" min="0">
         <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${behMatch?'#34a85322':behMismatch?'#ea433522':'var(--dk)'};color:${behMatch?'var(--gr)':behMismatch?'var(--rd)':'#8a9ab5'}">
-          ${enteredBehind!=null?(behMatch?'✅ صحیح':'⚠️ اصل: '+actualBehind):'📊 اصل: '+actualBehind}
+          ${enteredBehind!=null?(behMatch?escHtml(t('acc.verify.correct')):escHtml(t('acc.verify.actual'))+actualBehind):escHtml(t('acc.verify.actualOnly'))+actualBehind}
         </div>
       </div>
     </div>`;
 
     // Coverage details
     const covText = rpt.coverage_details||'';
+    const covPhAbsent = absentTeachers.length > 0
+      ? absentTeachers.map(r => { const tx = teachers.find(x => x.id === r.teacher_id); return tx ? tx.name : r.teacher_id; }).join('\u060C ') + t('acc.verify.coveragePhSuffix')
+      : t('acc.verify.coveragePhNone');
     html += `<div style="margin-bottom:8px">
-      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">غائب اساتذہ — بندوبست کی تفصیل</label>
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(t('acc.verify.coverageLabel'))}</label>
       ${absentTeachers.length === 0 && tAttToday.length > 0
-        ? '<div style="font-size:11px;color:var(--gr);padding:10px;background:#34a85315;border-radius:8px">✅ آج سب حاضر — بندوبست کی ضرورت نہیں</div>'
-        : `<textarea id="acc_coverage" rows="3" placeholder="${absentTeachers.length>0?absentTeachers.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id);return t?t.name:r.teacher_id;}).join('، ')+' غائب — کس نے ان کی جگہ پڑھایا؟':'کوئی غائب نہیں یا ابھی ڈیٹا نہیں آیا'}" style="${iS('resize:vertical;')}">${typeof covText==='string'?covText:JSON.stringify(covText)}</textarea>`
+        ? '<div style="font-size:11px;color:var(--gr);padding:10px;background:#34a85315;border-radius:8px">' + escHtml(t('acc.verify.allPresent')) + '</div>'
+        : `<textarea id="acc_coverage" rows="3" placeholder="${escAttr(covPhAbsent)}" style="${iS('resize:vertical;')}">${typeof covText==='string'?covText:JSON.stringify(covText)}</textarea>`
       }
     </div>`;
     html += '</div>';
 
     // ═══ Section C: Descriptive Reports ═══
-    html += '<div class="section" id="acc_anchor_report" style="scroll-margin-top:72px"><h2>📝 تفصیلی رپورٹ — لازمی</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">کم از کم 10 حروف — خالی چھوڑنے سے سکور کم ہوگا</div>';
+    html += '<div class="section" id="acc_anchor_report" style="scroll-margin-top:72px"><h2>' + escHtml(t('acc.report.title')) + '</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">' + escHtml(t('acc.report.hint')) + '</div>';
 
     const savedVisited = (typeof rpt.class_visited === 'string' ? rpt.class_visited : '') || '';
     const savedClassMatch = savedVisited.match(/^\[([a-zA-Z0-9_]+)\]/);
     const savedClassSel = savedClassMatch ? savedClassMatch[1] : '';
     html += `<div id="acc_anchor_class_visit" style="margin-bottom:14px;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <label style="font-size:12px;font-weight:700">📍 کون سی کلاس دیکھی؟</label>
+        <label style="font-size:12px;font-weight:700">${escHtml(t('acc.class.pick'))}</label>
         <span id="acc_class_visited_cnt" style="font-size:9px;color:#8a9ab5"></span>
       </div>
       <select id="acc_inspect_class_sel" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
-        <option value="">— درجہ منتخب کریں —</option>
-        ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${CLASS_UR[cid]}</option>`).join('')}
+        <option value="">${escHtml(t('acc.class.optChoose'))}</option>
+        ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${escHtml(classLabel(cid))}</option>`).join('')}
       </select>
       <div id="acc_inspect_preview" style="font-size:11px;line-height:1.65;color:var(--wh);background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;padding:12px;margin-bottom:8px;min-height:48px">
-        <span style="color:#8a9ab5">درجہ منتخب کریں — موجودہ وقت کے پیریڈ، مضمون، آج کا ہدف/اصل، اور گزشتہ رپورٹ یہاں آئے گی</span>
+        <span style="color:#8a9ab5">${escHtml(t('acc.class.previewHint'))}</span>
       </div>
-      <div style="font-size:9px;color:#8a9ab5;margin-bottom:4px">ذیلی متن محفوظ ہوتا ہے (کم از کم 3 حروف)</div>
-      <textarea id="acc_class_visited" rows="4" placeholder="ضرورت ہو تو یہاں ترمیم کریں" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter()" style="${iS('resize:vertical;')}"></textarea>
+      <div style="font-size:9px;color:#8a9ab5;margin-bottom:4px">${escHtml(t('acc.class.subnoteHint'))}</div>
+      <textarea id="acc_class_visited" rows="4" placeholder="${escAttr(t('acc.class.phEdit'))}" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter()" style="${iS('resize:vertical;')}"></textarea>
     </div>`;
 
     const coRaw = typeof rpt.class_observations === 'string' ? rpt.class_observations : '';
@@ -1532,42 +1546,42 @@ function render() {
     let accQaFormHtml = '';
     for (let qi = 1; qi <= VISIT_QA_REQUIRED; qi++) {
       accQaFormHtml += `<div style="margin-bottom:12px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
-        <div style="font-weight:800;font-size:11px;margin-bottom:10px;color:var(--gd)">\u0633\u0648\u0627\u0644 ${qi} / Question ${qi}</div>
+        <div style="font-weight:800;font-size:11px;margin-bottom:10px;color:var(--gd)">${escHtml(t('acc.qa.hdr', { qi }))}</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u0633\u06D2\u061F / To (<span dir="ltr">whoType</span>)</label>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.qa.toLabel')}</label>
             <select id="acc_qa_who_type_${qi}" onchange="window.refreshAccVisitQaWhoRow(${qi})" style="${iS('')}">
-              <option value="student">\u0637\u0627\u0644\u0628 \u0639\u0644\u0645 / Student</option>
-              <option value="teacher">\u0627\u0633\u062A\u0627\u0630 / Teacher</option>
+              <option value="student">${escHtml(t('acc.qa.optStudent'))}</option>
+              <option value="teacher">${escHtml(t('acc.qa.optTeacher'))}</option>
             </select>
           </div>
           <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0646\u0627\u0645 / Name (<span dir="ltr">whoId</span>)</label>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.qa.nameLabel')}</label>
             <select id="acc_qa_who_id_${qi}" style="${iS('')}"></select>
           </div>
           <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0633\u0648\u0627\u0644 / Question</label>
-            <textarea id="acc_qa_question_${qi}" rows="2" placeholder="\u06A9\u06CC\u0627 \u067E\u0648\u0686\u06BE\u0627 \u06AF\u06CC\u0627\u061F / What was asked?" style="${iS('resize:vertical;')}"></textarea>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(t('acc.qa.qLabel'))}</label>
+            <textarea id="acc_qa_question_${qi}" rows="2" placeholder="${escAttr(t('acc.qa.qPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
           <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u062C\u0648\u0627\u0628 / Answer</label>
-            <textarea id="acc_qa_answer_${qi}" rows="2" placeholder="\u062C\u0648\u0627\u0628 / Their answer" style="${iS('resize:vertical;')}"></textarea>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(t('acc.qa.aLabel'))}</label>
+            <textarea id="acc_qa_answer_${qi}" rows="2" placeholder="${escAttr(t('acc.qa.aPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
         </div>
       </div>`;
     }
     html += `<div id="acc_anchor_inspection" style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1f3d5e;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
-        <label style="font-size:12px;font-weight:700">\uD83D\uDC41\uFE0F \u06A9\u0644\u0627\u0633 \u0645\u0639\u0627\u0626\u0646\u06C1 \u2014 \u062F\u0631\u062C\u06C1 \u0648\u0627\u0631 (\u06C1\u0631 \u062F\u0631\u062C\u06D2 \u0627\u0644\u06AF \u0646\u0648\u0679)</label>
+        <label style="font-size:12px;font-weight:700">${escHtml(t('acc.inspect.title'))}</label>
         <span id="acc_class_obs_score_hint" style="font-size:9px;color:#8a9ab5"></span>
       </div>
-      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px;line-height:1.55">ہر درجے کے لیے <strong>3</strong> سوال-جواب لازمی۔ JSON (English keys: <span dir="ltr" style="font-size:9px;word-break:break-all">whoType, whoId, whoLabel, question, answer, narrative</span>) <code dir="ltr" style="font-size:9px">class_observations</code> کے <code dir="ltr" style="font-size:9px">[[VISIT_OBS]]</code> بلاک میں محفوظ\u06D4 پرانے صرف-متن بلاک 15+ حرف سے سکور پر رہتے ہیں\u06D4</div>
+      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px;line-height:1.55">${t('acc.inspect.help')}</div>
       ${accQaFormHtml}
       <div style="margin-bottom:10px">
-        <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0636\u0645\u06CC\u0645\u06CC \u0646\u0648\u0679 (\u0627\u062E\u062A\u06CC\u0627\u0631\u06CC) / Extra notes (<span dir="ltr">narrative</span>)</label>
-        <textarea id="acc_visit_narrative" rows="2" placeholder="\u0627\u0636\u0627\u0641\u06CC \u0645\u0644\u0627\u062D\u0638\u0627\u062A / Optional context" style="${iS('resize:vertical;')}"></textarea>
+        <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.inspect.extraNotes')}</label>
+        <textarea id="acc_visit_narrative" rows="2" placeholder="${escAttr(t('acc.visit.narrPh'))}" style="${iS('resize:vertical;')}"></textarea>
       </div>
-      <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">\uD83D\uDCBE \u0627\u0633 \u062F\u0631\u062C\u06D2 \u06A9\u0627 \u0645\u0639\u0627\u0626\u0646\u06C1 \u0646\u0648\u0679 \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA</button>
+      <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">${escHtml(t('acc.inspect.saveBtn'))}</button>
       <div id="acc_visits_list" style="margin-bottom:4px">${formatVisitObsCardsHtml(visits0)}</div>
       <textarea id="acc_class_obs" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(coRaw)}</textarea>
     </div>`;
@@ -1578,53 +1592,53 @@ function render() {
     const teacherPickOpts = teachers.map(t => '<option value="' + escAttr(t.id) + '">' + escHtml(t.name || t.id) + '</option>').join('');
     let absentFollowHtml = '';
     if (!absentListDedup.length) {
-      absentFollowHtml = '<div style="font-size:11px;color:var(--gr);padding:10px;background:#34a85315;border-radius:10px;margin-bottom:10px">\u2713 \u0622\u062C \u06A9\u0648\u0626\u06CC \u0637\u0627\u0644\u0628 \u0639\u0644\u0645 \u063A\u0627\u0626\u0628 \u0646\u06C1\u06CC\u06BA \u2014 \u0627\u0633 \u0628\u0627\u0628 \u06A9\u0648\u0626\u06CC \u0627\u0642\u062F\u0627\u0645 \u0631\u06CC\u06A9\u0627\u0631\u0688 \u0646\u06C1\u06CC\u06BA\u06D4</div>';
+      absentFollowHtml = '<div style="font-size:11px;color:var(--gr);padding:10px;background:#34a85315;border-radius:10px;margin-bottom:10px">' + escHtml(t('acc.absent.noneToday')) + '</div>';
     } else {
       absentListDedup.forEach((abs, idx) => {
         const cid = abs.class || '';
-        const badge = cid ? `<span class="class-badge ${escAttr(cid)}">${escHtml(CLASS_UR[cid] || cid)}</span> ` : '';
+        const badge = cid ? `<span class="class-badge ${escAttr(cid)}">${escHtml(classLabel(cid))}</span> ` : '';
         absentFollowHtml += `<div style="margin-bottom:14px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
           <input type="hidden" id="acc_abs_sid_${idx}" value="${escAttr(abs.student_id)}">
           <div style="font-weight:800;font-size:12px;margin-bottom:8px;color:var(--gd)">${badge}${escHtml(abs.name)}</div>
-          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">\u067E\u06C1\u0644\u06D2 \u0627\u0633\u062A\u0627\u0630 \u0633\u06D2 \u0648\u0636\u0627\u062D\u062A \u2014 \u0645\u0646\u0627\u0633\u0628 \u06C1\u0648 \u062A\u0648 \u0648\u0627\u0644\u062F\u06CC\u0646 \u062A\u06A9 \u0646\u06C1\u06CC\u06BA\u06D4 / Ask teacher first; if explanation is sufficient, no parent escalation.</div>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0627\u0642\u062F\u0627\u0645 / Next step (<span dir="ltr">path</span>)</label>
+          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(t('acc.absent.teacherFirst'))}</div>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.absent.nextPath')}</label>
           <select id="acc_abs_path_${idx}" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
-            <option value="">\u2014 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA \u2014</option>
-            <option value="teacher_ok">\u0627\u0633\u062A\u0627\u0630 \u06A9\u06CC \u0648\u0636\u0627\u062D\u062A \u06A9\u0627\u0641\u06CC / Teacher explanation OK</option>
-            <option value="principal_called">\u0645\u06CC\u06BA \u0646\u06D2 \u0648\u0627\u0644\u062F\u06CC\u0646 \u0633\u06D2 \u0631\u0627\u0628\u0637\u06C1 / I called parents</option>
-            <option value="assigned_call">\u06A9\u0633\u06CC \u0627\u0648\u0631 \u06A9\u0648 \u0641\u0648\u0646 \u06A9\u0631\u0646\u06D2 \u06A9\u0627 \u06A9\u06C1\u0627 / Assigned someone to call</option>
+            <option value="">${escHtml(t('acc.opt.choose'))}</option>
+            <option value="teacher_ok">${escHtml(t('acc.absent.path_teacher_ok'))}</option>
+            <option value="principal_called">${escHtml(t('acc.absent.path_principal'))}</option>
+            <option value="assigned_call">${escHtml(t('acc.absent.path_assigned'))}</option>
           </select>
           <div id="acc_abs_twrap_${idx}" style="display:none">
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u0627\u0633\u062A\u0627\u0630 \u0633\u06D2 \u067E\u0648\u0686\u06BE\u0627\u061F / Which teacher? (<span dir="ltr">teacherId</span>)</label>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.absent.whichTeacher')}</label>
             <select id="acc_abs_teacher_${idx}" onchange="window.syncAbsentActionsToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${teacherPickOpts}</select>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0648\u0636\u0627\u062D\u062A / Explanation (<span dir="ltr">teacherExplanation</span>)</label>
-            <textarea id="acc_abs_teacher_explain_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="\u06A9\u06CC\u0627 \u062C\u0648\u0627\u0628 \u0645\u0644\u0627\u061F \u06A9\u06CC\u0648\u06BA \u0645\u0646\u0627\u0633\u0628\u061F" style="${iS('resize:vertical;')}"></textarea>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.absent.explain')}</label>
+            <textarea id="acc_abs_teacher_explain_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(t('acc.absent.explainPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
           <div id="acc_abs_assignwrap_${idx}" style="display:none">
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u06A9\u0648 \u0630\u0645\u06C1 \u062F\u0627\u0631\u06CC\u061F / Assignee (<span dir="ltr">assigneeTeacherId</span>)</label>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.absent.assignee')}</label>
             <select id="acc_abs_assignee_${idx}" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
               <option value="">\u2014</option>
               ${teacherPickOpts}
-              <option value="__name_only__">\u062F\u0633\u062A\u06CC \u0646\u0627\u0645 / Type name manually</option>
+              <option value="__name_only__">${escHtml(t('acc.absent.nameManual'))}</option>
             </select>
             <div id="acc_abs_assignname_wrap_${idx}" style="display:none;margin-bottom:8px">
-              <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0646\u0627\u0645 / Name (<span dir="ltr">assigneeName</span>)</label>
-              <input type="text" id="acc_abs_assignee_name_${idx}" oninput="window.syncAbsentActionsToHidden()" style="${iS('')}" placeholder="\u0645\u06A9\u0645\u0644 \u0646\u0627\u0645">
+              <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.absent.nameLbl')}</label>
+              <input type="text" id="acc_abs_assignee_name_${idx}" oninput="window.syncAbsentActionsToHidden()" style="${iS('')}" placeholder="${escAttr(t('acc.absent.namePh'))}">
             </div>
           </div>
           <div id="acc_abs_replywrap_${idx}" style="display:none">
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0641\u0648\u0646 \u067E\u0631 \u06A9\u06CC\u0627 \u062C\u0648\u0627\u0628 \u0645\u0644\u0627\u061F / Call reply (<span dir="ltr">callReply</span>)</label>
-            <textarea id="acc_abs_reply_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="\u0648\u0627\u0644\u062F\u06CC\u0646 \u06CC\u0627 \u0645\u0646\u062A\u0638\u0631 \u06A9\u0627 \u062C\u0648\u0627\u0628" style="${iS('resize:vertical;')}"></textarea>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.absent.callReply')}</label>
+            <textarea id="acc_abs_reply_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(t('acc.absent.callPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
         </div>`;
       });
     }
     html += `<div id="acc_anchor_absent_actions" style="margin-bottom:14px;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
-        <label style="font-size:12px;font-weight:700">\uD83D\uDCDE \u063A\u0627\u0626\u0628 \u0637\u0644\u0628\u0627 \u2014 \u06A9\u06CC\u0627 \u0627\u0642\u062F\u0627\u0645\u061F</label>
+        <label style="font-size:12px;font-weight:700">${escHtml(t('acc.absent.blockTitle'))}</label>
         <span id="acc_absent_actions_hint" style="font-size:9px;color:${absentActOk?'var(--gr)':'#8a9ab5'}">${escHtml(absentActHint)}</span>
       </div>
-      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">JSON keys: <span dir="ltr">v, rows[].studentId, path, teacherId, teacherExplanation, assigneeTeacherId, assigneeName, callReply</span> \u2192 <code dir="ltr">absent_actions</code></div>
+      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${t('acc.absent.jsonHint')}</div>
       <div id="acc_absent_actions_wrap" data-abs-count="${absentListDedup.length}">
         ${absentFollowHtml}
       </div>
@@ -1638,44 +1652,45 @@ function render() {
     const hifzStudentOpts = hifzRoster.map(s => '<option value="' + escAttr(s.id) + '">' + escHtml(s.name) + '</option>').join('');
     let hifzSlotsHtml = '';
     if (!hifzRoster.length) {
-      hifzSlotsHtml = '<div style="font-size:11px;color:#8a9ab5;padding:10px;background:var(--dk);border-radius:10px;margin-bottom:10px">\u062D\u0641\u0638 \u062F\u0631\u062C\u06D2 \u06A9\u06D2 \u06A9\u0648\u0626\u06CC \u0637\u0627\u0644\u0628 \u0641\u06C1\u0631\u0633\u062A \u0645\u06CC\u06BA \u0646\u06C1\u06CC\u06BA \u2014 \u0627\u06AF\u0631 \u0637\u0644\u0628\u0627 \u0627\u0636\u0627\u0641\u06C1 \u06C1\u0648\u0626\u06D2 \u062A\u0648 \u0637\u0644\u0628\u0627 \u0679\u06CC\u0628 \u0645\u06CC\u06BA <code>class=hifz</code> \u0686\u06CC\u06A9 \u06A9\u0631\u06CC\u06BA\u06D4</div>';
+      hifzSlotsHtml = '<div style="font-size:11px;color:#8a9ab5;padding:10px;background:var(--dk);border-radius:10px;margin-bottom:10px">' + t('acc.hifz.noRoster') + '</div>';
     } else {
       for (let hi = 0; hi < HIFZ_MEMORY_SLOTS; hi++) {
+        const slotN = hi + 1;
         hifzSlotsHtml += `<div style="margin-bottom:14px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
-          <div style="font-weight:800;font-size:11px;margin-bottom:8px;color:var(--gd)">\u062D\u0641\u0638 \u06CC\u0627\u062F \u2014 \u0633\u0644\u0627\u0679 ${hi + 1} / Hifz recall ${hi + 1}</div>
-          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">\u06AF\u0632\u0634\u062A\u06C1 2\u20133 \u062F\u0646 \u06CC\u0627 \u06C1\u0641\u062A\u06D2 \u06A9\u0627 \u0633\u0628\u0642 \u2014 \u0642\u0627\u0631\u06CC \u0633\u0648\u0644\u062A\u0627 \u06C1\u06D2\u060C \u0637\u0627\u0644\u0628 \u062C\u0648\u0627\u0628 \u062F\u06D2\u060C \u0645\u0648\u0642\u0641 \u0627\u0648\u0631 \u06CC\u0627\u062F \u06A9\u06CC \u0633\u0637\u062D\u06D4 Last few days\u2019 lesson recall (not new lesson teaching).</div>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0637\u0627\u0644\u0628 / Student (<span dir="ltr">studentId</span>)</label>
+          <div style="font-weight:800;font-size:11px;margin-bottom:8px;color:var(--gd)">${escHtml(t('acc.hifz.slotTitle', { n: slotN }))}</div>
+          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(t('acc.hifz.slotHelp'))}</div>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.hifz.student')}</label>
           <select id="acc_hf_sid_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${hifzStudentOpts}</select>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u0633 \u0645\u062F\u062A \u06A9\u06CC \u062A\u06A9\u0631\u0627\u0631\u061F / Recall window (<span dir="ltr">memorySpan</span>)</label>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.hifz.span')}</label>
           <select id="acc_hf_span_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}">
             <option value="">\u2014</option>
-            <option value="last_2_days">\u06AF\u0632\u0634\u062A\u06C1 2 \u062F\u0646 / Last 2 days</option>
-            <option value="last_3_days">\u06AF\u0632\u0634\u062A\u06C1 3 \u062F\u0646 / Last 3 days</option>
-            <option value="last_week">\u067E\u0686\u06C1\u0644\u0627 \u06C1\u0641\u062A\u06C1 / ~Last week</option>
-            <option value="other">\u062F\u06CC\u06AF\u0631 / Other (detail below)</option>
+            <option value="last_2_days">${escHtml(t('acc.hifz.span2'))}</option>
+            <option value="last_3_days">${escHtml(t('acc.hifz.span3'))}</option>
+            <option value="last_week">${escHtml(t('acc.hifz.spanWk'))}</option>
+            <option value="other">${escHtml(t('acc.hifz.spanOther'))}</option>
           </select>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06A9\u06CC\u0627 \u067E\u0648\u0686\u06BE\u0627 \u06AF\u06CC\u0627\u061F / What was asked (<span dir="ltr">promptAsked</span>)</label>
-          <textarea id="acc_hf_prompt_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="\u0645\u062B\u0644\u064B\u0627: \u067E\u0686\u06C1\u0644\u06D2 \u062C\u0645\u0639\u06C1 \u06A9\u0627 \u0622\u062E\u0631\u06CC \u0633\u0628\u0642 \u06C1\u0645 \u0633\u06D2 \u062A\u06A9\u0631\u0627\u0631\u2026" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0637\u0627\u0644\u0628 \u0646\u06D2 \u06A9\u06CC\u0627 \u062C\u0648\u0627\u0628 \u062F\u06CC\u0627\u061F / Student said (<span dir="ltr">studentResponse</span>)</label>
-          <textarea id="acc_hf_resp_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="\u0637\u0627\u0644\u0628 \u06A9\u0627 \u0628\u0648\u0644\u0627 \u062C\u0648\u0627\u0628" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u0627\u0628 \u06A9\u06C1\u0627\u06BA \u067E\u06CC\u06BA \u06C1\u06D2\u061F / Where they are at (<span dir="ltr">progressWhere</span>)</label>
-          <input type="text" id="acc_hf_pos_${hi}" oninput="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}" placeholder="\u0645\u062B\u0644\u064B\u0627 \u067E\u0627\u0631\u06C1 5\u060C \u0633\u0648\u0631\u06C1\u060C \u0635\u0641\u062D\u06C1">
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">\u06CC\u0627\u062F \u06A9\u06CC\u0633\u06CC \u0631\u06C1\u06CC\u061F / Recall quality (<span dir="ltr">recallQuality</span>)</label>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.hifz.prompt')}</label>
+          <textarea id="acc_hf_prompt_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(t('acc.hifz.promptPh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.hifz.response')}</label>
+          <textarea id="acc_hf_resp_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(t('acc.hifz.responsePh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.hifz.where')}</label>
+          <input type="text" id="acc_hf_pos_${hi}" oninput="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}" placeholder="${escAttr(t('acc.hifz.wherePh'))}">
+          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${t('acc.hifz.quality')}</label>
           <select id="acc_hf_quality_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('')}">
             <option value="">\u2014</option>
-            <option value="weak">\u0636\u0639\u06CC\u0641 / Weak</option>
-            <option value="adequate">\u0645\u0646\u0627\u0633\u0628 / Adequate</option>
-            <option value="strong">\u0627\u0686\u06BE\u0627 / Strong</option>
+            <option value="weak">${escHtml(t('acc.hifz.qWeak'))}</option>
+            <option value="adequate">${escHtml(t('acc.hifz.qAdeq'))}</option>
+            <option value="strong">${escHtml(t('acc.hifz.qStrong'))}</option>
           </select>
         </div>`;
       }
     }
     const hifzBlockHtml = `<div id="acc_anchor_hifz" style="margin-bottom:14px;scroll-margin-top:72px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
-        <label style="font-size:12px;font-weight:700">\uD83D\uDCD6 \u062D\u0641\u0638 \u0627\u067E\u0688\u06CC\u0679 \u2014 \u0642\u0627\u0631\u06CC \u0635\u0627\u062D\u0628\u0627\u0646 \u0633\u06D2</label>
+        <label style="font-size:12px;font-weight:700">${escHtml(t('acc.hifz.blockTitle'))}</label>
         <span id="acc_hifz_actions_hint" style="font-size:9px;color:${hifzActOk?'var(--gr)':'#8a9ab5'}">${escHtml(hifzActHint)}</span>
       </div>
-      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">JSON: <span dir="ltr">v, entries[].studentId, studentLabel, memorySpan, promptAsked, studentResponse, progressWhere, recallQuality</span> \u2192 <code dir="ltr">hifz_notes</code> \u2014 \u06A9\u0645 \u0627\u0632 \u06A9\u0645 \u0627\u06CC\u06A9 \u0645\u06A9\u0645\u0644 \u0633\u0644\u0627\u0679\u060C \u06CC\u0627 10+ \u062D\u0631\u0641 \u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646\u06D4</div>
+      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${t('acc.hifz.jsonHint')}</div>
       <div id="acc_hifz_wrap" data-hifz-roster-len="${hifzRoster.length}">${hifzSlotsHtml}</div>
       <pre id="acc_hifz_legacy_note" style="display:none;font-size:10px;color:#fdba74;white-space:pre-wrap;word-break:break-word;margin-top:8px;padding:8px;background:var(--dk);border-radius:8px;border:1px solid #7c2d12"></pre>
       <textarea id="acc_hifz" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(hifzActRaw)}</textarea>
@@ -1683,54 +1698,58 @@ function render() {
 
     html += hifzBlockHtml;
     const descFields = [
-      {id:'acc_remarks', label:'💬 عمومی ملاحظات', field:'general_remarks', ph:'آج کا کوئی خاص واقعہ، تجویز، شکایت...', rows:2, min:5},
+      { id: 'acc_remarks', labelKey: 'acc.remarks.label', phKey: 'acc.remarks.ph', field: 'general_remarks', rows: 2, min: 5 },
     ];
     descFields.forEach(f => {
       const val = rpt[f.field] || '';
       const ok = val.length >= f.min;
       const wrapAttr = f.id === 'acc_remarks' ? 'id="acc_anchor_remarks" ' : '';
+      const fLabel = t(f.labelKey);
+      const fPh = t(f.phKey);
       html += `<div ${wrapAttr} style="margin-bottom:14px${f.id === 'acc_remarks' ? ';scroll-margin-top:72px' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <label style="font-size:12px;font-weight:700">${f.label}</label>
+          <label style="font-size:12px;font-weight:700">${escHtml(fLabel)}</label>
           <span style="font-size:9px;color:${ok?'var(--gr)':'#8a9ab5'}">${val.length}/${f.min} ${ok?'✅':''}</span>
         </div>
-        <textarea id="${f.id}" rows="${f.rows}" placeholder="${f.ph}" style="${iS('resize:vertical;')}">${val}</textarea>
+        <textarea id="${f.id}" rows="${f.rows}" placeholder="${escAttr(fPh)}" style="${iS('resize:vertical;')}">${val}</textarea>
       </div>`;
     });
     html += '</div>';
 
     // ═══ Section D: Checklist (progress + confirmations) ═══
-    html += '<div class="section" id="acc_anchor_checklist" style="scroll-margin-top:72px"><h2>✅ چیک لسٹ — سیکشن مکملگی</h2>';
+    html += '<div class="section" id="acc_anchor_checklist" style="scroll-margin-top:72px"><h2>' + escHtml(t('acc.chklist.sectionTitle')) + '</h2>';
     html += '<div id="acc_checklist_banner" style="margin-bottom:12px;padding:12px;border-radius:12px;font-size:12px;font-weight:700;text-align:center;line-height:1.5;background:var(--dk3);border:1px solid #1f3d5e;color:#8a9ab5">\u2026</div>';
     html += '<div id="acc_checklist_rows" style="margin-bottom:12px"></div>';
-    html += '<button type="button" class="btn btn-gd btn-sm" id="acc_checklist_scroll_btn" style="width:100%;margin-bottom:12px;display:none;min-height:44px" onclick="window.scrollToFirstIncompleteAccountability()">\u067E\u06C1\u0644\u06CC \u0646\u0627\u0645\u06A9\u0645\u0644 \u062C\u06AF\u06C1 \u067E\u0631 \u0633\u06A9\u0631\u0648\u0644 \u06A9\u0631\u06CC\u06BA</button>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px">\u062A\u0635\u062F\u06CC\u0642\u0627\u062A \u2014 \u0631\u067E\u0648\u0631\u0679 \u062C\u0645\u0639 \u06A9\u0631\u0627\u0646\u06D2 \u0633\u06D2 \u067E\u06C1\u0644\u06D2 \u062F\u0631\u0633\u062A \u0633\u06CC\u06A9\u0634\u0646 \u0645\u06A9\u0645\u0644 \u06A9\u0631\u06CC\u06BA\u06D4</div>';
+    html += '<button type="button" class="btn btn-gd btn-sm" id="acc_checklist_scroll_btn" style="width:100%;margin-bottom:12px;display:none;min-height:44px" onclick="window.scrollToFirstIncompleteAccountability()">' + escHtml(t('acc.chklist.scrollBtn')) + '</button>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px">' + escHtml(t('acc.chklist.footer')) + '</div>';
     const checks = [
-      {id:'acc_chk_parents', label:'📞 غائب طلبا کے والدین کو فون کیا', field:'called_parents', anchor:'acc_anchor_chk_parents'},
-      {id:'acc_chk_hifz', label:'📖 حفظ پیشرفت خود دیکھی', field:'checked_hifz', anchor:'acc_anchor_chk_hifz'},
+      { id: 'acc_chk_parents', label: t('acc.chk.parentsLbl'), field: 'called_parents', anchor: 'acc_anchor_chk_parents' },
+      { id: 'acc_chk_hifz', label: t('acc.chk.hifzLbl'), field: 'checked_hifz', anchor: 'acc_anchor_chk_hifz' },
     ];
-    if (isThursday) checks.push({id:'acc_chk_thu', label:'✍️ جمعرات امتحانی نتائج دیکھے', field:'reviewed_thursday', anchor:'acc_anchor_chk_thu'});
+    if (isThursday) checks.push({ id: 'acc_chk_thu', label: t('acc.chk.thuLbl'), field: 'reviewed_thursday', anchor: 'acc_anchor_chk_thu' });
     checks.forEach(c => {
       const ck = rpt[c.field] ? 'checked' : '';
       html += `<div id="${c.anchor}" style="scroll-margin-top:72px;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px;min-height:48px;cursor:pointer" onclick="document.getElementById('${c.id}').click()">
         <input type="checkbox" id="${c.id}" ${ck} style="width:22px;height:22px;accent-color:var(--gr)" onclick="event.stopPropagation()">
-        <label style="font-size:12px;font-weight:700;cursor:pointer" for="${c.id}">${c.label}</label>
+        <label style="font-size:12px;font-weight:700;cursor:pointer" for="${c.id}">${escHtml(c.label)}</label>
       </div>`;
     });
     html += '</div>';
 
     // ═══ Submit Button ═══
+    const accSubmitLabel = isSubmitted ? t('acc.updateBtn') : t('acc.submitBtn');
     html += `<div style="padding:0 12px;margin-bottom:20px">
       <button onclick="submitAccountability()" class="btn btn-gr" style="width:100%;padding:16px;font-size:16px;font-weight:800;border-radius:14px;border:none;cursor:pointer">
-        📤 ${isSubmitted?'اپڈیٹ کریں':'رپورٹ جمع کرائیں'}
+        ${escHtml(accSubmitLabel)}
       </button>
     </div>`;
 
     // ═══ Historical Scores ═══
+    const _timeTag = typeof dashTimeLocaleTag === 'function' ? dashTimeLocaleTag() : 'ur-PK';
     if (adminScores.length > 0) {
-      html += '<div class="section"><h2>📈 پچھلے دنوں کی جوابدہی</h2>';
+      html += '<div class="section"><h2>' + escHtml(t('acc.history.title')) + '</h2>';
       html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
-      html += '<th>تاریخ</th><th>مکمل</th><th>کل</th><th>سکور</th><th>وقت</th>';
+      html += '<th>' + escHtml(t('acc.history.thDate')) + '</th><th>' + escHtml(t('acc.history.thDone')) + '</th><th>' + escHtml(t('acc.history.thTotal')) + '</th><th>' + escHtml(t('acc.history.thScore')) + '</th><th>' + escHtml(t('acc.history.thTime')) + '</th>';
       html += '</tr></thead><tbody>';
       adminScores.forEach(s => {
         const sc = parseInt(s.score_pct||0);
@@ -1740,7 +1759,7 @@ function render() {
           <td>${s.completed_tasks}</td>
           <td>${s.total_tasks}</td>
           <td style="font-weight:800;color:${c}">${sc}%</td>
-          <td style="font-size:9px">${s.submitted_at?new Date(s.submitted_at).toLocaleTimeString('ur-PK',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}):'-'}</td>
+          <td style="font-size:9px">${s.submitted_at?new Date(s.submitted_at).toLocaleTimeString(_timeTag,{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}):'-'}</td>
         </tr>`;
       });
       html += '</tbody></table></div></div>';
@@ -1748,9 +1767,9 @@ function render() {
 
     } catch(err) {
       console.error('Admin tab error:', err);
-      html += `<div class="section" style="border:2px solid var(--rd)"><h2>❌ خرابی</h2>
-        <div style="font-size:11px;color:var(--rd)">${err.message}</div>
-        <div style="font-size:10px;color:#8a9ab5;margin-top:8px">Console (F12) میں تفصیل دیکھیں</div>
+      html += `<div class="section" style="border:2px solid var(--rd)"><h2>${escHtml(t('acc.errTitle'))}</h2>
+        <div style="font-size:11px;color:var(--rd)">${escHtml(err.message)}</div>
+        <div style="font-size:10px;color:#8a9ab5;margin-top:8px">${escHtml(t('acc.errConsole'))}</div>
       </div>`;
     }
   }
@@ -1759,7 +1778,7 @@ function render() {
   // TAB: TEACHER ATTENDANCE
   // ═══════════════════════════════════════════
   if (activeTab === 'tAttend') {
-    html += '<div class="section"><h2>👨‍🏫 اساتذہ کی آج کی حاضری</h2>';
+    html += '<div class="section"><h2>'+t('tAtt.title')+'</h2>';
 
     // Leave summary
     html += '<div class="grid" style="margin-bottom:16px">';
@@ -1771,11 +1790,11 @@ function render() {
       const approved = att ? att.approved : false;
       html += `<div class="card" style="border-right:4px solid ${status==='present'?'var(--gr)':status==='absent'?'var(--rd)':status==='leave'?'var(--bl)':'#555'}">
         <div style="font-weight:700;font-size:13px;margin-bottom:4px">${t.name}</div>
-        <div><span class="badge ${badgeCls}">${status==='present'?'حاضر':status==='absent'?'غائب':status==='leave'?'رخصت':status==='late'?'تاخیر':'نامعلوم'}</span>
-          ${att ? `<span class="badge ${approved?'approved':'pending'}" style="margin-right:4px">${approved?'✓ منظور':'⏳ زیر التوا'}</span>` : ''}
+        <div><span class="badge ${badgeCls}">${status==='present'?t('common.present'):status==='absent'?t('common.absent'):status==='leave'?t('common.leave'):status==='late'?t('common.late'):t('common.unknown')}</span>
+          ${att ? `<span class="badge ${approved?'approved':'pending'}" style="margin-right:4px">${approved?t('common.approved'):t('common.pending')}</span>` : ''}
         </div>
-        ${ls ? `<div style="font-size:9px;color:#8a9ab5;margin-top:6px">حاضر:${ls.present_days||0} رخصت:${ls.leave_days||0} غائب:${ls.absent_days||0} تاخیر:${ls.late_days||0}</div>` : ''}
-        ${att && !approved ? `<button class="btn btn-gr btn-sm" style="margin-top:6px" onclick="approveTeacher('${t.id}')">✅ منظور</button>` : ''}
+        ${ls ? `<div style="font-size:9px;color:#8a9ab5;margin-top:6px">${t('common.present')}:${ls.present_days||0} ${t('common.leave')}:${ls.leave_days||0} ${t('common.absent')}:${ls.absent_days||0} ${t('common.late')}:${ls.late_days||0}</div>` : ''}
+        ${att && !approved ? `<button class="btn btn-gr btn-sm" style="margin-top:6px" onclick="approveTeacher('${t.id}')">${t('tAtt.approveOne')}</button>` : ''}
       </div>`;
     });
     html += '</div>';
@@ -1783,18 +1802,18 @@ function render() {
     // Approve All
     const pending = tAttToday.filter(r=>!r.approved);
     if (pending.length) {
-      html += `<button class="btn btn-gd" onclick="approveAll()">✅ سب منظور کریں (${pending.length})</button>`;
+      html += `<button class="btn btn-gd" onclick="approveAll()">${t('tAtt.approveAll')} (${pending.length})</button>`;
     }
     html += '</div>';
 
     // ═══ Evidence-based Verification Grid ═══
-    html += '<div class="section"><h2>📊 تصدیق — مضمون و پیریڈ وار</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px;line-height:1.5">جب کسی استاد نے طلبا کی حاضری لگائی یا رپورٹ جمع کی، تو یہ ثبوت ہے کہ وہ کلاس میں تھے۔ سرخ = کوئی ثبوت نہیں۔</div>';
+    html += '<div class="section"><h2>'+t('tAtt.verifyTitle')+'</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px;line-height:1.5">'+t('tAtt.verifyHelp')+'</div>';
 
     html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">';
-    html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === 'all' ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'all\';render();">سب درجے</button>';
+    html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === 'all' ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'all\';render();">'+t('common.allGrades')+'</button>';
     CLASS_ORDER.forEach(function(cid) {
-      html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'' + cid + '\';render();">' + (CLASS_UR[cid] || cid) + '</button>';
+      html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'' + cid + '\';render();">' + escHtml(classLabel(cid) || cid) + '</button>';
     });
     html += '</div>';
 
@@ -1846,7 +1865,7 @@ function render() {
       var pa = a.periodId != null && !Number.isNaN(Number(a.periodId)) ? Number(a.periodId) : 99;
       var pb = b.periodId != null && !Number.isNaN(Number(b.periodId)) ? Number(b.periodId) : 99;
       if (pa !== pb) return pa - pb;
-      return String(a.teacherName).localeCompare(String(b.teacherName), 'ur');
+      return String(a.teacherName).localeCompare(String(b.teacherName), dashSortLocale());
     });
 
     var vTotal = verifyRows.length;
@@ -1856,14 +1875,14 @@ function render() {
     var summaryColor = vPct >= 80 ? 'var(--gr)' : vPct >= 50 ? 'var(--yl)' : 'var(--rd)';
 
     html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px;background:var(--dk);border-radius:12px;border:1px solid ' + summaryColor + '">';
-    html += '<div style="text-align:center;flex:1;min-width:80px"><div style="font-size:28px;font-weight:800;color:' + summaryColor + '">' + vPct + '%</div><div style="font-size:9px;color:#8a9ab5">تصدیق شدہ</div></div>';
-    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gr)">' + vGreen + '</div><div style="font-size:9px;color:#8a9ab5">ثبوت ✓</div></div>';
-    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--rd)">' + vRed + '</div><div style="font-size:9px;color:#8a9ab5">بغیر ثبوت</div></div>';
-    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gd)">' + vTotal + '</div><div style="font-size:9px;color:#8a9ab5">کل تفویضات</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:80px"><div style="font-size:28px;font-weight:800;color:' + summaryColor + '">' + vPct + '%</div><div style="font-size:9px;color:#8a9ab5">'+t('tAtt.verified')+'</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gr)">' + vGreen + '</div><div style="font-size:9px;color:#8a9ab5">'+t('tAtt.proofOk')+'</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--rd)">' + vRed + '</div><div style="font-size:9px;color:#8a9ab5">'+t('tAtt.noProof')+'</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gd)">' + vTotal + '</div><div style="font-size:9px;color:#8a9ab5">'+t('tAtt.totalAsg')+'</div></div>';
     html += '</div>';
 
     if (!verifyRows.length) {
-      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">اس فلٹر کے لیے کوئی تفویض نہیں</div>';
+      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">'+t('ov.noAssignCur')+'</div>';
     } else {
       var byClass = {};
       verifyRows.forEach(function(r) {
@@ -1885,21 +1904,21 @@ function render() {
 
         html += '<div style="margin-bottom:14px;border:1px solid #1f3d5e;border-radius:12px;overflow:hidden">';
         html += '<div style="background:var(--dk3);padding:10px 12px;display:flex;justify-content:space-between;align-items:center">';
-        html += '<div style="display:flex;align-items:center;gap:8px"><span class="class-badge ' + escAttr(cls) + '">' + escHtml(CLASS_UR[cls] || cls) + '</span>';
+        html += '<div style="display:flex;align-items:center;gap:8px"><span class="class-badge ' + escAttr(cls) + '">' + escHtml(classLabel(cls) || cls) + '</span>';
         html += '<span style="font-size:12px;font-weight:700;color:var(--gd)">' + clsVerified + '/' + clsTotal + '</span></div>';
         html += '<span style="font-size:11px;font-weight:800;color:' + clsColor + '">' + clsPct + '%</span>';
         html += '</div>';
 
         html += '<div class="scroll-table" style="max-height:300px"><table class="tbl"><thead><tr>';
-        html += '<th>پیریڈ</th><th>استاد</th><th>مضمون</th><th>خود رپورٹ</th><th>حاضری ✓</th><th>رپورٹ ✓</th><th>تصدیق</th>';
+        html += '<th>'+t('tAtt.thPeriod')+'</th><th>'+t('tAtt.thTeacher')+'</th><th>'+t('tAtt.thSubject')+'</th><th>'+t('tAtt.thSelf')+'</th><th>'+t('tAtt.thAttMark')+'</th><th>'+t('tAtt.thRepMark')+'</th><th>'+t('tAtt.thVerify')+'</th>';
         html += '</tr></thead><tbody>';
 
         rows.forEach(function(r) {
           var selfBadge = '';
-          if (r.selfStatus === 'present') selfBadge = '<span class="badge p">حاضر</span>';
-          else if (r.selfStatus === 'absent') selfBadge = '<span class="badge a">غائب</span>';
-          else if (r.selfStatus === 'leave') selfBadge = '<span class="badge l">رخصت</span>';
-          else if (r.selfStatus === 'late') selfBadge = '<span class="badge late">تاخیر</span>';
+          if (r.selfStatus === 'present') selfBadge = '<span class="badge p">'+t('common.present')+'</span>';
+          else if (r.selfStatus === 'absent') selfBadge = '<span class="badge a">'+t('common.absent')+'</span>';
+          else if (r.selfStatus === 'leave') selfBadge = '<span class="badge l">'+t('common.leave')+'</span>';
+          else if (r.selfStatus === 'late') selfBadge = '<span class="badge late">'+t('common.late')+'</span>';
           else selfBadge = '<span style="color:#555">—</span>';
 
           var attIcon = r.hasAtt ? '<span style="color:var(--gr);font-weight:800">✓</span>' : '<span style="color:#555">✗</span>';
@@ -1907,11 +1926,11 @@ function render() {
 
           var vBadge = '';
           if (r.verified) {
-            vBadge = '<span class="badge p">ثابت ✓</span>';
+            vBadge = '<span class="badge p">'+t('tAtt.proven')+'</span>';
           } else if (r.selfStatus === 'absent' || r.selfStatus === 'leave') {
-            vBadge = '<span class="badge l">معذور</span>';
+            vBadge = '<span class="badge l">'+t('tAtt.excused')+'</span>';
           } else {
-            vBadge = '<span class="badge a">بغیر ثبوت</span>';
+            vBadge = '<span class="badge a">'+t('tAtt.noProof')+'</span>';
           }
 
           var rowBg = '';
@@ -1937,13 +1956,13 @@ function render() {
     });
     if (discrepancies.length > 0) {
       html += '<div style="margin-top:12px;padding:14px;background:#ea433522;border:1.5px solid #ea4335;border-radius:12px">';
-      html += '<div style="font-weight:800;font-size:13px;color:var(--rd);margin-bottom:8px">⚠️ تضاد — حاضر بتایا مگر ثبوت نہیں (' + discrepancies.length + ')</div>';
-      html += '<div style="font-size:10px;color:#fdba74;margin-bottom:10px">ان اساتذہ نے خود کو حاضر بتایا لیکن نہ طلبا کی حاضری لگائی نہ رپورٹ جمع کی</div>';
+      html += '<div style="font-weight:800;font-size:13px;color:var(--rd);margin-bottom:8px">'+t('tAtt.discTitle')+' (' + discrepancies.length + ')</div>';
+      html += '<div style="font-size:10px;color:#fdba74;margin-bottom:10px">'+t('tAtt.discHelp')+'</div>';
       discrepancies.forEach(function(r) {
         html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--dk);border-radius:8px;margin-bottom:4px;min-height:40px">';
         html += '<div><span style="font-weight:700;font-size:12px">' + escHtml(r.teacherName) + '</span>';
         html += '<span style="font-size:10px;color:#8a9ab5;margin-right:8px"> • ' + escHtml(r.subjectName) + ' • P' + (r.periodId != null ? r.periodId : '?') + '</span></div>';
-        html += '<span class="class-badge ' + escAttr(r.cls) + '">' + escHtml(CLASS_UR[r.cls] || r.cls) + '</span>';
+        html += '<span class="class-badge ' + escAttr(r.cls) + '">' + escHtml(classLabel(r.cls) || r.cls) + '</span>';
         html += '</div>';
       });
       html += '</div>';
@@ -1974,34 +1993,34 @@ function render() {
       }
     }
 
-    html += '<div class="section"><h2>' + (sAttendD === TODAY ? '👥 آج طلبا کی حاضری' : '👥 طلبا کی حاضری — ' + escHtml(sAttendD)) + '</h2>';
+    html += '<div class="section"><h2>' + (sAttendD === TODAY ? t('stu.titleToday') : t('stu.titleDate') + ' — ' + escHtml(sAttendD)) + '</h2>';
 
     if (sAttendD !== TODAY && sAttendHistorical.loading) {
-      html += '<div class="loading" style="margin-bottom:10px">⏳ ' + escHtml(sAttendD) + ' کا ڈیٹا لوڈ ہو رہا ہے...</div>';
+      html += '<div class="loading" style="margin-bottom:10px">\u23F3 ' + escHtml(sAttendD) + ' ' + t('stu.loadingDate') + '</div>';
     }
 
     html += '<div class="filter-bar">';
-    html += '<input type="date" id="sAttendDate" value="' + escAttr(sAttendUi.date || TODAY) + '" onchange="onSAttendDateChange(this.value)" title="تاریخ">';
+    html += '<input type="date" id="sAttendDate" value="' + escAttr(sAttendUi.date || TODAY) + '" onchange="onSAttendDateChange(this.value)" title="' + escAttr(t('common.date')) + '">';
     html += '<select id="sSubjectFilter" onchange="sAttendUi.subject=this.value;render();" style="min-width:120px">';
-    html += '<option value="all"' + (sAttendUi.subject === 'all' ? ' selected' : '') + '>— تمام مضامین —</option>';
-    (subjects || []).slice().sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ur'); }).forEach(function(s) {
+    html += '<option value="all"' + (sAttendUi.subject === 'all' ? ' selected' : '') + '>' + escHtml(t('common.allSubjects')) + '</option>';
+    (subjects || []).slice().sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', dashSortLocale()); }).forEach(function(s) {
       var sid = String(s.id);
       html += '<option value="' + escAttr(sid) + '"' + (String(sAttendUi.subject) === sid ? ' selected' : '') + '>' + escHtml(s.name || sid) + '</option>';
     });
     html += '</select>';
     html += '<select id="sClassFilter" onchange="sAttendUi.class=this.value;render();">';
-    html += `<option value="all"${sAttendUi.class === 'all' ? ' selected' : ''}>سب درجے</option>`;
+    html += `<option value="all"${sAttendUi.class === 'all' ? ' selected' : ''}>${escHtml(t('common.allGrades'))}</option>`;
     Object.keys(CLASS_UR).forEach(c => {
-      html += `<option value="${c}"${sAttendUi.class === c ? ' selected' : ''}>${CLASS_UR[c]}</option>`;
+      html += `<option value="${c}"${sAttendUi.class === c ? ' selected' : ''}>${escHtml(classLabel(c))}</option>`;
     });
     html += '</select>';
     html += '<select id="sStatusFilter" onchange="sAttendUi.status=this.value;render();">';
-    html += `<option value="all"${sAttendUi.status === 'all' ? ' selected' : ''}>سب</option>`;
-    html += `<option value="P"${sAttendUi.status === 'P' ? ' selected' : ''}>حاضر</option>`;
-    html += `<option value="A"${sAttendUi.status === 'A' ? ' selected' : ''}>غائب</option>`;
-    html += `<option value="L"${sAttendUi.status === 'L' ? ' selected' : ''}>رخصت</option>`;
+    html += `<option value="all"${sAttendUi.status === 'all' ? ' selected' : ''}>${escHtml(t('common.all'))}</option>`;
+    html += `<option value="P"${sAttendUi.status === 'P' ? ' selected' : ''}>${escHtml(t('common.present'))}</option>`;
+    html += `<option value="A"${sAttendUi.status === 'A' ? ' selected' : ''}>${escHtml(t('common.absent'))}</option>`;
+    html += `<option value="L"${sAttendUi.status === 'L' ? ' selected' : ''}>${escHtml(t('common.leave'))}</option>`;
     html += '</select>';
-    html += `<input type="search" id="sSearch" placeholder="🔍 نام تلاش..." value="${escAttr(sAttendUi.search)}" oninput="sAttendUi.search=this.value;render();" style="flex:1;min-width:120px">`;
+    html += `<input type="search" id="sSearch" placeholder="${escAttr(t('stu.searchName'))}" value="${escAttr(sAttendUi.search)}" oninput="sAttendUi.search=this.value;render();" style="flex:1;min-width:120px">`;
     html += '</div>';
 
     const classF = sAttendUi.class;
@@ -2033,13 +2052,13 @@ function render() {
       const na = pa == null ? 1e6 : pa;
       const nb = pb == null ? 1e6 : pb;
       if (na !== nb) return na - nb;
-      const sCmp = (a.subject_name || '').localeCompare(b.subject_name || '', 'ur');
+      const sCmp = (a.subject_name || '').localeCompare(b.subject_name || '', dashSortLocale());
       if (sCmp) return sCmp;
-      const tCmp = (a.teacher_name || '').localeCompare(b.teacher_name || '', 'ur');
+      const tCmp = (a.teacher_name || '').localeCompare(b.teacher_name || '', dashSortLocale());
       if (tCmp) return tCmp;
       const sta = students.find(s => s.id === a.student_id);
       const stb = students.find(s => s.id === b.student_id);
-      return (sta && sta.name || '').localeCompare(stb && stb.name || '', 'ur');
+      return (sta && sta.name || '').localeCompare(stb && stb.name || '', dashSortLocale());
     });
 
     const groups = [];
@@ -2063,25 +2082,25 @@ function render() {
     const fA = filtered.filter(r => r.status === 'A').length;
     const fL = filtered.filter(r => r.status === 'L').length;
     html += `<div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
-      <span style="color:var(--gr)">✅ حاضر: ${fP}</span>
-      <span style="color:var(--rd)">❌ غائب: ${fA}</span>
-      <span style="color:var(--yl)">📝 رخصت: ${fL}</span>
-      <span style="color:#8a9ab5">کل: ${filtered.length}</span>
-      ${classF !== 'all' ? `<span style="color:var(--gd)">درجہ: ${CLASS_UR[classF] || classF}</span>` : ''}
+      <span style="color:var(--gr)">\u2705 ${t('common.present')}: ${fP}</span>
+      <span style="color:var(--rd)">\u274C ${t('common.absent')}: ${fA}</span>
+      <span style="color:var(--yl)">\uD83D\uDCDD ${t('common.leave')}: ${fL}</span>
+      <span style="color:#8a9ab5">${t('common.all')}: ${filtered.length}</span>
+      ${classF !== 'all' ? `<span style="color:var(--gd)">${t('reports.thGrade')}: ${classLabel(classF) || classF}</span>` : ''}
     </div>`;
 
     if (!filtered.length) {
-      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">اس فلٹر کے لیے کوئی اندراج نہیں۔</div>';
+      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">'+t('common.noneFilter')+'</div>';
     } else {
       groups.forEach(g => {
-        const pLabel = g.pNum == null ? 'پیریڈ ؟' : ('پیریڈ ' + g.pNum);
+        const pLabel = g.pNum == null ? t('stu.periodQ') : (t('ov.period') + ' ' + g.pNum);
         html += '<div style="margin-bottom:14px;border:1px solid #1f3d5e;border-radius:12px;overflow:hidden">';
         html += `<div style="background:var(--dk3);padding:10px 12px;font-size:12px;font-weight:800;color:var(--gd)">
           🕐 ${pLabel} — ${g.subject_name || '—'} — ${g.teacher_name || '—'}
           <span style="font-weight:600;color:#8a9ab5;font-size:10px;margin-right:8px">(${g.rows.length})</span>
         </div>`;
         html += '<div class="scroll-table" style="max-height:260px"><table class="tbl"><thead><tr>';
-        html += '<th>طالب علم</th><th>درجہ</th><th>حاضری</th><th>رابطہ</th>';
+        html += '<th>'+t('stu.student')+'</th><th>'+t('stu.grade')+'</th><th>'+t('stu.att')+'</th><th>'+t('stu.contact')+'</th>';
         html += '</tr></thead><tbody>';
         g.rows.forEach(r => {
           const st = students.find(s => s.id === r.student_id);
@@ -2089,8 +2108,8 @@ function render() {
           const rc = sAttendRowClass(r, students);
           html += `<tr>
             <td style="font-weight:700">${st ? st.name : r.student_id}</td>
-            <td><span class="class-badge ${rc}">${CLASS_UR[rc] || rc || ''}</span></td>
-            <td><span class="badge ${r.status.toLowerCase()}">${r.status === 'P' ? 'حاضر' : r.status === 'A' ? 'غائب' : 'رخصت'}</span></td>
+            <td><span class="class-badge ${rc}">${classLabel(rc) || rc || ''}</span></td>
+            <td><span class="badge ${r.status.toLowerCase()}">${r.status === 'P' ? t('common.present') : r.status === 'A' ? t('common.absent') : t('common.leave')}</span></td>
             <td>${phone ? `<a href="tel:${phone}" class="call-btn">📞</a>` : ''}</td>
           </tr>`;
         });
@@ -2104,10 +2123,10 @@ function render() {
   // TAB: DAILY REPORTS
   // ═══════════════════════════════════════════
   if (activeTab === 'reports') {
-    html += '<div class="section"><h2>📝 آج کی یومیہ رپورٹس</h2>';
+    html += '<div class="section"><h2>'+t('reports.title')+'</h2>';
     if (reportsToday.length) {
       html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
-      html += '<th>استاذ</th><th>مضمون</th><th>درجہ</th><th>ہدف</th><th>اصل</th><th>فرق</th><th>مکمل</th>';
+      html += '<th>'+t('reports.thTeacher')+'</th><th>'+t('reports.thSubject')+'</th><th>'+t('reports.thGrade')+'</th><th>'+t('reports.thTarget')+'</th><th>'+t('reports.thActual')+'</th><th>'+t('reports.thDiff')+'</th><th>'+t('reports.thComplete')+'</th>';
       html += '</tr></thead><tbody>';
       reportsToday.forEach(r => {
         const diff = (r.actual_page||0) - (r.target_page||0);
@@ -2115,16 +2134,16 @@ function render() {
         html += `<tr>
           <td>${r.teacher_name||r.teacher_id}</td>
           <td>${r.subject_name||r.subject_id}</td>
-          <td><span class="class-badge ${r.class||''}">${CLASS_UR[r.class]||r.class||''}</span></td>
+          <td><span class="class-badge ${r.class||''}">${classLabel(r.class)||r.class||''}</span></td>
           <td>${r.target_page||''}</td>
           <td style="font-weight:700">${r.actual_page||''}</td>
           <td style="color:${diffColor};font-weight:700">${diff>0?'+':''}${diff}</td>
-          <td><span class="badge ${r.complete==='ہاں'?'p':r.complete==='جزوی'?'l':'a'}">${r.complete||''}</span></td>
+          <td><span class="badge ${r.complete==='\u06C1\u0627\u06BA'?'p':r.complete==='\u062C\u0632\u0648\u06CC'?'l':'a'}">${displayComplete(r.complete)||''}</span></td>
         </tr>`;
       });
       html += '</tbody></table></div>';
     } else {
-      html += '<div style="text-align:center;padding:30px;color:#8a9ab5">آج ابھی تک کوئی رپورٹ نہیں</div>';
+      html += '<div style="text-align:center;padding:30px;color:#8a9ab5">'+t('reports.none')+'</div>';
     }
     html += '</div>';
   }
@@ -2140,18 +2159,18 @@ function render() {
       const n = (r.teacher_name || r.teacher_id || '').trim() || '—';
       agg[n] = (agg[n] || 0) + 1;
     });
-    const aggChips = Object.keys(agg).sort((a, b) => a.localeCompare(b, 'ur')).map(n =>
+    const aggChips = Object.keys(agg).sort((a, b) => a.localeCompare(b, dashSortLocale())).map(n =>
       `<span style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:999px;background:var(--dk3);font-size:10px;color:#c5cee0">${escHtml(n)} <strong style="color:var(--yl)">${agg[n]}</strong></span>`
     ).join('');
 
-    html += '<div class="section"><h2>📉 ہدف سے پیچھے — مضمون و استاذ</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.55">براہ راست <strong>Supabase</strong> کی آج کی <code style="font-size:9px">daily_reports</code> اور <code style="font-size:9px">assignments</code> سے۔ پہلی فہرست: رپورٹ جمع مگر اصل صفحہ &lt; ہدف۔ دوسری: تفویض ہے مگر آج کی رپورٹ نہیں۔</div>';
+    html += '<div class="section"><h2>'+t('behind.title')+'</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.55">'+t('behind.note')+'</div>';
 
-    html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:14px 0 8px">🎯 ہدف صفحے سے پیچھے (رپورٹ موصول)</h3>';
+    html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:14px 0 8px">'+t('behind.behindTitle')+'</h3>';
     if (behindRows.length) {
       if (aggChips) html += '<div style="margin-bottom:10px">' + aggChips + '</div>';
       html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
-      html += '<th>استاذ</th><th>مضمون</th><th>درجہ</th><th>پیریڈ</th><th>ہدف</th><th>اصل</th><th>کمی</th><th>مکمل</th>';
+      html += '<th>'+t('reports.thTeacher')+'</th><th>'+t('reports.thSubject')+'</th><th>'+t('reports.thGrade')+'</th><th>'+t('behind.thPeriod')+'</th><th>'+t('reports.thTarget')+'</th><th>'+t('reports.thActual')+'</th><th>'+t('behind.thShort')+'</th><th>'+t('reports.thComplete')+'</th>';
       html += '</tr></thead><tbody>';
       behindRows.forEach(r => {
         const tp = Number(r.target_page);
@@ -2160,26 +2179,26 @@ function render() {
         html += `<tr>
           <td>${escHtml(r.teacher_name || r.teacher_id || '')}</td>
           <td>${escHtml(r.subject_name || r.subject_id || '')}</td>
-          <td><span class="class-badge ${r.class || ''}">${escHtml(CLASS_UR[r.class] || r.class || '')}</span></td>
+          <td><span class="class-badge ${r.class || ''}">${escHtml(classLabel(r.class) || r.class || '')}</span></td>
           <td>${r.period_id != null ? escHtml(String(r.period_id)) : '—'}</td>
           <td>${escHtml(String(r.target_page != null ? r.target_page : ''))}</td>
           <td style="font-weight:700;color:#fdba74">${escHtml(String(r.actual_page != null ? r.actual_page : ''))}</td>
           <td style="color:var(--rd);font-weight:800">−${short}</td>
-          <td><span class="badge ${r.complete === 'ہاں' ? 'p' : r.complete === 'جزوی' ? 'l' : 'a'}">${escHtml(r.complete || '')}</span></td>
+          <td><span class="badge ${r.complete === '\u06C1\u0627\u06BA' ? 'p' : r.complete === '\u062C\u0632\u0648\u06CC' ? 'l' : 'a'}">${escHtml(displayComplete(r.complete) || '')}</span></td>
         </tr>`;
       });
       html += '</tbody></table></div>';
     } else {
-      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">✓ کوئی مضمون آج کے ہدف صفحے سے پیچھے نہیں (جمع شدہ رپورٹس میں)۔</div>';
+      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">'+t('behind.noBehind')+'</div>';
     }
 
-    html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:18px 0 8px">📋 رپورٹ ابھی نہیں (تفویض — غائب/رخصت اساتذہ شمار نہیں)</h3>';
+    html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:18px 0 8px">'+t('behind.pendingTitle')+'</h3>';
     if (pendingRep.length) {
       html += '<div class="scroll-table"><table class="tbl"><thead><tr>';
-      html += '<th>استاذ</th><th>مضمون</th><th>درجہ</th><th>پیریڈ</th>';
+      html += '<th>'+t('reports.thTeacher')+'</th><th>'+t('reports.thSubject')+'</th><th>'+t('reports.thGrade')+'</th><th>'+t('behind.thPeriod')+'</th>';
       html += '</tr></thead><tbody>';
       pendingRep.forEach(pr => {
-        const clsUr = CLASS_UR[pr.cls] || pr.cls || '';
+        const clsUr = classLabel(pr.cls) || pr.cls || '';
         html += `<tr>
           <td>${escHtml(pr.tname)}</td>
           <td>${escHtml(pr.subn)}</td>
@@ -2189,7 +2208,7 @@ function render() {
       });
       html += '</tbody></table></div>';
     } else {
-      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">✓ تمام متوقع رپورٹس جمع ہیں۔</div>';
+      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">'+t('behind.allIn')+'</div>';
     }
     html += '</div>';
   }
@@ -2202,7 +2221,7 @@ function render() {
     var expToEl = document.getElementById('expTo');
     var expFromVal = (expFromEl && expFromEl.value) ? expFromEl.value : TODAY;
     var expToVal = (expToEl && expToEl.value) ? expToEl.value : TODAY;
-    html += '<div class="section"><h2>📥 ڈیٹا — مشاہدہ و ایکسپورٹ</h2>';
+    html += '<div class="section"><h2>'+t('exp.title')+'</h2>';
     html += '<div class="filter-bar">';
     html += '<input type="date" id="expFrom" value="'+escAttr(expFromVal)+'">';
     html += '<span style="color:#8a9ab5">→</span>';
@@ -2212,41 +2231,42 @@ function render() {
     html += '<div class="grid">';
     exports_list.forEach(function(e) {
       var isActive = exportView.table === e.id;
+      var expLab = t('export.' + e.id);
       html += '<div class="card" style="' + (isActive ? 'border:2px solid var(--gd)' : '') + '">';
-      html += '<div style="font-size:20px;margin-bottom:4px">' + escHtml(Array.from(e.l)[0] || '') + '</div>';
-      html += '<div style="font-weight:700;font-size:11px;margin-bottom:8px">' + escHtml(Array.from(e.l).slice(1).join('')) + '</div>';
+      html += '<div style="font-size:20px;margin-bottom:4px">' + escHtml(Array.from(expLab)[0] || '') + '</div>';
+      html += '<div style="font-weight:700;font-size:11px;margin-bottom:8px">' + escHtml(Array.from(expLab).slice(1).join('')) + '</div>';
       html += '<div style="display:flex;gap:4px">';
-      html += '<button class="btn btn-gd btn-sm" style="flex:1;font-size:9px" onclick="fetchExportView(\'' + e.id + '\',\'' + e.cols + '\')">👁 مشاہدہ</button>';
-      html += '<button class="btn btn-sm" style="flex:1;font-size:9px;background:var(--dk3);color:var(--wh)" onclick="exportCSV(\'' + e.id + '\',\'' + e.cols + '\')">📥 CSV</button>';
+      html += '<button class="btn btn-gd btn-sm" style="flex:1;font-size:9px" onclick="fetchExportView(\'' + e.id + '\',\'' + e.cols + '\')">' + t('exp.preview') + '</button>';
+      html += '<button class="btn btn-sm" style="flex:1;font-size:9px;background:var(--dk3);color:var(--wh)" onclick="exportCSV(\'' + e.id + '\',\'' + e.cols + '\')">' + t('exp.csv') + '</button>';
       html += '</div></div>';
     });
     html += '</div>';
 
     if (exportView.loading) {
-      html += '<div class="section"><div class="loading">⏳ لوڈ ہو رہا ہے...</div></div>';
+      html += '<div class="section"><div class="loading">'+t('common.loading')+'</div></div>';
     } else if (exportView.table && exportView.data) {
       var vt = exportView.table;
       var vd = exportView.data;
       var exp = exports_list.find(function(e) { return e.id === vt; });
-      var expLabel = exp ? exp.l : vt;
+      var expLabel = exp ? t('export.' + exp.id) : vt;
 
       html += '<div class="section">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
-      html += '<h2 style="margin:0">' + escHtml(expLabel) + ' — ' + vd.length + ' سطریں</h2>';
+      html += '<h2 style="margin:0">' + escHtml(expLabel) + ' — ' + vd.length + ' ' + t('common.rows') + '</h2>';
       html += '<div style="display:flex;gap:6px">';
-      html += '<button class="btn btn-gd btn-sm" onclick="exportFilteredCSV()">📥 فلٹر شدہ CSV</button>';
-      html += '<button class="btn btn-rd btn-sm" onclick="clearExportView()">✗ بند</button>';
+      html += '<button class="btn btn-gd btn-sm" onclick="exportFilteredCSV()">' + t('exp.filteredCsv') + '</button>';
+      html += '<button class="btn btn-rd btn-sm" onclick="clearExportView()">' + t('common.close') + '</button>';
       html += '</div></div>';
 
       var f = exportView.filter;
 
       if (['student_attendance','daily_reports','thursday_tests','teacher_attendance','hifz_progress'].indexOf(vt) >= 0) {
-        var tLabel = vt === 'hifz_progress' ? 'تمام قاری' : 'تمام اساتذہ';
+        var tLabel = vt === 'hifz_progress' ? t('exp.allQari') : t('exp.allTeachers');
         var qOnly = (DATA.teachers || []).filter(function(t) { return t.role === 'qari'; });
         var tList = vt === 'hifz_progress' ? (qOnly.length ? qOnly : (DATA.teachers || [])) : (DATA.teachers || []);
         html += '<div class="filter-bar" style="margin-bottom:8px">';
         html += '<select onchange="setExpFilter(\'teacher\',this.value)" style="flex:1">';
-        html += '<option value="">— ' + tLabel + ' —</option>';
+        html += '<option value="">— ' + escHtml(tLabel) + ' —</option>';
         tList.forEach(function(t) {
           html += '<option value="' + escAttr(t.id) + '"' + (f.teacher === t.id ? ' selected' : '') + '>' + escHtml(t.name || t.id) + '</option>';
         });
@@ -2255,16 +2275,16 @@ function render() {
 
       if (['student_attendance','daily_reports','thursday_tests','students'].indexOf(vt) >= 0) {
         html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
-        html += '<button class="btn btn-sm" style="font-size:9px;' + (!f.cls ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'\')">سب</button>';
+        html += '<button class="btn btn-sm" style="font-size:9px;' + (!f.cls ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'\')">' + t('common.all') + '</button>';
         CLASS_ORDER.forEach(function(cid) {
-          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.cls === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'' + cid + '\')">' + (CLASS_UR[cid] || cid) + '</button>';
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.cls === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'' + cid + '\')">' + escHtml(classLabel(cid) || cid) + '</button>';
         });
         html += '</div>';
       }
 
       if (['student_attendance','daily_attendance'].indexOf(vt) >= 0) {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:'سب',c:'#8a9ab5'},{v:'P',l:'حاضر',c:'var(--gr)'},{v:'A',l:'غائب',c:'var(--rd)'},{v:'L',l:'رخصت',c:'var(--bl)'}].forEach(function(s) {
+        [{v:'',l:t('common.all'),c:'#8a9ab5'},{v:'P',l:t('common.present'),c:'var(--gr)'},{v:'A',l:t('common.absent'),c:'var(--rd)'},{v:'L',l:t('common.leave'),c:'var(--bl)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -2272,7 +2292,7 @@ function render() {
 
       if (vt === 'teacher_attendance') {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:'سب',c:'#8a9ab5'},{v:'present',l:'حاضر',c:'var(--gr)'},{v:'late',l:'تاخیر',c:'var(--yl)'},{v:'absent',l:'غائب',c:'var(--rd)'},{v:'leave',l:'رخصت',c:'var(--bl)'}].forEach(function(s) {
+        [{v:'',l:t('common.all'),c:'#8a9ab5'},{v:'present',l:t('common.present'),c:'var(--gr)'},{v:'late',l:t('common.late'),c:'var(--yl)'},{v:'absent',l:t('common.absent'),c:'var(--rd)'},{v:'leave',l:t('common.leave'),c:'var(--bl)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -2280,7 +2300,7 @@ function render() {
 
       if (vt === 'daily_reports') {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:'سب',c:'#8a9ab5'},{v:'ہاں',l:'مکمل',c:'var(--gr)'},{v:'جزوی',l:'جزوی',c:'var(--yl)'},{v:'نہیں',l:'نہیں',c:'var(--rd)'}].forEach(function(s) {
+        [{v:'',l:t('common.all'),c:'#8a9ab5'},{v:'\u06C1\u0627\u06BA',l:t('exp.completeFilterFull'),c:'var(--gr)'},{v:'\u062C\u0632\u0648\u06CC',l:t('exp.completeFilterPartial'),c:'var(--yl)'},{v:'\u0646\u06C1\u06CC\u06BA',l:t('exp.completeFilterNo'),c:'var(--rd)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -2288,7 +2308,7 @@ function render() {
 
       if (vt === 'daily_attendance') {
         html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
-        [{v:'',l:'سب'},{v:'fajr',l:'فجر'},{v:'salam',l:'سلام'},{v:'zuhr',l:'ظہر'},{v:'asr',l:'عصر'},{v:'maghrib',l:'مغرب'},{v:'isha',l:'عشاء'}].forEach(function(s) {
+        [{v:'',l:t('common.all')},{v:'fajr',l:t('slot.fajr')},{v:'salam',l:t('slot.salam')},{v:'zuhr',l:t('slot.zuhr')},{v:'asr',l:t('slot.asr')},{v:'maghrib',l:t('slot.maghrib')},{v:'isha',l:t('slot.isha')}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.slot === s.v ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'slot\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -2296,13 +2316,13 @@ function render() {
 
       if (vt === 'students') {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:'سب',c:'#8a9ab5'},{v:'active',l:'فعال',c:'var(--gr)'},{v:'left',l:'رخصت',c:'var(--rd)'}].forEach(function(s) {
+        [{v:'',l:t('common.all'),c:'#8a9ab5'},{v:'active',l:t('exp.active'),c:'var(--gr)'},{v:'left',l:t('exp.stuLeft'),c:'var(--rd)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
       }
 
-      html += '<input type="search" id="expViewSearch" class="search" placeholder="🔍 تلاش..." value="' + escAttr(f.search) + '" oninput="setExpFilter(\'search\',this.value)" style="margin-bottom:10px">';
+      html += '<input type="search" id="expViewSearch" class="search" placeholder="' + escAttr(t('common.search')) + '" value="' + escAttr(f.search) + '" oninput="setExpFilter(\'search\',this.value)" style="margin-bottom:10px">';
 
       var filtered = applyExportFilters(vd, vt);
 
@@ -2312,50 +2332,50 @@ function render() {
         var aC = filtered.filter(function(r){return r.status==='A';}).length;
         var lC = filtered.filter(function(r){return r.status==='L';}).length;
         var tot = pC+aC+lC;
-        html += '<span style="color:var(--gr)">حاضر: '+pC+'</span>';
-        html += '<span style="color:var(--rd)">غائب: '+aC+'</span>';
-        html += '<span style="color:var(--bl)">رخصت: '+lC+'</span>';
-        html += '<span style="color:var(--gd)">حاضری: '+(tot>0?Math.round(pC/tot*100):0)+'%</span>';
+        html += '<span style="color:var(--gr)">'+t('tAtt.statsPresent')+': '+pC+'</span>';
+        html += '<span style="color:var(--rd)">'+t('common.absent')+': '+aC+'</span>';
+        html += '<span style="color:var(--bl)">'+t('common.leave')+': '+lC+'</span>';
+        html += '<span style="color:var(--gd)">'+t('tAtt.statsAttRate')+': '+(tot>0?Math.round(pC/tot*100):0)+'%</span>';
       }
       if (vt === 'teacher_attendance') {
         var pr=filtered.filter(function(r){return r.status==='present';}).length;
         var lt=filtered.filter(function(r){return r.status==='late';}).length;
         var ab=filtered.filter(function(r){return r.status==='absent';}).length;
         var lv=filtered.filter(function(r){return r.status==='leave';}).length;
-        html += '<span style="color:var(--gr)">حاضر: '+pr+'</span>';
-        html += '<span style="color:var(--yl)">تاخیر: '+lt+'</span>';
-        html += '<span style="color:var(--rd)">غائب: '+ab+'</span>';
-        html += '<span style="color:var(--bl)">رخصت: '+lv+'</span>';
+        html += '<span style="color:var(--gr)">'+t('tAtt.statsPresent')+': '+pr+'</span>';
+        html += '<span style="color:var(--yl)">'+t('common.late')+': '+lt+'</span>';
+        html += '<span style="color:var(--rd)">'+t('common.absent')+': '+ab+'</span>';
+        html += '<span style="color:var(--bl)">'+t('common.leave')+': '+lv+'</span>';
       }
       if (vt === 'daily_reports') {
         var yes=filtered.filter(function(r){return r.complete==='ہاں';}).length;
         var par=filtered.filter(function(r){return r.complete==='جزوی';}).length;
         var no=filtered.filter(function(r){return r.complete==='نہیں';}).length;
-        html += '<span style="color:var(--gr)">مکمل: '+yes+'</span>';
-        html += '<span style="color:var(--yl)">جزوی: '+par+'</span>';
-        html += '<span style="color:var(--rd)">نہیں: '+no+'</span>';
+        html += '<span style="color:var(--gr)">'+t('exp.completeFilterFull')+': '+yes+'</span>';
+        html += '<span style="color:var(--yl)">'+t('exp.completeFilterPartial')+': '+par+'</span>';
+        html += '<span style="color:var(--rd)">'+t('exp.completeFilterNo')+': '+no+'</span>';
       }
       if (vt === 'thursday_tests') {
         var avgs=filtered.map(function(r){return r.average||0;}).filter(function(v){return v>0;});
         var ov=avgs.length?Math.round(avgs.reduce(function(a,b){return a+b;},0)/avgs.length):0;
-        html += '<span style="color:var(--gd)">امتحانات: '+filtered.length+'</span>';
-        html += '<span style="color:'+(ov>=60?'var(--gr)':'var(--rd)')+'">اوسط: '+ov+'%</span>';
+        html += '<span style="color:var(--gd)">'+t('exp.tests')+': '+filtered.length+'</span>';
+        html += '<span style="color:'+(ov>=60?'var(--gr)':'var(--rd)')+'">'+t('exp.avg')+': '+ov+'%</span>';
       }
       if (vt === 'hifz_progress') {
         var mx=filtered.reduce(function(m,r){return Math.max(m,r.paras||0);},0);
-        html += '<span style="color:var(--gd)">اندراجات: '+filtered.length+'</span>';
-        html += '<span style="color:var(--gr)">زیادہ پارے: '+mx+'</span>';
+        html += '<span style="color:var(--gd)">'+t('exp.entries')+': '+filtered.length+'</span>';
+        html += '<span style="color:var(--gr)">'+t('exp.maxParas')+': '+mx+'</span>';
       }
       if (vt === 'students') {
         var act=filtered.filter(function(r){return r.status==='active';}).length;
-        html += '<span style="color:var(--gr)">فعال: '+act+'</span>';
-        html += '<span style="color:var(--gd)">کل: '+filtered.length+'</span>';
+        html += '<span style="color:var(--gr)">'+t('exp.active')+': '+act+'</span>';
+        html += '<span style="color:var(--gd)">'+t('common.all')+': '+filtered.length+'</span>';
       }
-      html += '<span style="color:#8a9ab5">دکھایا: '+filtered.length+'/'+vd.length+'</span>';
+      html += '<span style="color:#8a9ab5">'+t('exp.showing')+': '+filtered.length+'/'+vd.length+'</span>';
       html += '</div>';
 
       if (!filtered.length) {
-        html += '<div style="text-align:center;padding:30px;color:#8a9ab5;font-size:12px">اس فلٹر کے لیے کوئی اندراج نہیں</div>';
+        html += '<div style="text-align:center;padding:30px;color:#8a9ab5;font-size:12px">'+t('common.noneFilter')+'</div>';
       } else {
         var cols = exp ? exp.cols.split(',') : Object.keys(filtered[0]);
         html += '<div class="scroll-table" style="max-height:500px"><table class="tbl"><thead><tr>';
@@ -2373,22 +2393,25 @@ function render() {
               else if (val === 'late') style = 'color:var(--yl);font-weight:700';
             }
             if (c === 'complete') {
-              if (val === 'ہاں') style = 'color:var(--gr);font-weight:700';
-              else if (val === 'جزوی') style = 'color:var(--yl);font-weight:700';
-              else if (val === 'نہیں') style = 'color:var(--rd);font-weight:700';
+              if (val === '\u06C1\u0627\u06BA') style = 'color:var(--gr);font-weight:700';
+              else if (val === '\u062C\u0632\u0648\u06CC') style = 'color:var(--yl);font-weight:700';
+              else if (val === '\u0646\u06C1\u06CC\u06BA') style = 'color:var(--rd);font-weight:700';
             }
-            if (c === 'class' && CLASS_UR[val]) {
-              var badge = '<span class="class-badge ' + escAttr(val) + '">' + escHtml(CLASS_UR[val]) + '</span>';
+            if (c === 'class' && val && typeof classLabel === 'function' && classLabel(val)) {
+              var badge = '<span class="class-badge ' + escAttr(val) + '">' + escHtml(classLabel(val)) + '</span>';
               html += '<td>' + badge + '</td>';
               return;
             }
-            html += '<td style="' + style + '">' + escHtml(val) + '</td>';
+            var disp = val;
+            if (c === 'complete' && typeof displayComplete === 'function') disp = displayComplete(val);
+            else if (c === 'reason' && typeof displayReason === 'function') disp = displayReason(val);
+            html += '<td style="' + style + '">' + escHtml(disp) + '</td>';
           });
           html += '</tr>';
         });
         html += '</tbody></table></div>';
         if (filtered.length > 200) {
-          html += '<div style="text-align:center;padding:10px;color:#8a9ab5;font-size:10px">صرف پہلی 200 سطریں دکھائی گئیں — مکمل ڈیٹا CSV سے حاصل کریں</div>';
+          html += '<div style="text-align:center;padding:10px;color:#8a9ab5;font-size:10px">'+t('exp.first200')+'</div>';
         }
       }
       html += '</div>';
@@ -2431,10 +2454,10 @@ function render() {
 function switchTab(id) { activeTab = id; render(); }
 
 async function refresh() {
-  toast('⏳ تازہ ہو رہا ہے...');
+  toast(t('toast.refreshing'));
   await loadAll();
   render();
-  toast('✅ تازہ');
+  toast(t('toast.refreshed'));
 }
 
 async function approveTeacher(tid) {
@@ -2442,8 +2465,8 @@ async function approveTeacher(tid) {
     'date=eq.'+TODAY+'&teacher_id=eq.'+tid,
     {approved:true, approved_by:'admin', approved_at:new Date().toISOString()}
   );
-  if (ok) { toast('✅ منظور'); await loadAll(); render(); }
-  else toast('❌ ناکام');
+  if (ok) { toast(t('toast.approved')); await loadAll(); render(); }
+  else toast(t('toast.failed'));
 }
 
 async function approveAll() {
@@ -2451,8 +2474,8 @@ async function approveAll() {
     'date=eq.'+TODAY+'&approved=eq.false',
     {approved:true, approved_by:'admin', approved_at:new Date().toISOString()}
   );
-  if (ok) { toast('✅ سب منظور'); await loadAll(); render(); }
-  else toast('❌ ناکام');
+  if (ok) { toast(t('toast.allApproved')); await loadAll(); render(); }
+  else toast(t('toast.failed'));
 }
 
 async function markTask(taskId, taskName, currentlyDone) {
@@ -2462,20 +2485,20 @@ async function markTask(taskId, taskName, currentlyDone) {
       method:'POST', headers:{...headers,'Prefer':'resolution=merge-duplicates'},
       body: JSON.stringify({date:TODAY, task_id:taskId, task_name:taskName, completed:newState, completed_at:newState?new Date().toISOString():null})
     });
-    if (r.ok) { toast(newState?'✅ مکمل':'↩️ واپس'); await loadAll(); render(); }
-    else toast('❌ ناکام');
-  } catch(e) { toast('❌ '+e.message); }
+    if (r.ok) { toast(newState?t('toast.done'):t('toast.undone')); await loadAll(); render(); }
+    else toast(t('toast.failed'));
+  } catch(e) { toast(t('toast.failed')+': '+e.message); }
 }
 
 async function exportCSV(table, colStr) {
   const from = document.getElementById('expFrom')?.value || TODAY;
   const to = document.getElementById('expTo')?.value || TODAY;
-  toast('⏳ لوڈ ہو رہا ہے...');
+  toast(t('common.loading'));
   try {
     let params = 'select='+colStr+'&order=created_at.desc&limit=5000';
     if (table !== 'students') params += '&date=gte.'+from+'&date=lte.'+to;
     const data = await sb(table, params);
-    if (!data.length) { toast('⚠️ خالی'); return; }
+    if (!data.length) { toast(t('toast.empty')); return; }
     const cols = colStr.split(',');
     const header = cols.join(',');
     const rows = data.map(r => cols.map(c => '"'+(String(r[c]||'')).replace(/"/g,'""')+'"').join(','));
@@ -2485,8 +2508,8 @@ async function exportCSV(table, colStr) {
     const a = document.createElement('a');
     a.href=url; a.download=table+'_'+from+'_to_'+to+'.csv';
     a.click(); URL.revokeObjectURL(url);
-    toast('✅ ڈاؤنلوڈ — '+data.length+' سطریں');
-  } catch(e) { toast('❌ '+e.message); }
+    toast(t('toast.downloaded')+' — '+data.length+' '+t('toast.rows'));
+  } catch(e) { toast(t('toast.failed')+': '+e.message); }
 }
 
 async function fetchExportView(table, colStr) {
@@ -2508,7 +2531,7 @@ async function fetchExportView(table, colStr) {
   } catch (e) {
     exportView.loading = false;
     exportView.data = [];
-    toast('❌ ' + e.message);
+    toast(t('toast.failed') + ': ' + e.message);
     render();
   }
 }
@@ -2560,11 +2583,11 @@ function applyExportFilters(data, table) {
 }
 
 function exportFilteredCSV() {
-  if (!exportView.data || !exportView.data.length || !exportView.table) { toast('⚠️ خالی'); return; }
+  if (!exportView.data || !exportView.data.length || !exportView.table) { toast(t('toast.empty')); return; }
   var exp = exports_list.find(function(e) { return e.id === exportView.table; });
   if (!exp) return;
   var filtered = applyExportFilters(exportView.data, exportView.table);
-  if (!filtered.length) { toast('⚠️ فلٹر شدہ ڈیٹا خالی'); return; }
+  if (!filtered.length) { toast(t('toast.filteredEmpty')); return; }
   var cols = exp.cols.split(',');
   var header = cols.join(',');
   var rows = filtered.map(function(r) { return cols.map(function(c) { return '"' + (String(r[c] || '')).replace(/"/g, '""') + '"'; }).join(','); });
@@ -2576,7 +2599,7 @@ function exportFilteredCSV() {
   a.download = exportView.table + '_filtered.csv';
   a.click();
   URL.revokeObjectURL(url);
-  toast('✅ فلٹر شدہ ڈاؤنلوڈ — ' + filtered.length + ' سطریں');
+  toast(t('toast.filteredDl') + ' — ' + filtered.length + ' ' + t('toast.rows'));
 }
 
 // ═══════════════════════════════════════════
@@ -2618,10 +2641,10 @@ window.refreshVisitsListUI = function () {
   if (hint) {
     const nonLeg = visits.filter(v => !v.legacy);
     if (!nonLeg.length) {
-      hint.textContent = visits.some(v => v.legacy) ? '\u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646' : '';
+      hint.textContent = visits.some(v => v.legacy) ? t('acc.visit.hintLegacy') : '';
     } else {
       const okN = nonLeg.filter(visitBlockScoresOk).length;
-      hint.textContent = okN + '/' + nonLeg.length + ' \u062F\u0631\u062C\u06D2' + (classObsScoringOk(store.value) ? ' \u2713' : ' (\u06AF\u0631\u062F: 3\u00D7Q&A \u06CC\u0627 15+ \u062D\u0631\u0641 \u0642\u062F\u06CC\u0645)');
+      hint.textContent = t('acc.visit.hintGrades', { ok: okN, n: nonLeg.length }) + (classObsScoringOk(store.value) ? ' \u2713' : t('acc.visit.hintSuffix'));
     }
   }
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
@@ -2632,10 +2655,10 @@ window.saveClassVisitObservation = function () {
   const store = document.getElementById('acc_class_obs');
   if (!sel || !store) return;
   const classId = sel.value;
-  if (!classId) { toast('\u26A0 \u067E\u06C1\u0644\u06D2 \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA'); return; }
+  if (!classId) { toast(t('toast.visit.pickGrade')); return; }
   const { qa, narrative } = readAccVisitQaFromDom();
   if (!visitHasThreeValidQa(qa)) {
-    toast('\u26A0 \u06AF\u0631\u062F \u06A9\u06D2 \u0644\u06CC\u06D2 3 \u0645\u06A9\u0645\u0644 \u0633\u0648\u0627\u0644-\u062C\u0648\u0627\u0628 (\u06A9\u0633 \u0633\u06D2\u060C \u0633\u0648\u0627\u0644\u060C \u062C\u0648\u0627\u0628\u060C \u06A9\u0645 \u0627\u0632 \u06A9\u0645 2 \u062D\u0631\u0648\u0641)');
+    toast(t('toast.visit.needQa'));
     return;
   }
   let visits = parseVisitObservations(store.value);
@@ -2644,7 +2667,7 @@ window.saveClassVisitObservation = function () {
   const entry = { classId, structured: true, qa, narrative };
   if (idx >= 0) visits[idx] = entry; else visits.push(entry);
   store.value = serializeVisitObservations(visits);
-  toast('\u2713 \u0645\u062D\u0641\u0648\u0638');
+  toast(t('toast.visit.saved'));
   window.refreshVisitsListUI();
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
@@ -2655,7 +2678,7 @@ window.editClassVisitObs = function (classId) {
   if (!classId) {
     sel.value = '';
     window.fillAccVisitQaForm([], '');
-    toast('\u067E\u0631\u0627\u0646\u0627 \u0645\u062A\u0646: \u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631 \u06A9\u06D2 \u0645\u062D\u0641\u0648\u0638 \u06A9\u0631\u06CC\u06BA');
+    toast(t('toast.visit.editLegacy'));
     return;
   }
   sel.value = classId;
@@ -2675,7 +2698,7 @@ window.removeClassVisitObs = function (classId) {
   window.refreshVisitsListUI();
   const sel = document.getElementById('acc_inspect_class_sel');
   if (sel && classId && sel.value === classId) window.fillAccVisitQaForm([], '');
-  toast('\u062D\u0630\u0641');
+  toast(t('toast.visit.deleted'));
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
@@ -2719,7 +2742,7 @@ window.onInspectClassChange = async function (opts) {
   if (!sel || !ta || !prev) return;
   const classId = sel.value;
   if (!classId) {
-    prev.innerHTML = '<span style="color:#8a9ab5">\u062F\u0631\u062C\u06C1 \u0645\u0646\u062A\u062E\u0628 \u06A9\u0631\u06CC\u06BA \u2014 \u0645\u0648\u062C\u0648\u062F\u06C1 \u0648\u0642\u062A \u06A9\u06D2 \u067E\u06CC\u0631\u06CC\u0688\u060C \u0645\u0636\u0645\u0648\u0646\u060C \u0622\u062C \u06A9\u0627 \u06C1\u062F\u0641/\u0627\u0635\u0644\u060C \u0627\u0648\u0631 \u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679 \u06CC\u06C1\u0627\u06BA \u0622\u0626\u06D2 \u06AF\u06CC</span>';
+    prev.innerHTML = '<span style="color:#8a9ab5">' + escHtml(t('acc.class.previewHint')) + '</span>';
     if (!preserveTa) ta.value = '';
     if (!skipVisitQaReload) loadAccVisitFormForClass('', null);
     window.updateAccClassVisitedCounter();
@@ -2730,9 +2753,9 @@ window.onInspectClassChange = async function (opts) {
   const textLines = [];
   const linesHtml = [];
   textLines.push('[' + classId + '] ' + (CLASS_UR[classId] || classId));
-  linesHtml.push('<div style="font-weight:800;color:var(--gd)">' + escHtml(CLASS_UR[classId] || classId) + '</div>');
+  linesHtml.push('<div style="font-weight:800;color:var(--gd)">' + escHtml(classLabel(classId)) + '</div>');
   if (!slot) {
-    const msg = '\u0627\u0633 \u062F\u0631\u062C\u06D2 \u06A9\u06D2 \u0644\u06CC\u06D2 \u0622\u062C \u06A9\u06CC \u062A\u0641\u0648\u06CC\u0636 \u0646\u06C1\u06CC\u06BA \u0645\u0644\u06CC';
+    const msg = t('acc.inspect.noAssignToday');
     textLines.push(msg);
     linesHtml.push('<div style="margin-top:6px;color:#fdba74">' + escHtml(msg) + '</div>');
     prev.innerHTML = linesHtml.join('');
@@ -2744,18 +2767,23 @@ window.onInspectClassChange = async function (opts) {
   const { period, assignment: asg, when } = slot;
   const sub = subjects.find(s => s.id === asg.subject_id);
   const tm = teachers.find(t => t.id === asg.teacher_id);
-  const head = when === 'current' ? '\u0645\u0648\u062C\u0648\u062F\u06C1 \u0648\u0642\u062A \u2014 \u067E\u06CC\u0631\u06CC\u0688 ' + period.id : '\u062C\u062F\u0648\u0644 \u2014 \u067E\u06CC\u0631\u06CC\u0688 ' + period.id;
-  const line2 = head + ' (' + period.start_time + '\u2013' + period.end_time + '): ' + (sub ? sub.name : asg.subject_id) + ' \u2014 \u0627\u0633\u062A\u0627\u0630: ' + (tm ? tm.name : asg.teacher_id);
+  const head = when === 'current' ? t('acc.inspect.whenNow', { id: period.id }) : t('acc.inspect.whenSched', { id: period.id });
+  const tLbl = t('acc.inspect.teacherLbl');
+  const line2 = head + ' (' + period.start_time + '\u2013' + period.end_time + '): ' + (sub ? sub.name : asg.subject_id) + ' \u2014 ' + tLbl + ': ' + (tm ? tm.name : asg.teacher_id);
   textLines.push(line2);
   linesHtml.push('<div style="font-weight:800;color:var(--gd);margin-top:6px">' + escHtml(head) + '</div>');
-  linesHtml.push('<div>' + escHtml((sub ? sub.name : asg.subject_id) + ' \u2014 ' + (tm ? tm.name : asg.teacher_id)) + '</div>');
+  linesHtml.push('<div>' + escHtml((sub ? sub.name : asg.subject_id) + ' \u2014 ' + tLbl + ': ' + (tm ? tm.name : asg.teacher_id)) + '</div>');
   linesHtml.push('<div style="font-size:10px;color:#8a9ab5">' + escHtml(period.start_time + '\u2013' + period.end_time) + '</div>');
   const todayR = (reportsToday || []).find(r => r.teacher_id === asg.teacher_id && r.subject_id === asg.subject_id);
   const tp = todayR && todayR.target_page != null ? todayR.target_page : '\u2014';
   const ap = todayR && todayR.actual_page != null ? todayR.actual_page : '\u2014';
-  const todayTxt = '\u0622\u062C: \u06C1\u062F\u0641 \u0635\u0641\u062D\u06C1 ' + tp + ' \u00B7 \u0627\u0635\u0644 ' + ap + (todayR && todayR.complete ? ' \u00B7 ' + todayR.complete : '');
+  const todayStrong = t('acc.inspect.todayStrong');
+  const tgtLbl = t('acc.inspect.targetLbl');
+  const actLbl = t('acc.inspect.actualLbl');
+  const compDisp = todayR && todayR.complete ? displayComplete(todayR.complete) : '';
+  const todayTxt = todayStrong + ': ' + tgtLbl + ' ' + tp + ' \u00B7 ' + actLbl + ' ' + ap + (compDisp ? ' \u00B7 ' + compDisp : '');
   textLines.push(todayTxt);
-  linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>\u0622\u062C</strong>: \u06C1\u062F\u0641 \u0635\u0641\u062D\u06C1 <strong>' + escHtml(String(tp)) + '</strong> \u00B7 \u0627\u0635\u0644 <strong>' + escHtml(String(ap)) + '</strong>' + (todayR && todayR.complete ? ' \u00B7 ' + escHtml(String(todayR.complete)) : '') + '</div>');
+  linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>' + escHtml(todayStrong) + '</strong>: ' + escHtml(tgtLbl) + ' <strong>' + escHtml(String(tp)) + '</strong> \u00B7 ' + escHtml(actLbl) + ' <strong>' + escHtml(String(ap)) + '</strong>' + (compDisp ? ' \u00B7 ' + escHtml(compDisp) : '') + '</div>');
   window._inspectClassSeq = (window._inspectClassSeq | 0) + 1;
   const inspectRun = window._inspectClassSeq;
   const taSnapshot = ta.value;
@@ -2763,14 +2791,19 @@ window.onInspectClassChange = async function (opts) {
   try {
     const lr = await sb('daily_reports', 'teacher_id=eq.' + encodeURIComponent(asg.teacher_id) + '&subject_id=eq.' + encodeURIComponent(asg.subject_id) + '&date=lt.' + TODAY + '&select=date,target_page,actual_page,complete&order=date.desc&limit=1');
     if (lr && lr[0]) {
-      lastTxt = '\u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679 (' + lr[0].date + '): \u06C1\u062F\u0641 ' + (lr[0].target_page != null ? lr[0].target_page : '\u2014') + ' \u00B7 \u0627\u0635\u0644 ' + (lr[0].actual_page != null ? lr[0].actual_page : '\u2014');
-      linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>\u06AF\u0632\u0634\u062A\u06C1</strong> (' + escHtml(String(lr[0].date)) + '): \u06C1\u062F\u0641 ' + escHtml(String(lr[0].target_page != null ? lr[0].target_page : '\u2014')) + ' \u00B7 \u0627\u0635\u0644 ' + escHtml(String(lr[0].actual_page != null ? lr[0].actual_page : '\u2014')) + '</div>');
+      const ptp = lr[0].target_page != null ? lr[0].target_page : '\u2014';
+      const pap = lr[0].actual_page != null ? lr[0].actual_page : '\u2014';
+      lastTxt = t('acc.inspect.prevLine', { date: lr[0].date, tp: ptp, ap: pap });
+      const prevS = t('acc.inspect.prevStrong');
+      const _tl = t('acc.inspect.targetLbl');
+      const _al = t('acc.inspect.actualLbl');
+      linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>' + escHtml(prevS) + '</strong> (' + escHtml(String(lr[0].date)) + '): ' + escHtml(_tl) + ' ' + escHtml(String(ptp)) + ' \u00B7 ' + escHtml(_al) + ' ' + escHtml(String(pap)) + '</div>');
     } else {
-      lastTxt = '\u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679: \u06A9\u0648\u0626\u06CC \u067E\u0631\u0627\u0646\u06CC \u0627\u0646\u062F\u0631\u0627\u062C \u0646\u06C1\u06CC\u06BA';
+      lastTxt = t('acc.inspect.prevNone');
       linesHtml.push('<div style="margin-top:8px;font-size:10px;color:#8a9ab5">' + escHtml(lastTxt) + '</div>');
     }
   } catch (e) {
-    lastTxt = '\u06AF\u0632\u0634\u062A\u06C1 \u0631\u067E\u0648\u0631\u0679: \u0644\u0648\u0688 \u0646\u0627\u06A9\u0627\u0645';
+    lastTxt = t('acc.inspect.prevFail');
     linesHtml.push('<div style="margin-top:8px;color:#f97316">' + escHtml(lastTxt) + '</div>');
   }
   textLines.push(lastTxt);
@@ -2820,9 +2853,9 @@ async function submitAccountability() {
       method:'POST', headers:{...headers,'Prefer':'resolution=merge-duplicates'},
       body: JSON.stringify(payload)
     });
-    if (r.ok) { toast('✅ رپورٹ جمع — جزاک اللہ'); await loadAll(); render(); }
-    else { const e = await r.text(); toast('❌ ناکام: '+e); }
-  } catch(e) { toast('❌ '+e.message); }
+    if (r.ok) { toast(t('submit.ok')); await loadAll(); render(); }
+    else { const e = await r.text(); toast(t('submit.fail')+': '+e); }
+  } catch(e) { toast(t('toast.failed')+': '+e.message); }
 }
 
 // ═══════════════════════════════════════════
