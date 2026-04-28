@@ -107,10 +107,12 @@ body.dash-locale-en .acc-subnav-inner{justify-content:flex-start}
 .acc-class-details[open] .acc-details-body{padding-top:8px}
 #acc_class_visited_adv_wrap{margin-top:8px}
 /* Selects = form fields (accent rail + chevron), distinct from .btn */
-.acc-select-chevron{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1.5 2.25L7 7l5.5-4.75' fill='none' stroke='%238a9ab5' stroke-width='1.65' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-size:12px 8px !important;-webkit-appearance:none !important;appearance:none !important;background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid var(--bl) !important;font-weight:500 !important;padding-inline-end:38px !important}
+.acc-select-chevron{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1.5 2.25L7 7l5.5-4.75' fill='none' stroke='%238a9ab5' stroke-width='1.65' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-size:12px 8px !important;-webkit-appearance:none !important;appearance:none !important;background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid var(--bl) !important;font-weight:500 !important;padding-inline-end:38px !important;color:var(--wh) !important;font-family:inherit !important}
 html[dir="rtl"] .acc-select-chevron{background-position:left 12px center !important}
 body.dash-locale-en .acc-select-chevron{background-position:right 12px center !important}
-.acc-field-box{background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid #5a7a9e !important;font-weight:400 !important}
+.acc-field-box{background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid #5a7a9e !important;font-weight:400 !important;color:var(--wh) !important;caret-color:var(--gd) !important}
+.acc-field-box::placeholder{color:#9eb4d8;opacity:1}
+.acc-select-chevron option,.acc-field-box option{background:var(--dk2);color:var(--wh)}
 
 /* Tables — horizontal scroll */
 .tbl{width:100%;border-collapse:collapse;font-size:11px}
