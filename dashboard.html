@@ -205,7 +205,7 @@ const TODAY = new Date().toISOString().split('T')[0];
 </script>
 <script src="dashboard-i18n.js?v=202604275"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
-<script src="idara-notify-ov.js?v=20260428"></script>
+<script src="idara-notify-ov.js?v=202604281"></script>
 <script>
 // ═══════════════════════════════════════════
 // SUPABASE HELPERS
@@ -273,10 +273,27 @@ function todayIST() {
 // LOAD ALL DATA
 // ═══════════════════════════════════════════
 let DATA = {};
+/** One logical row per student per day (daily_attendance may have multiple rows per slot). */
+function dedupeDailyAttendanceByStudent(rows) {
+  var map = new Map();
+  (rows || []).forEach(function (r) {
+    if (!r || r.student_id == null || r.student_id === "") return;
+    var sid = String(r.student_id);
+    var prev = map.get(sid);
+    if (!prev) {
+      map.set(sid, r);
+      return;
+    }
+    var pa = prev.created_at != null ? String(prev.created_at) : "";
+    var na = r.created_at != null ? String(r.created_at) : "";
+    if (na >= pa) map.set(sid, r);
+  });
+  return Array.from(map.values());
+}
 async function loadAll() {
   try {
     const [teachers,subjects,students,periods,assignments,
-           tAttToday,sAttToday,dAttToday,reportsToday] = await Promise.all([
+           tAttToday,sAttToday,dAttRaw,reportsToday] = await Promise.all([
       sb('teachers','select=*&order=id'),
       sb('subjects','select=*&order=id'),
       sb('students','select=*&order=name'),
@@ -287,6 +304,7 @@ async function loadAll() {
       sb('daily_attendance','select=*&date=eq.'+TODAY+'&order=created_at.desc&limit=500'),
       sb('daily_reports','select=*&date=eq.'+TODAY),
     ]);
+    var dAttToday = dedupeDailyAttendanceByStudent(Array.isArray(dAttRaw) ? dAttRaw : []);
     // These may fail if tables are new/empty — load separately
     let leaveSummary=[],adminTasks=[],adminScores=[],adminReport=null;
     try { leaveSummary = await sb('teacher_leave_summary','select=*'); } catch(e) { console.warn('leave_summary:',e); }
@@ -1625,6 +1643,32 @@ window.sendIdaraTestPush = async function () {
   }
 };
 
+/** Overview scorecards: bind in JS so clicks work under CSP and if inline handlers were stripped. */
+function bindOverviewScorecardClicks() {
+  var root = document.getElementById("ov-scorecard-grid");
+  if (!root) return;
+  function activateCard(ev) {
+    var el = ev.currentTarget;
+    var k = el && el.getAttribute("data-ov");
+    if (!k) return;
+    if (typeof window.openOvScorecard !== "function") {
+      console.warn("[Idara] openOvScorecard missing — ensure idara-notify-ov.js loads from the same folder as dashboard.html");
+      toast((typeof window.t === "function" ? window.t("toast.failed") : "Error") + ": overview modals script not loaded");
+      return;
+    }
+    window.openOvScorecard(k);
+  }
+  root.querySelectorAll(".ov-card[data-ov]").forEach(function (el) {
+    el.addEventListener("click", activateCard);
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        activateCard.call(el, e);
+      }
+    });
+  });
+}
+
 function render() {
   if (typeof window.syncAbsentActionsToHidden === 'function' && document.getElementById('acc_absent_actions_wrap')) {
     window.syncAbsentActionsToHidden();
@@ -1703,16 +1747,16 @@ function render() {
   // ═══════════════════════════════════════════
   if (activeTab === 'overview') {
 
-    // Scorecards (click for detail modals — idara-notify-ov.js)
-    html += '<div class="grid">';
-    html += `<div class="card gr ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('tpresent')"><div class="num">${tPresent}</div><div class="lbl">${dashT('ov.teachersPresent')}</div></div>`;
-    html += `<div class="card rd ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('tabsent')"><div class="num">${tAbsent}</div><div class="lbl">${dashT('ov.teachersAbsent')}</div></div>`;
-    html += `<div class="card bl ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('spresent')"><div class="num">${sPresent}</div><div class="lbl">${dashT('ov.studentsPresent')}</div></div>`;
-    html += `<div class="card rd ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('sabsent')"><div class="num">${sAbsent}</div><div class="lbl">${dashT('ov.studentsAbsent')}</div></div>`;
-    html += `<div class="card gr ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('rcomplete')"><div class="num">${rComplete}</div><div class="lbl">${dashT('ov.reportsFull')}</div></div>`;
-    html += `<div class="card yl ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('rpartial')"><div class="num">${rPartial}</div><div class="lbl">${dashT('ov.reportsPartial')}</div></div>`;
-    html += `<div class="card bl ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('roster')"><div class="num">${students.length}</div><div class="lbl">${dashT('ov.totalStudents')}</div></div>`;
-    html += `<div class="card ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('subjects')"><div class="num">${subjects.length}</div><div class="lbl">${dashT('ov.totalSubjects')}</div></div>`;
+    // Scorecards (detail modals — click wired in bindOverviewScorecardClicks after paint; data-ov for CSP-safe hosts)
+    html += '<div class="grid" id="ov-scorecard-grid">';
+    html += `<div class="card gr ov-card" role="button" tabindex="0" data-ov="tpresent"><div class="num">${tPresent}</div><div class="lbl">${dashT('ov.teachersPresent')}</div></div>`;
+    html += `<div class="card rd ov-card" role="button" tabindex="0" data-ov="tabsent"><div class="num">${tAbsent}</div><div class="lbl">${dashT('ov.teachersAbsent')}</div></div>`;
+    html += `<div class="card bl ov-card" role="button" tabindex="0" data-ov="spresent"><div class="num">${sPresent}</div><div class="lbl">${dashT('ov.studentsPresent')}</div></div>`;
+    html += `<div class="card rd ov-card" role="button" tabindex="0" data-ov="sabsent"><div class="num">${sAbsent}</div><div class="lbl">${dashT('ov.studentsAbsent')}</div></div>`;
+    html += `<div class="card gr ov-card" role="button" tabindex="0" data-ov="rcomplete"><div class="num">${rComplete}</div><div class="lbl">${dashT('ov.reportsFull')}</div></div>`;
+    html += `<div class="card yl ov-card" role="button" tabindex="0" data-ov="rpartial"><div class="num">${rPartial}</div><div class="lbl">${dashT('ov.reportsPartial')}</div></div>`;
+    html += `<div class="card bl ov-card" role="button" tabindex="0" data-ov="roster"><div class="num">${students.length}</div><div class="lbl">${dashT('ov.totalStudents')}</div></div>`;
+    html += `<div class="card ov-card" role="button" tabindex="0" data-ov="subjects"><div class="num">${subjects.length}</div><div class="lbl">${dashT('ov.totalSubjects')}</div></div>`;
     html += '</div>';
     const vpk = (appConfig && appConfig.vapid_public_key) ? String(appConfig.vapid_public_key).trim() : '';
     html += `<div class="section"><h2>${escHtml(dashT('push.settingsTitle'))}</h2>
@@ -3004,6 +3048,7 @@ function render() {
   }
 
   document.getElementById('app').innerHTML = html;
+  bindOverviewScorecardClicks();
   if (activeTab === "overview") {
     try {
       if (window.updatePushStateOverview) void window.updatePushStateOverview();
