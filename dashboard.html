@@ -47,6 +47,29 @@ body.dash-locale-en{font-family:'Noto Sans','Noto Sans Arabic',sans-serif;direct
 .card .num{font-size:24px;font-weight:800;color:var(--gd)}
 .card .lbl{font-size:9px;color:#8a9ab5;margin-top:3px}
 .card.gr .num{color:var(--gr)}.card.rd .num{color:var(--rd)}.card.yl .num{color:var(--yl)}.card.bl .num{color:var(--bl)}
+.ov-card{cursor:pointer;transition:box-shadow .15s,border-color .15s;border:1px solid transparent}
+.ov-card:hover{box-shadow:0 0 0 2px rgba(66,133,244,.45);border-color:#4285f466}
+.idara-ov-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto}
+.idara-ov-panel{width:100%;max-width:520px;background:var(--dk2);border-radius:16px;border:1px solid #1f3d5e;margin-top:24px;max-height:90vh;display:flex;flex-direction:column}
+.idara-ov-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid #1f3d5e}
+.idara-ov-title{font-size:15px;font-weight:800;color:var(--gd)}
+.idara-ov-sub{font-size:10px;color:#8a9ab5;margin-top:4px}
+.idara-ov-x{width:40px;height:40px;border-radius:10px;border:none;background:var(--dk3);color:var(--wh);font-size:22px;line-height:1;cursor:pointer}
+.idara-ov-body{padding:12px 16px 16px;overflow:auto;-webkit-overflow-scrolling:touch}
+.idara-ov-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.idara-ov-tbl{font-size:11px}
+.idara-ov-hint{font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.45}
+.idara-ov-classh{font-size:12px;color:var(--gd);margin:10px 0 6px}
+.idara-ov-list{list-style:none;padding:0}
+.idara-ov-linkbtn{display:block;width:100%;text-align:inherit;padding:10px 12px;margin-bottom:6px;background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;color:var(--wh);font-family:inherit;font-size:12px;cursor:pointer}
+.notif-bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:none;background:var(--dk3);color:var(--wh);font-size:18px;cursor:pointer}
+.notif-bell-badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rd);color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center}
+body.dash-locale-en .notif-bell-badge{right:auto;left:4px}
+.notif-row{display:flex;gap:10px;padding:10px 12px;margin-bottom:8px;background:var(--dk3);border-radius:10px;border:1px solid #1f3d5e;align-items:flex-start}
+.notif-sev{width:4px;border-radius:4px;flex-shrink:0;min-height:36px;background:#8a9ab5}
+.notif-sev.info{background:var(--bl)}.notif-sev.warning{background:var(--yl)}.notif-sev.critical{background:var(--rd)}
+.idara-spin{display:inline-block;width:12px;height:12px;border:2px solid #8a9ab5;border-top-color:var(--gd);border-radius:50%;animation:idaraSpin .7s linear infinite}
+@keyframes idaraSpin{to{transform:rotate(360deg)}}
 
 .section{background:var(--dk2);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid #1f3d5e}
 .section h2{font-size:14px;font-weight:800;color:var(--gd);margin-bottom:10px;display:flex;align-items:center;gap:8px}
@@ -60,17 +83,34 @@ body.dash-locale-en .acc-checklist-row{text-align:left}
 body.dash-locale-en #acc_anchor_checklist .acc-chk-confirm{justify-content:flex-start}
 
 /* Accountability report: sticky sub-nav + collapsible panels */
-.acc-subnav{position:sticky;top:0;z-index:6;display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;margin:0 0 12px;background:var(--dk2);border-bottom:1px solid #1f3d5e;border-radius:0}
-.acc-subnav .btn{padding:6px 10px;font-size:10px;min-height:36px}
-body.dash-locale-en .acc-subnav{justify-content:flex-start}
+.acc-subnav{position:sticky;top:0;z-index:6;padding:10px 0 12px;margin:0 0 8px;background:linear-gradient(180deg,var(--dk2) 0%,rgba(19,38,64,.97) 100%);border-bottom:1px solid #1f3d5e;border-radius:0}
+.acc-subnav-hint{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5c6d8c;margin:0 0 8px;line-height:1.35}
+.acc-subnav-inner{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+body.dash-locale-en .acc-subnav-inner{justify-content:flex-start}
+/* Jump links — scroll only, not form submits */
+.acc-jump{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 14px;min-height:36px;border-radius:999px;font-family:inherit;font-size:11px;font-weight:600;color:#9eb4d8;background:rgba(8,20,40,.35);border:1px dashed #4a6fa5;cursor:pointer;transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
+.acc-jump:hover{background:rgba(66,133,244,.14);border-color:#5c8de0;color:var(--wh)}
+.acc-jump:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
+.acc-jump .acc-jump-ic{font-size:10px;line-height:1;opacity:.9;font-weight:800}
+/* Secondary / tertiary action — still a button, but not primary */
+.acc-btn-secondary{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;min-height:40px;border-radius:10px;font-family:inherit;font-size:11px;font-weight:700;color:#a8c4e8;background:transparent;border:1px solid #3d5a80;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.acc-btn-secondary:hover{background:rgba(66,133,244,.1);border-color:var(--bl);color:var(--wh)}
+.acc-btn-secondary:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
 .acc-details{border:1px solid #1f3d5e;border-radius:12px;margin-bottom:10px;background:var(--dk3);overflow:hidden}
-.acc-details > summary{list-style:none;cursor:pointer;padding:10px 12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--gd)}
+.acc-details > summary{list-style:none;cursor:pointer;padding:10px 12px;padding-inline-start:26px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--gd);position:relative}
 .acc-details > summary::-webkit-details-marker{display:none}
+.acc-details > summary.acc-details-sum::before{content:'\25BC';position:absolute;inset-inline-start:10px;top:50%;margin-top:-5px;font-size:8px;line-height:1;color:#6b7c99;transition:transform .18s ease}
+.acc-details:not([open]) > summary.acc-details-sum::before{transform:rotate(-90deg)}
 .acc-details[open] > summary{border-bottom:1px solid #1f3d5e;background:var(--dk)}
 .acc-details-body{padding:0 12px 12px}
 .acc-sum-tag{font-size:11px;min-width:1.2em;text-align:center}
 .acc-class-details[open] .acc-details-body{padding-top:8px}
 #acc_class_visited_adv_wrap{margin-top:8px}
+/* Selects = form fields (accent rail + chevron), distinct from .btn */
+.acc-select-chevron{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1.5 2.25L7 7l5.5-4.75' fill='none' stroke='%238a9ab5' stroke-width='1.65' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-size:12px 8px !important;-webkit-appearance:none !important;appearance:none !important;background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid var(--bl) !important;font-weight:500 !important;padding-inline-end:38px !important}
+html[dir="rtl"] .acc-select-chevron{background-position:left 12px center !important}
+body.dash-locale-en .acc-select-chevron{background-position:right 12px center !important}
+.acc-field-box{background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid #5a7a9e !important;font-weight:400 !important}
 
 /* Tables — horizontal scroll */
 .tbl{width:100%;border-collapse:collapse;font-size:11px}
@@ -163,7 +203,9 @@ const exports_list = [
 ];
 const TODAY = new Date().toISOString().split('T')[0];
 </script>
-<script src="dashboard-i18n.js?v=202604272"></script>
+<script src="dashboard-i18n.js?v=202604275"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+<script src="idara-notify-ov.js?v=20260428"></script>
 <script>
 // ═══════════════════════════════════════════
 // SUPABASE HELPERS
@@ -180,6 +222,28 @@ async function sbPatch(table, filter, data) {
   });
   return r.ok;
 }
+async function sbPost(table, row, prefer) {
+  const r = await fetch(SB_URL + '/rest/v1/' + table, {
+    method: 'POST',
+    headers: { ...headers, Prefer: prefer || 'return=minimal' },
+    body: JSON.stringify(row),
+  });
+  return r;
+}
+async function sbDelete(table, filter) {
+  const r = await fetch(SB_URL + '/rest/v1/' + table + '?' + filter, { method: 'DELETE', headers: { ...headers } });
+  return r;
+}
+async function invokeEdge(name, body) {
+  return fetch(SB_URL + '/functions/v1/' + name, {
+    method: 'POST',
+    headers: { ...headers },
+    body: body != null ? JSON.stringify(body) : '{}',
+  });
+}
+window.sbPost = sbPost;
+window.sbDelete = sbDelete;
+window.invokeEdge = invokeEdge;
 function toast(msg) {
   const toastEl = document.getElementById('toast');
   if (!toastEl) return;
@@ -229,7 +293,44 @@ async function loadAll() {
     try { adminTasks = await sb('admin_tasks','select=*&date=eq.'+TODAY); } catch(e) { console.warn('admin_tasks:',e); }
     try { adminScores = await sb('admin_daily_score','select=*&limit=14&order=date.desc'); } catch(e) { console.warn('admin_scores:',e); }
     try { const ar = await sb('admin_accountability','select=*&date=eq.'+TODAY); adminReport = ar.length?ar[0]:null; } catch(e) { console.warn('admin_report:',e); }
-    DATA = {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary,adminTasks,adminScores,adminReport};
+    let notifications = [];
+    let appConfig = {};
+    try {
+      notifications = await sb('notifications', 'select=*&order=created_at.desc&limit=50');
+      if (!Array.isArray(notifications)) notifications = [];
+    } catch (e) {
+      console.warn('notifications:', e);
+    }
+    try {
+      const cfgRows = await sb('app_config', 'select=key,value');
+      (cfgRows || []).forEach(function (row) {
+        if (row && row.key) appConfig[row.key] = row.value;
+      });
+    } catch (e) {
+      console.warn('app_config:', e);
+    }
+    const notificationsUnread = notifications.filter(function (n) {
+      return n && !n.is_read;
+    }).length;
+    DATA = {
+      teachers,
+      subjects,
+      students,
+      periods,
+      assignments,
+      tAttToday,
+      sAttToday,
+      dAttToday,
+      reportsToday,
+      leaveSummary,
+      adminTasks,
+      adminScores,
+      adminReport,
+      notifications,
+      notificationsUnread,
+      appConfig,
+    };
+    if (typeof window.initNotifRealtimeOnce === 'function') window.initNotifRealtimeOnce();
     return DATA;
   } catch(e) {
     var em = String(e.message||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
@@ -767,8 +868,11 @@ let activeTab = 'overview';
  * Not a screen inside the teacher PWA (`index.html`); the id is historical only.
  */
 const TAB_ACCOUNTABILITY = 'admin';
+const TAB_NOTIFICATIONS = 'notifications';
 /** Student attendance tab filters — `var` so inline onchange/oninput can see it */
 var sAttendUi = { class: 'all', status: 'all', search: '', date: TODAY, subject: 'all' };
+/** Notifications tab filters */
+var notifUi = { scope: "all", type: "all" };
 /** Cached rows when viewing student_attendance for a date other than TODAY */
 var sAttendHistorical = { date: '', rows: null, loading: false };
 /** Teacher attendance tab — evidence grid class filter (`var` for inline onclick) */
@@ -1357,6 +1461,170 @@ window.initAccountabilityChecklistUi = function () {
   window.refreshAccountabilityChecklist && window.refreshAccountabilityChecklist();
 };
 
+function notifTimeAgo(iso) {
+  if (!iso) return '';
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return s + "s";
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h";
+  return Math.floor(s / 86400) + "d";
+}
+
+window.reloadNotificationsOnly = async function () {
+  try {
+    const rows = await sb("notifications", "select=*&order=created_at.desc&limit=50");
+    DATA.notifications = Array.isArray(rows) ? rows : [];
+    DATA.notificationsUnread = DATA.notifications.filter(function (n) {
+      return n && !n.is_read;
+    }).length;
+    const b = document.getElementById("notif-bell-badge");
+    if (b) {
+      b.textContent = DATA.notificationsUnread > 99 ? "99+" : String(DATA.notificationsUnread);
+      b.style.display = DATA.notificationsUnread ? "flex" : "none";
+    }
+    if (activeTab === TAB_NOTIFICATIONS) render();
+  } catch (e) {
+    console.warn("reloadNotificationsOnly", e);
+  }
+};
+
+window.markNotificationRead = async function (nid) {
+  const ok = await sbPatch("notifications", "id=eq." + encodeURIComponent(String(nid)), { is_read: true });
+  if (ok) {
+    toast(typeof t === "function" ? t("notif.marked") : "Marked read");
+    await window.reloadNotificationsOnly();
+    render();
+  } else toast(typeof t === "function" ? t("toast.failed") : "Failed");
+};
+
+window.markAllNotificationsRead = async function () {
+  const unread = (DATA.notifications || []).filter(function (n) {
+    return n && !n.is_read;
+  });
+  for (const n of unread) {
+    await sbPatch("notifications", "id=eq." + encodeURIComponent(String(n.id)), { is_read: true });
+  }
+  toast(typeof t === "function" ? t("notif.allMarked") : "All marked");
+  await window.reloadNotificationsOnly();
+  render();
+};
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+window.updatePushStateOverview = async function () {
+  const el = document.getElementById("push-state-line");
+  if (!el) return;
+  if (!("Notification" in window)) {
+    el.textContent = typeof t === "function" ? t("push.noApi") : "Notifications API unavailable";
+    return;
+  }
+  const perm = Notification.permission;
+  if (perm === "denied") {
+    el.textContent = typeof t === "function" ? t("push.stateOffDenied") : "OFF (blocked in browser)";
+    return;
+  }
+  if (perm !== "granted") {
+    el.textContent = typeof t === "function" ? t("push.stateDefault") : "OFF — tap Enable to subscribe";
+    return;
+  }
+  let hasSub = false;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+    hasSub = !!sub;
+  } catch (eSw) {}
+  if (!hasSub) {
+    el.textContent = typeof t === "function" ? t("push.stateGrantedNoSub") : "Permission OK — not subscribed yet";
+    return;
+  }
+  let adm = "0";
+  try {
+    adm = localStorage.getItem("idara_push_is_admin") || "0";
+  } catch (eL) {}
+  el.textContent =
+    adm === "1"
+      ? typeof t === "function"
+        ? t("push.stateOnAdmin")
+        : "ON (admin pushes)"
+      : typeof t === "function"
+        ? t("push.stateOn")
+        : "ON";
+};
+
+window.registerIdaraPush = async function () {
+  const vpk = (document.getElementById("push-vapid-pub") || {}).value || ((DATA.appConfig || {}).vapid_public_key || "").trim();
+  if (!vpk) {
+    toast(typeof t === "function" ? t("push.noVapid") : "Set vapid_public_key in app_config");
+    return;
+  }
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    toast(typeof t === "function" ? t("push.noSw") : "Service Worker / Push not supported");
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.register("service-worker.js");
+    await reg.update();
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      toast(typeof t === "function" ? t("push.denied") : "Permission denied");
+      window.updatePushStateOverview();
+      return;
+    }
+    const pin = window.prompt(typeof t === "function" ? t("push.pinPrompt") : "Admin PIN (blank = non-admin device):", "") || "";
+    let pins = [];
+    try {
+      pins = JSON.parse((DATA.appConfig && DATA.appConfig.admin_pins) || "[]");
+    } catch (e1) {
+      pins = [];
+    }
+    const isAdmin = pin && pins.indexOf(pin) >= 0;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vpk),
+    });
+    const j = sub.toJSON();
+    const row = {
+      endpoint: j.endpoint,
+      p256dh: j.keys.p256dh,
+      auth: j.keys.auth,
+      is_admin: isAdmin,
+      device_label: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 120) : "",
+      last_seen: new Date().toISOString(),
+    };
+    const r = await fetch(SB_URL + "/rest/v1/push_subscriptions?on_conflict=endpoint", {
+      method: "POST",
+      headers: { ...headers, Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify(row),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    try {
+      localStorage.setItem("idara_push_subscribed", "1");
+      localStorage.setItem("idara_push_is_admin", isAdmin ? "1" : "0");
+    } catch (eLs) {}
+    toast(isAdmin ? (typeof t === "function" ? t("push.subscribedAdmin") : "Subscribed (admin)") : (typeof t === "function" ? t("push.subscribed") : "Subscribed"));
+  } catch (e) {
+    toast((typeof t === "function" ? t("toast.failed") : "Fail") + ": " + e.message);
+  }
+  window.updatePushStateOverview();
+};
+
+window.sendIdaraTestPush = async function () {
+  try {
+    const r = await invokeEdge("push_notify_admins", { title: "Idara test", body: "Test notification" });
+    if (!r.ok) throw new Error(await r.text());
+    toast(typeof t === "function" ? t("push.testSent") : "Test sent");
+  } catch (e) {
+    toast(e.message);
+  }
+};
+
 function render() {
   if (typeof window.syncAbsentActionsToHidden === 'function' && document.getElementById('acc_absent_actions_wrap')) {
     window.syncAbsentActionsToHidden();
@@ -1366,6 +1634,9 @@ function render() {
   }
   const accountabilityDraft = (activeTab === TAB_ACCOUNTABILITY) ? captureAccountabilityDraft() : null;
   const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
+  const notifications = DATA.notifications || [];
+  const notificationsUnread = DATA.notificationsUnread || 0;
+  const appConfig = DATA.appConfig || {};
   const dashT =
     typeof window.dashTranslate === 'function'
       ? window.dashTranslate.bind(window)
@@ -1379,8 +1650,9 @@ function render() {
   // Compute stats
   const tPresent = tAttToday.filter(r=>r.status==='present').length;
   const tAbsent = tAttToday.filter(r=>r.status==='absent'||r.status==='leave').length;
-  const sPresent = sAttToday.filter(r=>r.status==='P').length;
-  const sAbsent = sAttToday.filter(r=>r.status==='A').length;
+  const sPresent = dAttToday.filter(r => r && r.status === 'P').length;
+  const sAbsent = dAttToday.filter(r => r && r.status === 'A').length;
+  if (sPresent > students.length) console.warn('[overview] sPresent (' + sPresent + ') exceeds students.length (' + students.length + ') — check daily_attendance duplicates or bad rows');
   const rComplete = reportsToday.filter(r=>r.complete==='ہاں').length;
   const rPartial = reportsToday.filter(r=>r.complete==='جزوی').length;
 
@@ -1394,6 +1666,10 @@ function render() {
       <div class="sub">${todayIST()} • ${now()} ${dashT('common.ist')}</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button type="button" class="notif-bell" onclick="window.switchTab('${TAB_NOTIFICATIONS}');location.hash='notifications';" title="${escAttr(dashT('notif.bellTitle'))}" aria-label="${escAttr(dashT('notif.bellTitle'))}">
+        \uD83D\uDD14
+        <span id="notif-bell-badge" class="notif-bell-badge" style="display:${(notificationsUnread||0)>0?'flex':'none'}">${notificationsUnread>99?'99+':(notificationsUnread||0)}</span>
+      </button>
       <div class="lang-switch" style="display:flex;gap:4px;align-items:center">
         <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='en'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('en')">${dashT('lang.en')}</button>
         <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='ur'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('ur')">${dashT('lang.ur')}</button>
@@ -1409,6 +1685,7 @@ function render() {
   const tabList = [
     {id:'overview',l:dashT('tab.overview')},
     {id:TAB_ACCOUNTABILITY,l:dashT('tab.accountability')},
+    {id:TAB_NOTIFICATIONS,l:dashT('tab.notifications')},
     {id:'tAttend',l:dashT('tab.tAttend')},
     {id:'sAttend',l:dashT('tab.sAttend')},
     {id:'reports',l:dashT('tab.reports')},
@@ -1426,17 +1703,27 @@ function render() {
   // ═══════════════════════════════════════════
   if (activeTab === 'overview') {
 
-    // Scorecards
+    // Scorecards (click for detail modals — idara-notify-ov.js)
     html += '<div class="grid">';
-    html += `<div class="card gr"><div class="num">${tPresent}</div><div class="lbl">${dashT('ov.teachersPresent')}</div></div>`;
-    html += `<div class="card rd"><div class="num">${tAbsent}</div><div class="lbl">${dashT('ov.teachersAbsent')}</div></div>`;
-    html += `<div class="card bl"><div class="num">${sPresent}</div><div class="lbl">${dashT('ov.studentsPresent')}</div></div>`;
-    html += `<div class="card rd"><div class="num">${sAbsent}</div><div class="lbl">${dashT('ov.studentsAbsent')}</div></div>`;
-    html += `<div class="card gr"><div class="num">${rComplete}</div><div class="lbl">${dashT('ov.reportsFull')}</div></div>`;
-    html += `<div class="card yl"><div class="num">${rPartial}</div><div class="lbl">${dashT('ov.reportsPartial')}</div></div>`;
-    html += `<div class="card bl"><div class="num">${students.length}</div><div class="lbl">${dashT('ov.totalStudents')}</div></div>`;
-    html += `<div class="card"><div class="num">${subjects.length}</div><div class="lbl">${dashT('ov.totalSubjects')}</div></div>`;
+    html += `<div class="card gr ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('tpresent')"><div class="num">${tPresent}</div><div class="lbl">${dashT('ov.teachersPresent')}</div></div>`;
+    html += `<div class="card rd ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('tabsent')"><div class="num">${tAbsent}</div><div class="lbl">${dashT('ov.teachersAbsent')}</div></div>`;
+    html += `<div class="card bl ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('spresent')"><div class="num">${sPresent}</div><div class="lbl">${dashT('ov.studentsPresent')}</div></div>`;
+    html += `<div class="card rd ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('sabsent')"><div class="num">${sAbsent}</div><div class="lbl">${dashT('ov.studentsAbsent')}</div></div>`;
+    html += `<div class="card gr ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('rcomplete')"><div class="num">${rComplete}</div><div class="lbl">${dashT('ov.reportsFull')}</div></div>`;
+    html += `<div class="card yl ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('rpartial')"><div class="num">${rPartial}</div><div class="lbl">${dashT('ov.reportsPartial')}</div></div>`;
+    html += `<div class="card bl ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('roster')"><div class="num">${students.length}</div><div class="lbl">${dashT('ov.totalStudents')}</div></div>`;
+    html += `<div class="card ov-card" role="button" tabindex="0" onclick="window.openOvScorecard&&window.openOvScorecard('subjects')"><div class="num">${subjects.length}</div><div class="lbl">${dashT('ov.totalSubjects')}</div></div>`;
     html += '</div>';
+    const vpk = (appConfig && appConfig.vapid_public_key) ? String(appConfig.vapid_public_key).trim() : '';
+    html += `<div class="section"><h2>${escHtml(dashT('push.settingsTitle'))}</h2>
+      <div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.5">${escHtml(dashT('push.settingsHelp'))}</div>
+      <p id="push-state-line" style="font-size:12px;margin-bottom:10px;font-weight:700"></p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn btn-bl btn-sm" onclick="window.registerIdaraPush&&window.registerIdaraPush()">${escHtml(dashT('push.enable'))}</button>
+        <button type="button" class="btn btn-sm" style="background:var(--dk3);color:var(--wh)" onclick="window.sendIdaraTestPush&&window.sendIdaraTestPush()">${escHtml(dashT('push.test'))}</button>
+      </div>
+      <input type="hidden" id="push-vapid-pub" value="${escAttr(vpk)}"/>
+    </div>`;
 
     // Current Period
     html += '<div class="current-period">';
@@ -1688,7 +1975,7 @@ function render() {
       <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(dashT('acc.verify.coverageLabel'))}</label>
       ${absentTeachers.length === 0 && tAttToday.length > 0
         ? '<div style="font-size:11px;color:var(--gr);padding:10px;background:#34a85315;border-radius:8px">' + escHtml(dashT('acc.verify.allPresent')) + '</div>'
-        : `<textarea id="acc_coverage" rows="3" placeholder="${escAttr(covPhAbsent)}" style="${iS('resize:vertical;')}">${typeof covText==='string'?covText:JSON.stringify(covText)}</textarea>`
+        : `<textarea id="acc_coverage" class="acc-field-box" rows="3" placeholder="${escAttr(covPhAbsent)}" style="${iS('resize:vertical;')}">${typeof covText==='string'?covText:JSON.stringify(covText)}</textarea>`
       }
     </div>`;
     html += '</div>';
@@ -1697,12 +1984,14 @@ function render() {
     html += '<div class="section" id="acc_anchor_report" style="scroll-margin-top:72px"><h2>' + escHtml(dashT('acc.report.title')) + '</h2>';
     html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:8px">' + escHtml(dashT('acc.report.hint')) + '</div>';
     html += '<nav class="acc-subnav" aria-label="' + escAttr(dashT('acc.nav.aria')) + '">' +
-      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_class_visit\')">' + escHtml(dashT('acc.nav.class')) + '</button>' +
-      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_inspection\')">' + escHtml(dashT('acc.nav.inspect')) + '</button>' +
-      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_absent_actions\')">' + escHtml(dashT('acc.nav.absent')) + '</button>' +
-      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_hifz\')">' + escHtml(dashT('acc.nav.hifz')) + '</button>' +
-      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_remarks\')">' + escHtml(dashT('acc.nav.remarks')) + '</button>' +
-      '</nav></div>';
+      '<span class="acc-subnav-hint">' + escHtml(dashT('acc.nav.jumpHint')) + '</span>' +
+      '<div class="acc-subnav-inner">' +
+      '<button type="button" class="acc-jump" onclick="window.scrollToAccSection(\'acc_anchor_class_visit\')"><span class="acc-jump-ic" dir="ltr" aria-hidden="true">\u2193</span>' + escHtml(dashT('acc.nav.class')) + '</button>' +
+      '<button type="button" class="acc-jump" onclick="window.scrollToAccSection(\'acc_anchor_inspection\')"><span class="acc-jump-ic" dir="ltr" aria-hidden="true">\u2193</span>' + escHtml(dashT('acc.nav.inspect')) + '</button>' +
+      '<button type="button" class="acc-jump" onclick="window.scrollToAccSection(\'acc_anchor_absent_actions\')"><span class="acc-jump-ic" dir="ltr" aria-hidden="true">\u2193</span>' + escHtml(dashT('acc.nav.absent')) + '</button>' +
+      '<button type="button" class="acc-jump" onclick="window.scrollToAccSection(\'acc_anchor_hifz\')"><span class="acc-jump-ic" dir="ltr" aria-hidden="true">\u2193</span>' + escHtml(dashT('acc.nav.hifz')) + '</button>' +
+      '<button type="button" class="acc-jump" onclick="window.scrollToAccSection(\'acc_anchor_remarks\')"><span class="acc-jump-ic" dir="ltr" aria-hidden="true">\u2193</span>' + escHtml(dashT('acc.nav.remarks')) + '</button>' +
+      '</div></nav></div>';
 
     const savedVisited = (typeof rpt.class_visited === 'string' ? rpt.class_visited : '') || '';
     const savedClassMatch = savedVisited.match(/^\[([a-zA-Z0-9_]+)\]/);
@@ -1712,7 +2001,7 @@ function render() {
         <summary class="acc-details-sum"><span>${escHtml(dashT('acc.panel.classSum'))}</span><span id="acc_class_visit_summary" class="acc-sum-tag" style="color:#8a9ab5">\u2014</span></summary>
         <div class="acc-details-body">
           <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(dashT('acc.class.pick'))}</label>
-          <select id="acc_inspect_class_sel" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
+          <select id="acc_inspect_class_sel" class="acc-select-chevron" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
             <option value="">${escHtml(dashT('acc.class.optChoose'))}</option>
             ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${escHtml(classLabel(cid))}</option>`).join('')}
           </select>
@@ -1720,9 +2009,9 @@ function render() {
             <span style="color:#8a9ab5">${escHtml(dashT('acc.class.previewHint'))}</span>
           </div>
           <div style="font-size:9px;color:#8a9ab5;margin-bottom:6px">${escHtml(dashT('acc.class.subnoteHint'))}</div>
-          <button type="button" class="btn btn-sm btn-bl" id="acc_class_visited_toggle_btn" onclick="window.toggleAccClassVisitedAdvanced()">${escHtml(dashT('acc.class.advShow'))}</button>
+          <button type="button" class="acc-btn-secondary" id="acc_class_visited_toggle_btn" onclick="window.toggleAccClassVisitedAdvanced()">${escHtml(dashT('acc.class.advShow'))}</button>
           <div id="acc_class_visited_adv_wrap" style="display:none;margin-top:8px">
-            <textarea id="acc_class_visited" rows="4" placeholder="${escAttr(dashT('acc.class.phEdit'))}" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter();window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+            <textarea id="acc_class_visited" class="acc-field-box" rows="4" placeholder="${escAttr(dashT('acc.class.phEdit'))}" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter();window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
           </div>
         </div>
       </details>
@@ -1746,26 +2035,26 @@ function render() {
         <div class="acc-details-body" style="display:flex;flex-direction:column;gap:10px">
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.qa.toLabel')}</label>
-            <select id="acc_qa_who_type_${qi}" onchange="window.refreshAccVisitQaWhoRow(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}">
+            <select id="acc_qa_who_type_${qi}" class="acc-select-chevron" onchange="window.refreshAccVisitQaWhoRow(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}">
               <option value="student">${escHtml(dashT('acc.qa.optStudent'))}</option>
               <option value="teacher">${escHtml(dashT('acc.qa.optTeacher'))}</option>
             </select>
           </div>
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.qa.nameLabel')}</label>
-            <select id="acc_qa_who_id_${qi}" onchange="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}"></select>
+            <select id="acc_qa_who_id_${qi}" class="acc-select-chevron" onchange="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}"></select>
           </div>
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.presetLabel'))}</label>
-            <select id="acc_qa_preset_${qi}" onchange="window.onAccQaPresetChange(${qi})" style="${iS('margin-bottom:6px;')}">${presetOpts}</select>
+            <select id="acc_qa_preset_${qi}" class="acc-select-chevron" onchange="window.onAccQaPresetChange(${qi})" style="${iS('margin-bottom:6px;')}">${presetOpts}</select>
           </div>
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.qLabel'))}</label>
-            <textarea id="acc_qa_question_${qi}" rows="2" placeholder="${escAttr(dashT('acc.qa.qPh'))}" oninput="window.syncAccQaPresetFromQuestion(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+            <textarea id="acc_qa_question_${qi}" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.qa.qPh'))}" oninput="window.syncAccQaPresetFromQuestion(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
           </div>
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.aLabel'))}</label>
-            <textarea id="acc_qa_answer_${qi}" rows="2" placeholder="${escAttr(dashT('acc.qa.aPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+            <textarea id="acc_qa_answer_${qi}" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.qa.aPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
           </div>
         </div>
       </details>`;
@@ -1779,7 +2068,7 @@ function render() {
       ${accQaFormHtml}
       <div style="margin-bottom:10px">
         <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.inspect.extraNotes')}</label>
-        <textarea id="acc_visit_narrative" rows="2" placeholder="${escAttr(dashT('acc.visit.narrPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+        <textarea id="acc_visit_narrative" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.visit.narrPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
       </div>
       <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">${escHtml(dashT('acc.inspect.saveBtn'))}</button>
       <div id="acc_visits_list" style="margin-bottom:4px">${formatVisitObsCardsHtml(visits0)}</div>
@@ -1803,7 +2092,7 @@ function render() {
           <input type="hidden" id="acc_abs_sid_${idx}" value="${escAttr(abs.student_id)}">
           <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.absent.teacherFirst'))}</div>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.nextPath')}</label>
-          <select id="acc_abs_path_${idx}" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
+          <select id="acc_abs_path_${idx}" class="acc-select-chevron" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
             <option value="">${escHtml(dashT('acc.opt.choose'))}</option>
             <option value="teacher_ok">${escHtml(dashT('acc.absent.path_teacher_ok'))}</option>
             <option value="principal_called">${escHtml(dashT('acc.absent.path_principal'))}</option>
@@ -1811,25 +2100,25 @@ function render() {
           </select>
           <div id="acc_abs_twrap_${idx}" style="display:none">
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.whichTeacher')}</label>
-            <select id="acc_abs_teacher_${idx}" onchange="window.syncAbsentActionsToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${teacherPickOpts}</select>
+            <select id="acc_abs_teacher_${idx}" class="acc-select-chevron" onchange="window.syncAbsentActionsToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${teacherPickOpts}</select>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.explain')}</label>
-            <textarea id="acc_abs_teacher_explain_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(dashT('acc.absent.explainPh'))}" style="${iS('resize:vertical;')}"></textarea>
+            <textarea id="acc_abs_teacher_explain_${idx}" class="acc-field-box" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(dashT('acc.absent.explainPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
           <div id="acc_abs_assignwrap_${idx}" style="display:none">
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.assignee')}</label>
-            <select id="acc_abs_assignee_${idx}" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
+            <select id="acc_abs_assignee_${idx}" class="acc-select-chevron" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
               <option value="">\u2014</option>
               ${teacherPickOpts}
               <option value="__name_only__">${escHtml(dashT('acc.absent.nameManual'))}</option>
             </select>
             <div id="acc_abs_assignname_wrap_${idx}" style="display:none;margin-bottom:8px">
               <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.nameLbl')}</label>
-              <input type="text" id="acc_abs_assignee_name_${idx}" oninput="window.syncAbsentActionsToHidden()" style="${iS('')}" placeholder="${escAttr(dashT('acc.absent.namePh'))}">
+              <input type="text" id="acc_abs_assignee_name_${idx}" class="acc-field-box" oninput="window.syncAbsentActionsToHidden()" style="${iS('')}" placeholder="${escAttr(dashT('acc.absent.namePh'))}">
             </div>
           </div>
           <div id="acc_abs_replywrap_${idx}" style="display:none">
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.callReply')}</label>
-            <textarea id="acc_abs_reply_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(dashT('acc.absent.callPh'))}" style="${iS('resize:vertical;')}"></textarea>
+            <textarea id="acc_abs_reply_${idx}" class="acc-field-box" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(dashT('acc.absent.callPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
           </div>
         </details>`;
@@ -1863,9 +2152,9 @@ function render() {
           <div class="acc-details-body">
           <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.hifz.slotHelp'))}</div>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.student')}</label>
-          <select id="acc_hf_sid_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${hifzStudentOpts}</select>
+          <select id="acc_hf_sid_${hi}" class="acc-select-chevron" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${hifzStudentOpts}</select>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.span')}</label>
-          <select id="acc_hf_span_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}">
+          <select id="acc_hf_span_${hi}" class="acc-select-chevron" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}">
             <option value="">\u2014</option>
             <option value="last_2_days">${escHtml(dashT('acc.hifz.span2'))}</option>
             <option value="last_3_days">${escHtml(dashT('acc.hifz.span3'))}</option>
@@ -1873,13 +2162,13 @@ function render() {
             <option value="other">${escHtml(dashT('acc.hifz.spanOther'))}</option>
           </select>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.prompt')}</label>
-          <textarea id="acc_hf_prompt_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(dashT('acc.hifz.promptPh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
+          <textarea id="acc_hf_prompt_${hi}" class="acc-field-box" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(dashT('acc.hifz.promptPh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.response')}</label>
-          <textarea id="acc_hf_resp_${hi}" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(dashT('acc.hifz.responsePh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
+          <textarea id="acc_hf_resp_${hi}" class="acc-field-box" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(dashT('acc.hifz.responsePh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.where')}</label>
-          <input type="text" id="acc_hf_pos_${hi}" oninput="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}" placeholder="${escAttr(dashT('acc.hifz.wherePh'))}">
+          <input type="text" id="acc_hf_pos_${hi}" class="acc-field-box" oninput="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}" placeholder="${escAttr(dashT('acc.hifz.wherePh'))}">
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.quality')}</label>
-          <select id="acc_hf_quality_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('')}">
+          <select id="acc_hf_quality_${hi}" class="acc-select-chevron" onchange="window.syncHifzNotesToHidden()" style="${iS('')}">
             <option value="">\u2014</option>
             <option value="weak">${escHtml(dashT('acc.hifz.qWeak'))}</option>
             <option value="adequate">${escHtml(dashT('acc.hifz.qAdeq'))}</option>
@@ -1916,7 +2205,7 @@ function render() {
           <label style="font-size:12px;font-weight:700">${escHtml(fLabel)}</label>
           <span style="font-size:9px;color:${ok?'var(--gr)':'#8a9ab5'}">${val.length}/${f.min} ${ok?'✅':''}</span>
         </div>
-        <textarea id="${f.id}" rows="${f.rows}" placeholder="${escAttr(fPh)}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}">${val}</textarea>
+        <textarea id="${f.id}" class="acc-field-box" rows="${f.rows}" placeholder="${escAttr(fPh)}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}">${val}</textarea>
       ` + secClose;
     });
 
@@ -2624,7 +2913,102 @@ function render() {
     html += '</div>';
   }
 
+  if (activeTab === TAB_NOTIFICATIONS) {
+    const tAll = dashT("notif.filterAll");
+    const tUn = dashT("notif.filterUnread");
+    const tToday = dashT("notif.filterToday");
+    const tWeek = dashT("notif.filterWeek");
+    const tTypeAll = dashT("notif.typeAll");
+    const tMissA = dashT("notif.typeMissAtt");
+    const tMissR = dashT("notif.typeMissRep");
+    const tMan = dashT("notif.typeManual");
+    const mkBtn = function (key, label, active) {
+      return (
+        '<button type="button" class="btn btn-sm" style="font-size:9px;' +
+        (active ? "background:var(--gd);color:var(--dk)" : "background:var(--dk3);color:#8a9ab5") +
+        '" onclick="notifUi.' +
+        key +
+        ";render();\">" +
+        escHtml(label) +
+        "</button>"
+      );
+    };
+    let list = notifications.slice();
+    if (notifUi.scope === "unread") list = list.filter(function (n) {
+      return n && !n.is_read;
+    });
+    const todayMs = new Date(TODAY + "T12:00:00").getTime();
+    const weekAgo = todayMs - 7 * 86400000;
+    if (notifUi.scope === "today") {
+      list = list.filter(function (n) {
+        return n && String(n.date || "").slice(0, 10) === TODAY;
+      });
+    }
+    if (notifUi.scope === "week") {
+      list = list.filter(function (n) {
+        if (!n || !n.created_at) return false;
+        return new Date(n.created_at).getTime() >= weekAgo;
+      });
+    }
+    if (notifUi.type && notifUi.type !== "all") {
+      list = list.filter(function (n) {
+        return n && n.type === notifUi.type;
+      });
+    }
+    html += '<div class="section"><h2>' + escHtml(dashT("notif.title")) + '</h2>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+    html += mkBtn("scope='all'", tAll, notifUi.scope === "all");
+    html += mkBtn("scope='unread'", tUn, notifUi.scope === "unread");
+    html += mkBtn("scope='today'", tToday, notifUi.scope === "today");
+    html += mkBtn("scope='week'", tWeek, notifUi.scope === "week");
+    html += "</div>";
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
+    html += mkBtn("type='all'", tTypeAll, !notifUi.type || notifUi.type === 'all');
+    html += mkBtn("type='missing_attendance'", tMissA, notifUi.type === "missing_attendance");
+    html += mkBtn("type='missing_report'", tMissR, notifUi.type === "missing_report");
+    html += mkBtn("type='manual_reminder'", tMan, notifUi.type === "manual_reminder");
+    html += "</div>";
+    html +=
+      '<button type="button" class="btn btn-bl btn-sm" style="margin-bottom:12px" onclick="window.markAllNotificationsRead()">' +
+      escHtml(dashT("notif.markAll")) +
+      "</button>";
+    if (!list.length) {
+      html += '<div style="text-align:center;padding:24px;color:var(--gr);font-size:13px;font-weight:700">' + escHtml(dashT("notif.empty")) + "</div>";
+    } else {
+      list.forEach(function (n) {
+        if (!n) return;
+        const sev = (n.severity || "warning").toLowerCase();
+        const tch = (n.teacher_id && teachers.find(function (x) { return String(x.id) === String(n.teacher_id); })) || null;
+        const tnm = tch ? tch.name : n.teacher_id || "\u2014";
+        html += '<div class="notif-row"><div class="notif-sev ' + escAttr(sev) + '"></div><div style="flex:1;min-width:0">';
+        html += '<div style="font-weight:800;font-size:12px">' + escHtml(n.title || "") + "</div>";
+        html += '<div style="font-size:11px;color:#c5cee0;margin-top:4px;white-space:pre-wrap;word-break:break-word">' + escHtml(n.message || "") + "</div>";
+        html +=
+          '<div style="font-size:9px;color:#8a9ab5;margin-top:6px">' +
+          escHtml(tnm) +
+          " \u00b7 " +
+          escHtml(notifTimeAgo(n.created_at)) +
+          "</div></div>";
+        if (!n.is_read) {
+          html +=
+            '<button type="button" class="btn btn-sm btn-bl" onclick="window.markNotificationRead(' +
+            String(n.id) +
+            ')">' +
+            escHtml(dashT("notif.markOne")) +
+            "</button>";
+        }
+        html += "</div>";
+      });
+    }
+    html += "</div>";
+  }
+
   document.getElementById('app').innerHTML = html;
+  if (activeTab === "overview") {
+    try {
+      if (window.updatePushStateOverview) void window.updatePushStateOverview();
+    } catch (e2) {}
+  }
   if (activeTab === TAB_ACCOUNTABILITY) {
     if (accountabilityDraft) {
       restoreAccountabilityDraft(accountabilityDraft);
@@ -2656,8 +3040,26 @@ function render() {
 // ═══════════════════════════════════════════
 // ACTIONS
 // ═══════════════════════════════════════════
-function switchTab(id) { activeTab = id; render(); }
+function switchTab(id) {
+  activeTab = id;
+  try {
+    if (id === TAB_NOTIFICATIONS) {
+      if (location.hash !== "#notifications") location.hash = "notifications";
+    } else if (location.hash === "#notifications") {
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+  } catch (eH) {}
+  render();
+}
 window.switchTab = switchTab;
+try {
+  window.addEventListener("hashchange", function () {
+    if (location.hash === "#notifications" && activeTab !== TAB_NOTIFICATIONS) {
+      activeTab = TAB_NOTIFICATIONS;
+      render();
+    }
+  });
+} catch (eHc) {}
 
 async function refresh() {
   toast(t('toast.refreshing'));
@@ -3076,6 +3478,9 @@ async function submitAccountability() {
 // INIT + AUTO-REFRESH
 // ═══════════════════════════════════════════
 (async () => {
+  try {
+    if (location.hash === "#notifications") activeTab = TAB_NOTIFICATIONS;
+  } catch (eInit) {}
   await loadAll();
   render();
   // Auto-refresh every 60 seconds

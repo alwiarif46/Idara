@@ -1,0 +1,5 @@
+[functions.check_missed_rows]
+verify_jwt = false
+
+[functions.push_notify_admins]
+verify_jwt = false
