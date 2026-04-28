@@ -59,6 +59,19 @@ body.dash-locale-en #acc_anchor_checklist .acc-checklist-foot{text-align:left}
 body.dash-locale-en .acc-checklist-row{text-align:left}
 body.dash-locale-en #acc_anchor_checklist .acc-chk-confirm{justify-content:flex-start}
 
+/* Accountability report: sticky sub-nav + collapsible panels */
+.acc-subnav{position:sticky;top:0;z-index:6;display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;margin:0 0 12px;background:var(--dk2);border-bottom:1px solid #1f3d5e;border-radius:0}
+.acc-subnav .btn{padding:6px 10px;font-size:10px;min-height:36px}
+body.dash-locale-en .acc-subnav{justify-content:flex-start}
+.acc-details{border:1px solid #1f3d5e;border-radius:12px;margin-bottom:10px;background:var(--dk3);overflow:hidden}
+.acc-details > summary{list-style:none;cursor:pointer;padding:10px 12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--gd)}
+.acc-details > summary::-webkit-details-marker{display:none}
+.acc-details[open] > summary{border-bottom:1px solid #1f3d5e;background:var(--dk)}
+.acc-details-body{padding:0 12px 12px}
+.acc-sum-tag{font-size:11px;min-width:1.2em;text-align:center}
+.acc-class-details[open] .acc-details-body{padding-top:8px}
+#acc_class_visited_adv_wrap{margin-top:8px}
+
 /* Tables — horizontal scroll */
 .tbl{width:100%;border-collapse:collapse;font-size:11px}
 .tbl th{background:var(--dk3);color:var(--gd);padding:10px 6px;text-align:center;font-weight:700;position:sticky;top:0;white-space:nowrap}
@@ -150,7 +163,7 @@ const exports_list = [
 ];
 const TODAY = new Date().toISOString().split('T')[0];
 </script>
-<script src="dashboard-i18n.js?v=20260427"></script>
+<script src="dashboard-i18n.js?v=202604272"></script>
 <script>
 // ═══════════════════════════════════════════
 // SUPABASE HELPERS
@@ -616,6 +629,133 @@ window.fillAccVisitQaForm = function (qa, narrative) {
   }
   const narEl = document.getElementById('acc_visit_narrative');
   if (narEl) narEl.value = narrative != null ? String(narrative) : '';
+  for (let j = 1; j <= VISIT_QA_REQUIRED; j++) window.syncAccQaPresetFromQuestion && window.syncAccQaPresetFromQuestion(j);
+  window.refreshAccPanelSummaries && window.refreshAccPanelSummaries();
+};
+
+function accDomQaRow(i) {
+  const wt = document.getElementById('acc_qa_who_type_' + i);
+  const id = document.getElementById('acc_qa_who_id_' + i);
+  const qu = document.getElementById('acc_qa_question_' + i);
+  const an = document.getElementById('acc_qa_answer_' + i);
+  return {
+    whoType: wt ? wt.value : '',
+    whoId: id ? id.value : '',
+    question: qu ? qu.value : '',
+    answer: an ? an.value : ''
+  };
+}
+
+window.syncAccQaPresetFromQuestion = function (qi) {
+  const pr = document.getElementById('acc_qa_preset_' + qi);
+  const qEl = document.getElementById('acc_qa_question_' + qi);
+  if (!pr || !qEl) return;
+  const t = String(qEl.value || '').trim();
+  if (!t) {
+    pr.value = '';
+    return;
+  }
+  let matched = false;
+  for (let oi = 0; oi < pr.options.length; oi++) {
+    const opt = pr.options[oi];
+    const v = String(opt.value || '');
+    if (!v || v === '__other') continue;
+    if (v === t) {
+      pr.value = v;
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) pr.value = '__other';
+};
+
+window.onAccQaPresetChange = function (qi) {
+  const pr = document.getElementById('acc_qa_preset_' + qi);
+  const qEl = document.getElementById('acc_qa_question_' + qi);
+  if (!pr || !qEl) return;
+  const v = String(pr.value || '');
+  if (!v) return;
+  if (v === '__other') return;
+  qEl.value = v;
+  window.refreshAccPanelSummaries && window.refreshAccPanelSummaries();
+  if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
+};
+
+window.toggleAccClassVisitedAdvanced = function () {
+  const wrap = document.getElementById('acc_class_visited_adv_wrap');
+  const btn = document.getElementById('acc_class_visited_toggle_btn');
+  if (!wrap || !btn) return;
+  const open = wrap.style.display !== 'none';
+  if (open) {
+    wrap.style.display = 'none';
+    btn.textContent = typeof window.dashTranslate === 'function' ? window.dashTranslate('acc.class.advShow') : typeof window.t === 'function' ? window.t('acc.class.advShow') : 'Advanced';
+  } else {
+    wrap.style.display = 'block';
+    btn.textContent = typeof window.dashTranslate === 'function' ? window.dashTranslate('acc.class.advHide') : typeof window.t === 'function' ? window.t('acc.class.advHide') : 'Hide';
+    const ta = document.getElementById('acc_class_visited');
+    if (ta) try { ta.focus(); } catch (e1) {}
+  }
+};
+
+window.refreshAccPanelSummaries = function () {
+  for (let i = 1; i <= VISIT_QA_REQUIRED; i++) {
+    const sum = document.getElementById('acc_qa_sum_' + i);
+    if (sum) sum.textContent = visitQaRowValid(accDomQaRow(i)) ? '\u2713' : '\u25CB';
+  }
+  const ta = document.getElementById('acc_class_visited');
+  const cs = document.getElementById('acc_class_visit_summary');
+  if (cs && ta) {
+    const n = (ta.value || '').length;
+    cs.textContent = (n >= 3 ? '\u2713 ' : '') + n + '/3';
+  }
+  const wrap = document.getElementById('acc_absent_actions_wrap');
+  const nAbs = wrap ? parseInt(wrap.getAttribute('data-abs-count') || '0', 10) : 0;
+  for (let i = 0; i < nAbs; i++) {
+    const s = document.getElementById('acc_abs_sum_' + i);
+    if (!s) continue;
+    const sidEl = document.getElementById('acc_abs_sid_' + i);
+    const pathEl = document.getElementById('acc_abs_path_' + i);
+    const teachEl = document.getElementById('acc_abs_teacher_' + i);
+    const explainEl = document.getElementById('acc_abs_teacher_explain_' + i);
+    const assignEl = document.getElementById('acc_abs_assignee_' + i);
+    const nameEl = document.getElementById('acc_abs_assignee_name_' + i);
+    const replyEl = document.getElementById('acc_abs_reply_' + i);
+    let assigneeTeacherId = assignEl ? assignEl.value.trim() : '';
+    let assigneeName = nameEl ? String(nameEl.value || '').trim() : '';
+    if (assigneeTeacherId === '__name_only__') assigneeTeacherId = '';
+    else if (assigneeTeacherId) assigneeName = '';
+    const row = {
+      studentId: sidEl ? sidEl.value.trim() : '',
+      path: pathEl ? pathEl.value.trim() : '',
+      teacherId: teachEl ? teachEl.value.trim() : '',
+      teacherExplanation: explainEl ? String(explainEl.value || '').trim() : '',
+      assigneeTeacherId,
+      assigneeName,
+      callReply: replyEl ? String(replyEl.value || '').trim() : ''
+    };
+    const p = String(row.path || '').trim();
+    s.textContent = absentActionRowValid(row, p) ? '\u2713' : '\u25CB';
+  }
+  for (let hi = 0; hi < HIFZ_MEMORY_SLOTS; hi++) {
+    const s = document.getElementById('acc_hf_sum_' + hi);
+    if (!s) continue;
+    const sidEl = document.getElementById('acc_hf_sid_' + hi);
+    const spanEl = document.getElementById('acc_hf_span_' + hi);
+    const prEl = document.getElementById('acc_hf_prompt_' + hi);
+    const rsEl = document.getElementById('acc_hf_resp_' + hi);
+    const posEl = document.getElementById('acc_hf_pos_' + hi);
+    const qEl = document.getElementById('acc_hf_quality_' + hi);
+    const e = {
+      studentId: sidEl ? sidEl.value.trim() : '',
+      memorySpan: spanEl ? spanEl.value.trim() : '',
+      promptAsked: prEl ? String(prEl.value || '').trim() : '',
+      studentResponse: rsEl ? String(rsEl.value || '').trim() : '',
+      progressWhere: posEl ? String(posEl.value || '').trim() : '',
+      recallQuality: qEl ? String(qEl.value || '').trim() : ''
+    };
+    const any = e.studentId || e.memorySpan || e.promptAsked || e.studentResponse || e.progressWhere || e.recallQuality;
+    s.textContent = !any ? '\u2014' : hifzMemoryEntryValid(e) ? '\u2713' : '\u25CB';
+  }
 };
 
 // ═══════════════════════════════════════════
@@ -820,6 +960,7 @@ window.syncAbsentActionsToHidden = function () {
     }
   }
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 window.toggleAccAbsentRow = function (idx) {
@@ -833,6 +974,7 @@ window.toggleAccAbsentRow = function (idx) {
   if (rw) rw.style.display = path === 'principal_called' || path === 'assigned_call' ? 'block' : 'none';
   if (aw) aw.style.display = path === 'assigned_call' ? 'block' : 'none';
   if (nw && assignEl) nw.style.display = path === 'assigned_call' && assignEl.value === '__name_only__' ? 'block' : 'none';
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 window.initAbsentActionsBlockFromStore = function () {
@@ -884,6 +1026,7 @@ window.initAbsentActionsBlockFromStore = function () {
     }
   }
   if (parsed || !((hid.value || '').trim()) || !n) window.syncAbsentActionsToHidden();
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 function hifzRosterStudents(students) {
@@ -995,6 +1138,7 @@ window.syncHifzNotesToHidden = function () {
     hint.textContent = hifzNotesHintText(hid.value, rosterLen > 0 ? [{ id: '_' }] : []);
   }
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 window.initHifzNotesBlockFromStore = function () {
@@ -1041,6 +1185,7 @@ window.initHifzNotesBlockFromStore = function () {
     }
   }
   if (parsed || !((hid.value || '').trim())) window.syncHifzNotesToHidden();
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 /** Before `innerHTML` rebuild: unsaved جوابدہی fields on the principal dashboard (auto-refresh / loadAll). */
@@ -1083,6 +1228,7 @@ function initAccountabilityAfterDraftRestore() {
   window.refreshAccVisitWhoOptions && window.refreshAccVisitWhoOptions();
   window.initAbsentActionsBlockFromStore && window.initAbsentActionsBlockFromStore();
   window.initHifzNotesBlockFromStore && window.initHifzNotesBlockFromStore();
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 }
 
 /** DOM snapshot for ذمہ داریاں checklist (same rules as score header). */
@@ -1547,59 +1693,84 @@ function render() {
     </div>`;
     html += '</div>';
 
-    // ═══ Section C: Descriptive Reports ═══
+    // ═══ Section C: Descriptive Reports (intro + sticky sub-nav) ═══
     html += '<div class="section" id="acc_anchor_report" style="scroll-margin-top:72px"><h2>' + escHtml(dashT('acc.report.title')) + '</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">' + escHtml(dashT('acc.report.hint')) + '</div>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:8px">' + escHtml(dashT('acc.report.hint')) + '</div>';
+    html += '<nav class="acc-subnav" aria-label="' + escAttr(dashT('acc.nav.aria')) + '">' +
+      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_class_visit\')">' + escHtml(dashT('acc.nav.class')) + '</button>' +
+      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_inspection\')">' + escHtml(dashT('acc.nav.inspect')) + '</button>' +
+      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_absent_actions\')">' + escHtml(dashT('acc.nav.absent')) + '</button>' +
+      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_hifz\')">' + escHtml(dashT('acc.nav.hifz')) + '</button>' +
+      '<button type="button" class="btn btn-sm" onclick="window.scrollToAccSection(\'acc_anchor_remarks\')">' + escHtml(dashT('acc.nav.remarks')) + '</button>' +
+      '</nav></div>';
 
     const savedVisited = (typeof rpt.class_visited === 'string' ? rpt.class_visited : '') || '';
     const savedClassMatch = savedVisited.match(/^\[([a-zA-Z0-9_]+)\]/);
     const savedClassSel = savedClassMatch ? savedClassMatch[1] : '';
-    html += `<div id="acc_anchor_class_visit" style="margin-bottom:14px;scroll-margin-top:72px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <label style="font-size:12px;font-weight:700">${escHtml(dashT('acc.class.pick'))}</label>
-        <span id="acc_class_visited_cnt" style="font-size:9px;color:#8a9ab5"></span>
-      </div>
-      <select id="acc_inspect_class_sel" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
-        <option value="">${escHtml(dashT('acc.class.optChoose'))}</option>
-        ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${escHtml(classLabel(cid))}</option>`).join('')}
-      </select>
-      <div id="acc_inspect_preview" style="font-size:11px;line-height:1.65;color:var(--wh);background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;padding:12px;margin-bottom:8px;min-height:48px">
-        <span style="color:#8a9ab5">${escHtml(dashT('acc.class.previewHint'))}</span>
-      </div>
-      <div style="font-size:9px;color:#8a9ab5;margin-bottom:4px">${escHtml(dashT('acc.class.subnoteHint'))}</div>
-      <textarea id="acc_class_visited" rows="4" placeholder="${escAttr(dashT('acc.class.phEdit'))}" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter()" style="${iS('resize:vertical;')}"></textarea>
+    html += `<div class="section" id="acc_anchor_class_visit" style="scroll-margin-top:72px">
+      <details class="acc-details acc-class-details" open>
+        <summary class="acc-details-sum"><span>${escHtml(dashT('acc.panel.classSum'))}</span><span id="acc_class_visit_summary" class="acc-sum-tag" style="color:#8a9ab5">\u2014</span></summary>
+        <div class="acc-details-body">
+          <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(dashT('acc.class.pick'))}</label>
+          <select id="acc_inspect_class_sel" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
+            <option value="">${escHtml(dashT('acc.class.optChoose'))}</option>
+            ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${escHtml(classLabel(cid))}</option>`).join('')}
+          </select>
+          <div id="acc_inspect_preview" style="font-size:11px;line-height:1.65;color:var(--wh);background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;padding:12px;margin-bottom:8px;min-height:48px">
+            <span style="color:#8a9ab5">${escHtml(dashT('acc.class.previewHint'))}</span>
+          </div>
+          <div style="font-size:9px;color:#8a9ab5;margin-bottom:6px">${escHtml(dashT('acc.class.subnoteHint'))}</div>
+          <button type="button" class="btn btn-sm btn-bl" id="acc_class_visited_toggle_btn" onclick="window.toggleAccClassVisitedAdvanced()">${escHtml(dashT('acc.class.advShow'))}</button>
+          <div id="acc_class_visited_adv_wrap" style="display:none;margin-top:8px">
+            <textarea id="acc_class_visited" rows="4" placeholder="${escAttr(dashT('acc.class.phEdit'))}" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter();window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+          </div>
+        </div>
+      </details>
     </div>`;
 
     const coRaw = typeof rpt.class_observations === 'string' ? rpt.class_observations : '';
     const visits0 = parseVisitObservations(coRaw);
+    const accQaPresetKeys = ['acc.qa.preset.lesson', 'acc.qa.preset.discipline', 'acc.qa.preset.env', 'acc.qa.preset.behavior', 'acc.qa.preset.engagement'];
     let accQaFormHtml = '';
     for (let qi = 1; qi <= VISIT_QA_REQUIRED; qi++) {
-      accQaFormHtml += `<div style="margin-bottom:12px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
-        <div style="font-weight:800;font-size:11px;margin-bottom:10px;color:var(--gd)">${escHtml(dashT('acc.qa.hdr', { qi }))}</div>
-        <div style="display:flex;flex-direction:column;gap:10px">
+      const presetOpts =
+        '<option value="">' +
+        escHtml(dashT('acc.qa.presetChoose')) +
+        '</option>' +
+        accQaPresetKeys.map(k => '<option value="' + escAttr(dashT(k)) + '">' + escHtml(dashT(k)) + '</option>').join('') +
+        '<option value="__other">' +
+        escHtml(dashT('acc.qa.presetOther')) +
+        '</option>';
+      accQaFormHtml += `<details class="acc-details acc-qa-details" id="acc_qa_details_${qi}">
+        <summary class="acc-details-sum"><span>${escHtml(dashT('acc.qa.hdr', { qi }))}</span><span id="acc_qa_sum_${qi}" class="acc-sum-tag" style="color:#8a9ab5">\u25CB</span></summary>
+        <div class="acc-details-body" style="display:flex;flex-direction:column;gap:10px">
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.qa.toLabel')}</label>
-            <select id="acc_qa_who_type_${qi}" onchange="window.refreshAccVisitQaWhoRow(${qi})" style="${iS('')}">
+            <select id="acc_qa_who_type_${qi}" onchange="window.refreshAccVisitQaWhoRow(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}">
               <option value="student">${escHtml(dashT('acc.qa.optStudent'))}</option>
               <option value="teacher">${escHtml(dashT('acc.qa.optTeacher'))}</option>
             </select>
           </div>
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.qa.nameLabel')}</label>
-            <select id="acc_qa_who_id_${qi}" style="${iS('')}"></select>
+            <select id="acc_qa_who_id_${qi}" onchange="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}"></select>
+          </div>
+          <div>
+            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.presetLabel'))}</label>
+            <select id="acc_qa_preset_${qi}" onchange="window.onAccQaPresetChange(${qi})" style="${iS('margin-bottom:6px;')}">${presetOpts}</select>
           </div>
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.qLabel'))}</label>
-            <textarea id="acc_qa_question_${qi}" rows="2" placeholder="${escAttr(dashT('acc.qa.qPh'))}" style="${iS('resize:vertical;')}"></textarea>
+            <textarea id="acc_qa_question_${qi}" rows="2" placeholder="${escAttr(dashT('acc.qa.qPh'))}" oninput="window.syncAccQaPresetFromQuestion(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
           </div>
           <div>
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.aLabel'))}</label>
-            <textarea id="acc_qa_answer_${qi}" rows="2" placeholder="${escAttr(dashT('acc.qa.aPh'))}" style="${iS('resize:vertical;')}"></textarea>
+            <textarea id="acc_qa_answer_${qi}" rows="2" placeholder="${escAttr(dashT('acc.qa.aPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
           </div>
         </div>
-      </div>`;
+      </details>`;
     }
-    html += `<div id="acc_anchor_inspection" style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1f3d5e;scroll-margin-top:72px">
+    html += `<div class="section" id="acc_anchor_inspection" style="scroll-margin-top:72px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">${escHtml(dashT('acc.inspect.title'))}</label>
         <span id="acc_class_obs_score_hint" style="font-size:9px;color:#8a9ab5"></span>
@@ -1608,7 +1779,7 @@ function render() {
       ${accQaFormHtml}
       <div style="margin-bottom:10px">
         <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.inspect.extraNotes')}</label>
-        <textarea id="acc_visit_narrative" rows="2" placeholder="${escAttr(dashT('acc.visit.narrPh'))}" style="${iS('resize:vertical;')}"></textarea>
+        <textarea id="acc_visit_narrative" rows="2" placeholder="${escAttr(dashT('acc.visit.narrPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
       </div>
       <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">${escHtml(dashT('acc.inspect.saveBtn'))}</button>
       <div id="acc_visits_list" style="margin-bottom:4px">${formatVisitObsCardsHtml(visits0)}</div>
@@ -1626,9 +1797,10 @@ function render() {
       absentListDedup.forEach((abs, idx) => {
         const cid = abs.class || '';
         const badge = cid ? `<span class="class-badge ${escAttr(cid)}">${escHtml(classLabel(cid))}</span> ` : '';
-        absentFollowHtml += `<div style="margin-bottom:14px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
+        absentFollowHtml += `<details class="acc-details acc-abs-row-details" style="margin-bottom:10px">
+          <summary class="acc-details-sum" style="font-size:12px">${badge}${escHtml(abs.name)} <span id="acc_abs_sum_${idx}" class="acc-sum-tag" style="color:#8a9ab5">\u25CB</span></summary>
+          <div class="acc-details-body">
           <input type="hidden" id="acc_abs_sid_${idx}" value="${escAttr(abs.student_id)}">
-          <div style="font-weight:800;font-size:12px;margin-bottom:8px;color:var(--gd)">${badge}${escHtml(abs.name)}</div>
           <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.absent.teacherFirst'))}</div>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.nextPath')}</label>
           <select id="acc_abs_path_${idx}" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
@@ -1659,10 +1831,11 @@ function render() {
             <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.callReply')}</label>
             <textarea id="acc_abs_reply_${idx}" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(dashT('acc.absent.callPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
-        </div>`;
+          </div>
+        </details>`;
       });
     }
-    html += `<div id="acc_anchor_absent_actions" style="margin-bottom:14px;scroll-margin-top:72px">
+    html += `<div class="section" id="acc_anchor_absent_actions" style="scroll-margin-top:72px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">${escHtml(dashT('acc.absent.blockTitle'))}</label>
         <span id="acc_absent_actions_hint" style="font-size:9px;color:${absentActOk?'var(--gr)':'#8a9ab5'}">${escHtml(absentActHint)}</span>
@@ -1685,8 +1858,9 @@ function render() {
     } else {
       for (let hi = 0; hi < HIFZ_MEMORY_SLOTS; hi++) {
         const slotN = hi + 1;
-        hifzSlotsHtml += `<div style="margin-bottom:14px;padding:12px;border:1px solid #1f3d5e;border-radius:12px;background:var(--dk3)">
-          <div style="font-weight:800;font-size:11px;margin-bottom:8px;color:var(--gd)">${escHtml(dashT('acc.hifz.slotTitle', { n: slotN }))}</div>
+        hifzSlotsHtml += `<details class="acc-details acc-hifz-slot-details" style="margin-bottom:10px">
+          <summary class="acc-details-sum" style="font-size:11px">${escHtml(dashT('acc.hifz.slotTitle', { n: slotN }))} <span id="acc_hf_sum_${hi}" class="acc-sum-tag" style="color:#8a9ab5">\u2014</span></summary>
+          <div class="acc-details-body">
           <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.hifz.slotHelp'))}</div>
           <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.student')}</label>
           <select id="acc_hf_sid_${hi}" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${hifzStudentOpts}</select>
@@ -1711,10 +1885,11 @@ function render() {
             <option value="adequate">${escHtml(dashT('acc.hifz.qAdeq'))}</option>
             <option value="strong">${escHtml(dashT('acc.hifz.qStrong'))}</option>
           </select>
-        </div>`;
+          </div>
+        </details>`;
       }
     }
-    const hifzBlockHtml = `<div id="acc_anchor_hifz" style="margin-bottom:14px;scroll-margin-top:72px">
+    const hifzBlockHtml = `<div class="section" id="acc_anchor_hifz" style="scroll-margin-top:72px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">${escHtml(dashT('acc.hifz.blockTitle'))}</label>
         <span id="acc_hifz_actions_hint" style="font-size:9px;color:${hifzActOk?'var(--gr)':'#8a9ab5'}">${escHtml(hifzActHint)}</span>
@@ -1732,18 +1907,18 @@ function render() {
     descFields.forEach(f => {
       const val = rpt[f.field] || '';
       const ok = val.length >= f.min;
-      const wrapAttr = f.id === 'acc_remarks' ? 'id="acc_anchor_remarks" ' : '';
       const fLabel = dashT(f.labelKey);
       const fPh = dashT(f.phKey);
-      html += `<div ${wrapAttr} style="margin-bottom:14px${f.id === 'acc_remarks' ? ';scroll-margin-top:72px' : ''}">
+      const secOpen = f.id === 'acc_remarks' ? '<div class="section" id="acc_anchor_remarks" style="scroll-margin-top:72px;margin-bottom:12px">' : '<div style="margin-bottom:14px">';
+      const secClose = '</div>';
+      html += secOpen + `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <label style="font-size:12px;font-weight:700">${escHtml(fLabel)}</label>
           <span style="font-size:9px;color:${ok?'var(--gr)':'#8a9ab5'}">${val.length}/${f.min} ${ok?'✅':''}</span>
         </div>
-        <textarea id="${f.id}" rows="${f.rows}" placeholder="${escAttr(fPh)}" style="${iS('resize:vertical;')}">${val}</textarea>
-      </div>`;
+        <textarea id="${f.id}" rows="${f.rows}" placeholder="${escAttr(fPh)}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}">${val}</textarea>
+      ` + secClose;
     });
-    html += '</div>';
 
     // ═══ Section D: Checklist (progress + confirmations) ═══
     html += '<div class="section" id="acc_anchor_checklist" style="scroll-margin-top:72px"><h2>' + escHtml(dashT('acc.chklist.sectionTitle')) + '</h2>';
@@ -2458,6 +2633,7 @@ function render() {
       initAdminInspectClassFromSaved();
     }
     window.initAccountabilityChecklistUi && window.initAccountabilityChecklistUi();
+    if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
   }
   if (activeTab === 'sAttend' && sAttendUi.search.length) {
     const inp = document.getElementById('sSearch');
@@ -2637,10 +2813,13 @@ function exportFilteredCSV() {
 // ═══════════════════════════════════════════
 window.updateAccClassVisitedCounter = function () {
   const ta = document.getElementById('acc_class_visited');
-  const cnt = document.getElementById('acc_class_visited_cnt');
-  if (!ta || !cnt) return;
+  if (!ta) return;
   const n = (ta.value || '').length;
-  cnt.textContent = n + '/3' + (n >= 3 ? ' \u2713' : '');
+  const line = n + '/3' + (n >= 3 ? ' \u2713' : '');
+  const cnt = document.getElementById('acc_class_visited_cnt');
+  if (cnt) cnt.textContent = line;
+  const vs = document.getElementById('acc_class_visit_summary');
+  if (vs) vs.textContent = (n >= 3 ? '\u2713 ' : '\u25CB ') + n + '/3';
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
 };
 
@@ -2659,6 +2838,7 @@ window.initAdminInspectClassFromSaved = function () {
   window.onInspectClassChange({ preserveTextarea: !!(v && v.trim()) });
   window.initAbsentActionsBlockFromStore && window.initAbsentActionsBlockFromStore();
   window.initHifzNotesBlockFromStore && window.initHifzNotesBlockFromStore();
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 window.refreshVisitsListUI = function () {
@@ -2678,6 +2858,7 @@ window.refreshVisitsListUI = function () {
     }
   }
   if (document.getElementById('acc_checklist_banner')) window.scheduleAccountabilityChecklistRefresh && window.scheduleAccountabilityChecklistRefresh();
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 window.saveClassVisitObservation = function () {
@@ -2776,6 +2957,7 @@ window.onInspectClassChange = async function (opts) {
     if (!preserveTa) ta.value = '';
     if (!skipVisitQaReload) loadAccVisitFormForClass('', null);
     window.updateAccClassVisitedCounter();
+    if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
     return;
   }
   const { periods, assignments, subjects, teachers, reportsToday } = DATA;
@@ -2792,6 +2974,7 @@ window.onInspectClassChange = async function (opts) {
     if (!preserveTa || !(ta.value || '').trim()) ta.value = textLines.join('\n');
     window.updateAccClassVisitedCounter();
     if (!skipVisitQaReload) loadAccVisitFormForClass(classId, null);
+    if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
     return;
   }
   const { period, assignment: asg, when } = slot;
@@ -2847,6 +3030,7 @@ window.onInspectClassChange = async function (opts) {
   }
   window.updateAccClassVisitedCounter();
   if (!skipVisitQaReload) loadAccVisitFormForClass(classId, asg);
+  if (typeof window.refreshAccPanelSummaries === 'function') window.refreshAccPanelSummaries();
 };
 
 // ═══════════════════════════════════════════
