@@ -540,6 +540,41 @@
 
   var _rt;
   var _rtChannel;
+  var _rtErrorCount = 0;
+  var _rtPollingId = null;
+  var _rtSubscribed = false;
+  var _rtGaveUp = false;
+  var POLL_INTERVAL_MS = 30000;
+  var MAX_REALTIME_ERRORS = 3;
+
+  function startNotifPolling() {
+    if (_rtPollingId) return;
+    console.info("[Idara notifications] Realtime unavailable — falling back to " + (POLL_INTERVAL_MS / 1000) + "s polling");
+    _rtPollingId = setInterval(function () {
+      if (typeof window.reloadNotificationsOnly === "function") {
+        try { window.reloadNotificationsOnly(); } catch (eP) {}
+      }
+    }, POLL_INTERVAL_MS);
+  }
+
+  function stopNotifPolling() {
+    if (_rtPollingId) {
+      clearInterval(_rtPollingId);
+      _rtPollingId = null;
+    }
+  }
+
+  function teardownRealtime() {
+    try {
+      if (_rtChannel && _rt && typeof _rt.removeChannel === "function") {
+        _rt.removeChannel(_rtChannel);
+      } else if (_rtChannel && typeof _rtChannel.unsubscribe === "function") {
+        _rtChannel.unsubscribe();
+      }
+    } catch (eU) {}
+    _rtChannel = null;
+  }
+
   window.initNotifRealtimeOnce = function () {
     if (_rt || typeof supabase === "undefined" || !supabase.createClient) return;
     try {
@@ -551,13 +586,39 @@
         });
       _rtChannel.subscribe(function (status, err) {
         if (status === "SUBSCRIBED") {
-          console.log("[Idara notifications] Realtime subscribed");
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          console.warn("[Idara notifications] Realtime:", status, err || "");
+          if (!_rtSubscribed) console.log("[Idara notifications] Realtime subscribed");
+          _rtSubscribed = true;
+          _rtErrorCount = 0;
+          stopNotifPolling();
+          return;
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          if (_rtGaveUp) return;
+          _rtErrorCount++;
+          if (_rtErrorCount === 1) {
+            console.warn(
+              "[Idara notifications] Realtime " + status + " — check Supabase status, " +
+                "and ensure 'notifications' is added to the supabase_realtime publication " +
+                "(SQL: ALTER PUBLICATION supabase_realtime ADD TABLE notifications;).",
+              err || "",
+            );
+          }
+          if (_rtErrorCount >= MAX_REALTIME_ERRORS) {
+            _rtGaveUp = true;
+            console.warn("[Idara notifications] Giving up on Realtime after " + _rtErrorCount + " errors. Polling will continue.");
+            teardownRealtime();
+            startNotifPolling();
+          }
         }
       });
+      setTimeout(function () {
+        if (!_rtSubscribed && !_rtGaveUp) {
+          startNotifPolling();
+        }
+      }, 5000);
     } catch (e) {
-      console.warn("realtime", e);
+      console.warn("realtime init failed — using polling fallback", e);
+      startNotifPolling();
     }
   };
 })();
