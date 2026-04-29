@@ -206,18 +206,42 @@ const exports_list = [
 const TODAY = new Date().toISOString().split('T')[0];
 </script>
 <script>
-// One-time cleanup: the React app's offline SW (sw.js) used to intercept the
-// whole /Idara/ scope and break Supabase fetches with stale cached responses.
-// Unregister any sw.js on the dashboard origin and purge its caches.
+// Self-heal: the React app's offline SW (sw.js) intercepts the whole /Idara/
+// scope and serves stale cached dashboard.html. Detect that case, unregister
+// every controlling SW, wipe caches, then hard-reload once so the live page
+// reaches the browser unmediated.
 (function () {
   if (!('serviceWorker' in navigator)) return;
+  var FLAG = 'idaraSwPurgedV3';
+  var controlled = !!navigator.serviceWorker.controller;
+  var controllerUrl = controlled ? navigator.serviceWorker.controller.scriptURL : '';
+  var swIsLegacy = /\/sw\.js(\?|$)/.test(controllerUrl);
+
+  function purgeAndReload() {
+    if (sessionStorage.getItem(FLAG) === '1') return;
+    sessionStorage.setItem(FLAG, '1');
+    var p1 = navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.map(function (r) { return r.unregister().catch(function () {}); }));
+    }).catch(function () {});
+    var p2 = ('caches' in window)
+      ? caches.keys().then(function (names) {
+          return Promise.all(names.map(function (n) { return caches.delete(n).catch(function () {}); }));
+        }).catch(function () {})
+      : Promise.resolve();
+    Promise.all([p1, p2]).then(function () {
+      try { location.reload(); } catch (e) { location.href = location.href; }
+    });
+  }
+
   try {
+    if (swIsLegacy) {
+      purgeAndReload();
+      return;
+    }
     navigator.serviceWorker.getRegistrations().then(function (regs) {
       regs.forEach(function (r) {
         var u = (r.active && r.active.scriptURL) || (r.installing && r.installing.scriptURL) || (r.waiting && r.waiting.scriptURL) || '';
-        if (/\/sw\.js(\?|$)/.test(u)) {
-          r.unregister().catch(function () {});
-        }
+        if (/\/sw\.js(\?|$)/.test(u)) r.unregister().catch(function () {});
       });
     }).catch(function () {});
     if ('caches' in window) {
