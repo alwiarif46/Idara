@@ -205,6 +205,29 @@ const exports_list = [
 ];
 const TODAY = new Date().toISOString().split('T')[0];
 </script>
+<script>
+// One-time cleanup: the React app's offline SW (sw.js) used to intercept the
+// whole /Idara/ scope and break Supabase fetches with stale cached responses.
+// Unregister any sw.js on the dashboard origin and purge its caches.
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (r) {
+        var u = (r.active && r.active.scriptURL) || (r.installing && r.installing.scriptURL) || (r.waiting && r.waiting.scriptURL) || '';
+        if (/\/sw\.js(\?|$)/.test(u)) {
+          r.unregister().catch(function () {});
+        }
+      });
+    }).catch(function () {});
+    if ('caches' in window) {
+      caches.keys().then(function (names) {
+        return Promise.all(names.filter(function (n) { return /^iri-/i.test(n); }).map(function (n) { return caches.delete(n); }));
+      }).catch(function () {});
+    }
+  } catch (e) {}
+})();
+</script>
 <script src="dashboard-i18n.js?v=202604301"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script src="idara-notify-ov.js?v=202604302"></script>

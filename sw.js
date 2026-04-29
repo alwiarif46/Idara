@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iri-app-v16';
+const CACHE_NAME = 'iri-app-v17';
 
 /** Offline shell: split modules from index.html (bump CACHE_NAME when this list changes). */
 const PRECACHE_URLS = [
@@ -26,27 +26,47 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Let Apps Script requests go straight to network — no SW interference
-  if (event.request.url.includes('script.google.com') || 
-      event.request.url.includes('googleapis.com') ||
-      event.request.url.includes('/exec')) {
+  const req = event.request;
+
+  if (req.method !== 'GET') return;
+
+  let url;
+  try {
+    url = new URL(req.url);
+  } catch (_) {
     return;
   }
 
-  // For everything else: network first, cache fallback — never cache HTML / navigations (stale index caused thuMap TDZ)
+  if (url.origin !== self.location.origin) return;
+
+  if (url.href.includes('script.google.com') ||
+      url.href.includes('googleapis.com') ||
+      url.pathname.endsWith('/exec')) {
+    return;
+  }
+
+  if (url.pathname.endsWith('/dashboard.html') ||
+      url.pathname.endsWith('/dashboard-i18n.js') ||
+      url.pathname.endsWith('/idara-notify-ov.js') ||
+      url.pathname.endsWith('/service-worker.js')) {
+    return;
+  }
+
   event.respondWith(
-    fetch(event.request)
+    fetch(req)
       .then(response => {
-        if (response && response.status === 200) {
-          const u = event.request.url;
-          const isDoc = event.request.mode === 'navigate' || /\.html($|\?)/.test(u);
-          if (!isDoc) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-          }
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+        const isDoc = req.mode === 'navigate' || /\.html($|\?)/.test(url.href);
+        if (!isDoc) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            try { cache.put(req, copy); } catch (_) { /* ignore */ }
+          });
         }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(req))
   );
 });

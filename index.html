@@ -70,7 +70,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   } catch (e) {}
 })();
 // Service Worker (query busts cached sw.js)
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=iri-app-v16').catch(function () {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=iri-app-v17').catch(function () {});
 window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
 window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
 if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
