@@ -35,14 +35,16 @@ function isUniqueViolation(err: unknown): boolean {
 type PeriodRow = { id: string | number; start_time: string; end_time: string; type: string };
 type AsgRow = { teacher_id: string; subject_id: string; period_id: string | number };
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
+  "Access-Control-Max-Age": "86400",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
-      },
-    });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   const t0 = Date.now();
@@ -90,7 +92,7 @@ Deno.serve(async (req) => {
       log("ERROR periods " + pe.message);
       return new Response(JSON.stringify({ ok: false, logs }), {
         status: 500,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
 
@@ -283,14 +285,14 @@ Deno.serve(async (req) => {
         duration_ms: dur,
         logs,
       }),
-      { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } },
+      { headers: { "Content-Type": "application/json", ...CORS_HEADERS } },
     );
   } catch (e) {
     const msg = String((e as Error)?.message || e);
     console.error("[check_missed_rows] fatal", e);
     return new Response(JSON.stringify({ ok: false, error: msg, logs }), {
       status: 500,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      headers: { "Content-Type": "application/json", ...CORS_HEADERS },
     });
   }
 });

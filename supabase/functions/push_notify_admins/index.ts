@@ -5,9 +5,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import webpush from "npm:web-push@3.6.6";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
+  "Access-Control-Max-Age": "86400",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type" } });
+    return new Response(null, { headers: CORS_HEADERS });
   }
   let title = "Idara";
   let body = "";
@@ -23,12 +30,12 @@ Deno.serve(async (req) => {
   const vapidPriv = Deno.env.get("VAPID_PRIVATE_KEY") || "";
   const vapidSub = Deno.env.get("VAPID_SUBJECT") || "mailto:admin@localhost";
   if (!vapidPub || !vapidPriv) {
-    return new Response(JSON.stringify({ ok: false, error: "VAPID keys not configured" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: false, error: "VAPID keys not configured" }), { status: 500, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
   }
   webpush.setVapidDetails(vapidSub, vapidPub, vapidPriv);
   const supa = createClient(url, key);
   const { data: subs, error } = await supa.from("push_subscriptions").select("id,endpoint,p256dh,auth").eq("is_admin", true);
-  if (error) return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+  if (error) return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
 
   let sent = 0;
   let failed = 0;
@@ -46,5 +53,5 @@ Deno.serve(async (req) => {
       if (st === 410 || st === 404) await supa.from("push_subscriptions").delete().eq("id", s.id);
     }
   }
-  return new Response(JSON.stringify({ ok: true, sent, failed }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+  return new Response(JSON.stringify({ ok: true, sent, failed }), { headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
 });
