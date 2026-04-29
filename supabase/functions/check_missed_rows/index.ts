@@ -63,10 +63,10 @@ Deno.serve(async (req) => {
     const supa = createClient(url, key);
     const today = todayYmdKarachi();
     const now = Date.now();
-    const winStart = now - 180_000;
-    const winEnd = now - 120_000;
+    const grace = Number(Deno.env.get("CHECK_GRACE_MS") || 120_000);
+    const cutoff = now - grace;
 
-    log(`start now_ms=${now} today=${today} (tz=${TZ}) window_end_ms=[${winStart},${winEnd}]`);
+    log(`start now_ms=${now} today=${today} (tz=${TZ}) cutoff_ms=${cutoff} grace_ms=${grace}`);
 
     if (vapidPub && vapidPriv) {
       webpush.setVapidDetails(vapidSub, vapidPub, vapidPriv);
@@ -97,10 +97,10 @@ Deno.serve(async (req) => {
     const periods = (periodsRaw || []).filter((p: PeriodRow) => String(p.type || "").toLowerCase() !== "archived");
     const inWindow = periods.filter((p: PeriodRow) => {
       const endMs = periodEndMs(today, p.end_time);
-      return endMs >= winStart && endMs <= winEnd;
+      return endMs <= cutoff;
     });
 
-    log(`periods_class=${periods.length} in_window=${inWindow.length}`);
+    log(`periods_class=${periods.length} completed_today=${inWindow.length}`);
 
     let totalInserted = 0;
     let totalPushesSent = 0;
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
         title: notif.title,
         body: notif.message,
         tag: `notif-${notif.id}`,
-        url: "/#notifications",
+        url: "dashboard.html#notifications",
         notif_id: notif.id,
       });
 
@@ -275,7 +275,7 @@ Deno.serve(async (req) => {
         ok: true,
         today,
         timezone: TZ,
-        periods_in_window: inWindow.length,
+        periods_completed: inWindow.length,
         total_notifications_inserted: totalInserted,
         total_pushes_sent: totalPushesSent,
         pushes_failed: totalPushFail,

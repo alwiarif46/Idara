@@ -1,11 +1,11 @@
 # `check_missed_rows` (Supabase Edge)
 
-Detects periods that **ended 120–180 seconds ago** (Asia/Karachi “today”), then for each **assignment** in that period checks:
+Catch-up scan: for every **class** period that **ended at least `CHECK_GRACE_MS` ago** (default 120 000 ms) on Asia/Karachi “today”, and for each **assignment** in that period, checks:
 
 1. **student_attendance** — any row for `date = today`, same `teacher_id` + `subject_id` (no `period_id` on that table).
 2. **daily_reports** — any row for `date = today`, same `teacher_id` + `subject_id` + `period_id`.
 
-Inserts `notifications` (`missing_attendance` / `missing_report`); duplicates are suppressed by the partial unique index. **New rows only** trigger Web Push to `push_subscriptions` where `is_admin = true`.
+Inserts `notifications` (`missing_attendance` / `missing_report`); duplicates are suppressed by the partial unique index `(type, teacher_id, period_id, date)`. **Only new rows** trigger Web Push to `push_subscriptions` where `is_admin = true`. Safe to run at any cadence (every minute, hourly, or once on demand) because the dedupe handles repeats.
 
 ## Secrets (Project → Edge Functions → Secrets)
 
@@ -16,6 +16,7 @@ Inserts `notifications` (`missing_attendance` / `missing_report`); duplicates ar
 | `VAPID_PUBLIC_KEY` | Web Push |
 | `VAPID_PRIVATE_KEY` | Web Push |
 | `VAPID_SUBJECT` | e.g. `mailto:admin@example.com` |
+| `CHECK_GRACE_MS` *(optional)* | Override grace-period in milliseconds (default `120000` = 2 min) |
 
 ## Manual invoke (testing)
 
@@ -29,7 +30,7 @@ curl -i -X POST \
   -d "{}"
 ```
 
-Safe outside the catch window: returns `periods_in_window: 0` and logs `in_window=0`.
+Returns `periods_completed`, `total_notifications_inserted`, `total_pushes_sent`, plus `logs[]`. The dashboard exposes a **"Check missed rows now"** button on the Notifications tab that POSTs the same payload.
 
 ## Cron
 

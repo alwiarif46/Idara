@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     try {
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        JSON.stringify({ title, body, url: "/dashboard.html#notifications" }),
+        JSON.stringify({ title, body, url: "dashboard.html#notifications" }),
       );
       sent++;
       await supa.from("push_subscriptions").update({ last_seen: new Date().toISOString() }).eq("id", s.id);

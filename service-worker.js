@@ -1,6 +1,6 @@
 /* Idara dashboard — Web Push */
 self.addEventListener("push", (event) => {
-  let data = { title: "Idara", body: "", url: "/dashboard.html" };
+  let data = { title: "Idara", body: "", url: "dashboard.html" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (_) {
@@ -9,12 +9,12 @@ self.addEventListener("push", (event) => {
       if (t) data.body = t;
     } catch (_) { /* ignore */ }
   }
-  const openUrl = data.url || "/dashboard.html";
+  const openUrl = data.url || "dashboard.html";
   event.waitUntil(
     self.registration.showNotification(data.title || "Idara", {
       body: data.body || "",
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "favicon.ico",
+      badge: "favicon.ico",
       tag: data.tag || undefined,
       data: { url: openUrl, notif_id: data.notif_id },
     }),
@@ -23,13 +23,15 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const raw = (event.notification.data && event.notification.data.url) || "/dashboard.html";
-  const url = new URL(raw, self.location.origin).href;
+  let raw = (event.notification.data && event.notification.data.url) || "dashboard.html";
+  raw = String(raw).replace(/^\/+/, "");
+  const base = self.registration.scope || self.location.href;
+  const url = new URL(raw, base).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const c of clientList) {
         if ("focus" in c) {
-          c.navigate(url);
+          try { c.navigate(url); } catch (_) { /* cross-origin or unsupported */ }
           return c.focus();
         }
       }
