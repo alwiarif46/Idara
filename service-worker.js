@@ -9,19 +9,22 @@ self.addEventListener("push", (event) => {
       if (t) data.body = t;
     } catch (_) { /* ignore */ }
   }
+  const openUrl = data.url || "/dashboard.html";
   event.waitUntil(
     self.registration.showNotification(data.title || "Idara", {
       body: data.body || "",
       icon: "/favicon.ico",
       badge: "/favicon.ico",
-      data: { url: data.url || "/dashboard.html" },
+      tag: data.tag || undefined,
+      data: { url: openUrl, notif_id: data.notif_id },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/dashboard.html";
+  const raw = (event.notification.data && event.notification.data.url) || "/dashboard.html";
+  const url = new URL(raw, self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const c of clientList) {
