@@ -539,16 +539,23 @@
   };
 
   var _rt;
+  var _rtChannel;
   window.initNotifRealtimeOnce = function () {
     if (_rt || typeof supabase === "undefined" || !supabase.createClient) return;
     try {
       _rt = supabase.createClient(SB_URL, SB_KEY);
-      _rt
+      _rtChannel = _rt
         .channel("idara-notifications")
         .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, function () {
           if (typeof window.reloadNotificationsOnly === "function") window.reloadNotificationsOnly();
-        })
-        .subscribe();
+        });
+      _rtChannel.subscribe(function (status, err) {
+        if (status === "SUBSCRIBED") {
+          console.log("[Idara notifications] Realtime subscribed");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          console.warn("[Idara notifications] Realtime:", status, err || "");
+        }
+      });
     } catch (e) {
       console.warn("realtime", e);
     }
