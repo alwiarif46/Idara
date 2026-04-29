@@ -237,9 +237,25 @@ const TODAY = new Date().toISOString().split('T')[0];
 // ═══════════════════════════════════════════
 const headers = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
 async function sb(table, params='') {
-  const r = await fetch(SB_URL+'/rest/v1/'+table+'?'+params, { headers: headers });
-  if (!r.ok) throw new Error(r.status+' '+r.statusText);
-  return r.json();
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, 20000) : null;
+  try {
+    const r = await fetch(SB_URL+'/rest/v1/'+table+'?'+params, {
+      headers: headers,
+      signal: ctrl ? ctrl.signal : undefined,
+    });
+    if (!r.ok) {
+      var bodyText = '';
+      try { bodyText = await r.text(); } catch (_) {}
+      throw new Error('GET '+table+' '+r.status+' '+r.statusText+(bodyText?(' — '+bodyText.slice(0,160)):''));
+    }
+    return r.json();
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('GET '+table+' timed out after 20s');
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 async function sbPatch(table, filter, data) {
   const r = await fetch(SB_URL+'/rest/v1/'+table+'?'+filter, {
@@ -3585,11 +3601,26 @@ async function submitAccountability() {
   try {
     if (location.hash === "#notifications") activeTab = TAB_NOTIFICATIONS;
   } catch (eInit) {}
-  await loadAll();
-  render();
-  // Auto-refresh every 60 seconds
+  try {
+    await loadAll();
+  } catch (eLoad) {
+    console.error('[Idara] loadAll failed:', eLoad);
+    var em1 = String((eLoad && eLoad.message) || eLoad || 'unknown error').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    var ap1 = document.getElementById('app');
+    if (ap1) ap1.innerHTML = '<div class="loading">\u274C ' + (typeof window.t === 'function' ? window.t('load.fail') : 'Could not reach Supabase') + '<br><small>' + em1 + '</small></div>';
+    return;
+  }
+  try {
+    render();
+  } catch (eRender) {
+    console.error('[Idara] render failed:', eRender);
+    var em2 = String((eRender && eRender.message) || eRender || 'render error').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    var ap2 = document.getElementById('app');
+    if (ap2) ap2.innerHTML = '<div class="loading">\u274C Render error<br><small>' + em2 + '</small><br><small>Open DevTools console for the full stack.</small></div>';
+    return;
+  }
   setInterval(async () => {
-    try { await loadAll(); render(); } catch(e) {}
+    try { await loadAll(); render(); } catch(e) { console.warn('[Idara] auto-refresh failed:', e); }
   }, 60000);
 })();
 </script>
