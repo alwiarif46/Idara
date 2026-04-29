@@ -252,7 +252,7 @@ const TODAY = new Date().toISOString().split('T')[0];
   } catch (e) {}
 })();
 </script>
-<script src="dashboard-i18n.js?v=202604301"></script>
+<script src="dashboard-i18n.js?v=202604303"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script src="idara-notify-ov.js?v=202604302"></script>
 <script>
@@ -698,6 +698,78 @@ function pendingDailyReports(assignments, reportsToday, tAttToday, teachers, sub
   miss.sort((x, y) => (x.tname + x.subn).localeCompare(y.tname + y.subn, dashSortLocale()));
   return miss;
 }
+
+window.runPeriodFilingCheck = function () {
+  var T = typeof window.dashTranslate === 'function' ? window.dashTranslate : (typeof window.t === 'function' ? window.t : function (k) { return String(k); });
+  var clsEl = document.getElementById('pf-class');
+  var perEl = document.getElementById('pf-period');
+  var out = document.getElementById('pf-result');
+  if (!out) return;
+  if (!clsEl || !perEl || !clsEl.value || !perEl.value) {
+    out.innerHTML = '<div style="color:#fdba74;font-size:12px">' + escHtml(T('pf.pickBoth')) + '</div>';
+    return;
+  }
+  var D = typeof DATA !== 'undefined' ? DATA : null;
+  if (!D || !Array.isArray(D.assignments)) {
+    out.innerHTML = '<div style="color:#fdba74;font-size:12px">' + escHtml(T('pf.noData')) + '</div>';
+    return;
+  }
+  var classId = clsEl.value;
+  var periodId = perEl.value;
+  var asg = findAssignmentForClassPeriod(D.assignments, D.subjects || [], classId, periodId);
+  if (!asg) {
+    out.innerHTML = '<div style="color:#8a9ab5;font-size:12px;font-weight:700">' + escHtml(T('pf.noSlot')) + '</div>';
+    return;
+  }
+  var tid = String(asg.teacher_id || '');
+  var sid = String(asg.subject_id || '');
+  var pid = String(asg.period_id != null ? asg.period_id : periodId);
+  var teachers = D.teachers || [];
+  var subjects = D.subjects || [];
+  var tch = teachers.find(function (x) { return String(x.id) === tid; });
+  var sub = subjects.find(function (x) { return String(x.id) === sid; });
+  var tname = tch ? tch.name : tid;
+  var sname = sub ? (sub.name || sid) : sid;
+  var tRec = (D.tAttToday || []).find(function (x) { return x && String(x.teacher_id) === tid; });
+  var tStat = tRec && tRec.status ? String(tRec.status).toLowerCase() : '';
+  var tLine = T('pf.tUnknown');
+  if (tStat === 'present') tLine = T('pf.tPresent');
+  else if (tStat === 'absent') tLine = T('pf.tAbsent');
+  else if (tStat === 'leave') tLine = T('pf.tLeave');
+  var teacherSkip = tStat === 'absent' || tStat === 'leave';
+  var hasAtt = (D.sAttToday || []).some(function (r) {
+    return r && String(r.teacher_id) === tid && String(r.subject_id) === sid;
+  });
+  var rep = (D.reportsToday || []).find(function (r) {
+    return r && String(r.teacher_id) === tid && String(r.subject_id) === sid && String(r.period_id) === pid;
+  });
+  var attLabel = hasAtt ? T('pf.attYes') : T('pf.attNo');
+  var repLabel = rep ? T('pf.repYes') : T('pf.repNo');
+  var repBlock = '';
+  if (rep) {
+    var tp = rep.target_page != null && String(rep.target_page).trim() !== '' ? String(rep.target_page) : '\u2014';
+    var ap = rep.actual_page != null && String(rep.actual_page).trim() !== '' ? String(rep.actual_page) : '\u2014';
+    var comp = rep.complete === true || rep.complete === 1 || String(rep.complete).toLowerCase() === 'true';
+    var rs = rep.reason != null && String(rep.reason).trim() !== '' ? String(rep.reason).trim() : '';
+    repBlock =
+      '<div style="margin-top:10px;padding:10px;background:var(--dk);border-radius:8px;font-size:11px;color:#c5cee0;line-height:1.55">' +
+      '<div><strong style="color:var(--gd)">' + escHtml(T('pf.repDetail')) + '</strong></div>' +
+      '<div>' + escHtml(T('pf.target')) + ': <strong>' + escHtml(tp) + '</strong> \u00b7 ' + escHtml(T('pf.actual')) + ': <strong>' + escHtml(ap) + '</strong></div>' +
+      '<div>' + escHtml(T('pf.complete')) + ': <strong>' + escHtml(comp ? T('pf.boolYes') : T('pf.boolNo')) + '</strong></div>' +
+      (rs ? '<div style="margin-top:6px">' + escHtml(T('pf.reason')) + ': ' + escHtml(rs) + '</div>' : '') +
+      '</div>';
+  }
+  var skipNote = teacherSkip ? '<div style="margin-top:8px;font-size:10px;color:#fdba74">' + escHtml(T('pf.tSkip')) + '</div>' : '';
+  out.innerHTML =
+    '<div class="period-card" style="margin-top:10px;border-right:4px solid var(--gd)">' +
+    '<div style="font-weight:800;font-size:13px;margin-bottom:8px">' + escHtml(tname) + ' \u00b7 ' + escHtml(sname) + '</div>' +
+    '<div style="font-size:11px;color:#c5cee0;margin-bottom:4px"><strong>' + escHtml(T('pf.teacher')) + ':</strong> ' + escHtml(tLine) + '</div>' +
+    '<div style="font-size:11px;color:#c5cee0;margin-bottom:4px"><strong>' + escHtml(T('pf.att')) + ':</strong> ' + escHtml(attLabel) + '</div>' +
+    '<div style="font-size:11px;color:#c5cee0"><strong>' + escHtml(T('pf.rep')) + ':</strong> ' + escHtml(repLabel) + '</div>' +
+    repBlock +
+    skipNote +
+    '</div>';
+};
 
 /** Submitted today but actual pages still below target (same rows as `daily_reports` for TODAY). */
 function reportsBehindSyllabusTarget(reportsToday) {
@@ -1919,6 +1991,29 @@ function render() {
       }
       html += '</div>';
     }
+
+    const pfClassOpts = CLASS_ORDER.map(function (cid) {
+      var lab = typeof classLabel === 'function' ? classLabel(cid) : cid;
+      return '<option value="' + escAttr(cid) + '">' + escHtml(lab || cid) + '</option>';
+    }).join('');
+    const pfPeriodOpts = (periods || []).filter(function (p) {
+      var typ = String(p.type || '').toLowerCase();
+      return typ !== 'break' && typ !== 'archived';
+    }).sort(function (a, b) { return Number(a.id) - Number(b.id); }).map(function (p) {
+      var lab = 'P' + String(p.id) + ' — ' + String(p.start_time || '') + '\u2013' + String(p.end_time || '');
+      var sel = curPeriod && String(curPeriod.id) === String(p.id) ? ' selected' : '';
+      return '<option value="' + escAttr(String(p.id)) + '"' + sel + '>' + escHtml(lab) + '</option>';
+    }).join('');
+    html += '<div class="section" style="border:1.5px solid #3b6cb855">';
+    html += '<h2>' + escHtml(dashT('pf.title')) + '</h2>';
+    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.5">' + escHtml(dashT('pf.help')) + '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px">';
+    html += '<div><label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">' + escHtml(dashT('pf.class')) + '</label>';
+    html += '<select id="pf-class" class="acc-field-box" style="min-width:140px">' + pfClassOpts + '</select></div>';
+    html += '<div><label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">' + escHtml(dashT('pf.period')) + '</label>';
+    html += '<select id="pf-period" class="acc-field-box" style="min-width:200px">' + pfPeriodOpts + '</select></div>';
+    html += '<button type="button" class="btn btn-gd btn-sm" onclick="window.runPeriodFilingCheck&&window.runPeriodFilingCheck()">' + escHtml(dashT('pf.check')) + '</button>';
+    html += '</div><div id="pf-result"></div></div>';
 
     // Absent Teachers Today
     const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
