@@ -252,7 +252,7 @@ const TODAY = new Date().toISOString().split('T')[0];
   } catch (e) {}
 })();
 </script>
-<script src="dashboard-i18n.js?v=202604303"></script>
+<script src="dashboard-i18n.js?v=202604304"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script src="idara-notify-ov.js?v=202604302"></script>
 <script>
@@ -334,6 +334,24 @@ function todayIST() {
   return new Date().toLocaleDateString(tag,{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Kolkata'});
 }
 
+/** Match header clock / todayIST (India time used across this dashboard). */
+function isThursdayKolkata() {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date()) === 'Thu';
+  } catch (e) {
+    return new Date().getDay() === 4;
+  }
+}
+
+function todayYmdKolkata() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 // ═══════════════════════════════════════════
 // LOAD ALL DATA
 // ═══════════════════════════════════════════
@@ -395,6 +413,14 @@ async function loadAll() {
     } catch (e) {
       console.warn('app_config:', e);
     }
+    let thuTestsToday = [];
+    try {
+      const thuDate = todayYmdKolkata();
+      const tt = await sb('thursday_tests', 'select=*&date=eq.' + thuDate + '&order=created_at.desc&limit=200');
+      thuTestsToday = Array.isArray(tt) ? tt : [];
+    } catch (e) {
+      console.warn('thursday_tests:', e);
+    }
     const notificationsUnread = notifications.filter(function (n) {
       return n && !n.is_read;
     }).length;
@@ -408,6 +434,7 @@ async function loadAll() {
       sAttToday,
       dAttToday,
       reportsToday,
+      thuTestsToday,
       leaveSummary,
       adminTasks,
       adminScores,
@@ -1841,7 +1868,7 @@ function render() {
     window.syncHifzNotesToHidden();
   }
   const accountabilityDraft = (activeTab === TAB_ACCOUNTABILITY) ? captureAccountabilityDraft() : null;
-  const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,leaveSummary} = DATA;
+  const {teachers,subjects,students,periods,assignments,tAttToday,sAttToday,dAttToday,reportsToday,thuTestsToday = [],leaveSummary} = DATA;
   const notifications = DATA.notifications || [];
   const notificationsUnread = DATA.notificationsUnread || 0;
   const appConfig = DATA.appConfig || {};
@@ -1935,34 +1962,64 @@ function render() {
       <input type="hidden" id="push-vapid-pub" value="${escAttr(vpk)}"/>
     </div>`;
 
-    // Current Period
+    // Current Period — on Thursday (Kolkata) show Thursday tests instead of timetable slot
     html += '<div class="current-period">';
-    html += `<h2>🕐 ${dashT('ov.nowPeriod')} — ${curPeriod ? dashT('ov.period')+' '+curPeriod.id+' ('+curPeriod.start_time+'–'+curPeriod.end_time+')' : dashT('ov.noPeriod')}</h2>`;
-    if (curPeriod) {
-      const curAssignments = assignments.filter(a => a.period_id === curPeriod.id);
-      if (curAssignments.length) {
-        curAssignments.forEach(a => {
-          const tm = teachers.find(x=>x.id===a.teacher_id);
-          const s = subjects.find(x=>x.id===a.subject_id);
-          const tAtt = tAttToday.find(x=>x.teacher_id===a.teacher_id);
-          const isAbsent = tAtt && (tAtt.status==='absent'||tAtt.status==='leave');
-          html += `<div class="period-card" style="${isAbsent?'border:2px solid var(--rd);opacity:.7':''}">
+    if (isThursdayKolkata()) {
+      html += '<h2>✍️ ' + escHtml(dashT('ov.thuBlockTitle')) + '</h2>';
+      html += '<div style="font-size:10px;color:#c5cee0;margin-bottom:10px;line-height:1.45">' + escHtml(dashT('ov.thuBlockHint')) + '</div>';
+      const thuRows = thuTestsToday || [];
+      if (thuRows.length) {
+        html += '<div style="max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch">';
+        thuRows.forEach(function (row) {
+          if (!row) return;
+          var cls = row.class || '';
+          var clsLab = cls && typeof classLabel === 'function' ? classLabel(cls) : cls;
+          var exm = escHtml(row.examiner_name || row.examiner_id || '—');
+          var sub = escHtml(row.subject_name || row.subject_id || '—');
+          var bits = [];
+          if (row.excellent != null && String(row.excellent).trim() !== '') bits.push(escHtml(dashT('ov.thuE')) + ' ' + escHtml(String(row.excellent)));
+          if (row.good != null && String(row.good).trim() !== '') bits.push(escHtml(dashT('ov.thuG')) + ' ' + escHtml(String(row.good)));
+          if (row.weak != null && String(row.weak).trim() !== '') bits.push(escHtml(dashT('ov.thuW')) + ' ' + escHtml(String(row.weak)));
+          if (row.fail != null && String(row.fail).trim() !== '') bits.push(escHtml(dashT('ov.thuF')) + ' ' + escHtml(String(row.fail)));
+          if (row.average != null && String(row.average).trim() !== '') bits.push(escHtml(dashT('ov.thuAvg')) + ' ' + escHtml(String(row.average)));
+          var scoreLine = bits.length ? '<div style="font-size:10px;color:#8a9ab5;margin-top:4px">' + bits.join(' · ') + '</div>' : '';
+          html += '<div class="period-card" style="margin-bottom:6px;border-right:4px solid var(--yl)">';
+          html += '<div><div class="teacher">' + exm + '</div>';
+          html += '<div class="subject">' + sub + (cls ? ' <span class="class-badge ' + escAttr(String(cls)) + '">' + escHtml(clsLab || cls) + '</span>' : '') + '</div></div>';
+          html += scoreLine + '</div>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div style="color:#8a9ab5;font-size:12px">' + escHtml(dashT('ov.thuEmpty')) + '</div>';
+      }
+    } else {
+      html += `<h2>🕐 ${dashT('ov.nowPeriod')} — ${curPeriod ? dashT('ov.period')+' '+curPeriod.id+' ('+curPeriod.start_time+'–'+curPeriod.end_time+')' : dashT('ov.noPeriod')}</h2>`;
+      if (curPeriod) {
+        const curAssignments = assignments.filter(a => a.period_id === curPeriod.id);
+        if (curAssignments.length) {
+          curAssignments.forEach(a => {
+            const tm = teachers.find(x=>x.id===a.teacher_id);
+            const s = subjects.find(x=>x.id===a.subject_id);
+            const tAtt = tAttToday.find(x=>x.teacher_id===a.teacher_id);
+            const isAbsent = tAtt && (tAtt.status==='absent'||tAtt.status==='leave');
+            html += `<div class="period-card" style="${isAbsent?'border:2px solid var(--rd);opacity:.7':''}">
             <div>
               <div class="teacher">${tm?tm.name:a.teacher_id} ${isAbsent?'<span class="badge a">'+dashT('ov.absent')+'</span>':''}</div>
               <div class="subject">${s?s.name:a.subject_id}</div>
             </div>
             <span class="class-badge ${s?s.class:''}">${s?classLabel(s.class)||s.class:''}</span>
           </div>`;
-        });
+          });
+        } else {
+          html += '<div style="color:#8a9ab5;font-size:12px">'+dashT('ov.noAssignCur')+'</div>';
+        }
       } else {
-        html += '<div style="color:#8a9ab5;font-size:12px">'+dashT('ov.noAssignCur')+'</div>';
+        html += '<div style="color:#8a9ab5;font-size:12px">'+dashT('ov.notTeaching')+' — ';
+        const nextP = periods.find(p=>p.type!=='break'&&p.start_time.padStart(5,'0')>now());
+        if (nextP) html += dashT('ov.nextPeriod')+': '+nextP.start_time;
+        else html += dashT('ov.periodsDone');
+        html += '</div>';
       }
-    } else {
-      html += '<div style="color:#8a9ab5;font-size:12px">'+dashT('ov.notTeaching')+' — ';
-      const nextP = periods.find(p=>p.type!=='break'&&p.start_time.padStart(5,'0')>now());
-      if (nextP) html += dashT('ov.nextPeriod')+': '+nextP.start_time;
-      else html += dashT('ov.periodsDone');
-      html += '</div>';
     }
     html += '</div>';
 
@@ -2087,7 +2144,7 @@ function render() {
     const hifzRoster = hifzRosterStudents(students);
     const absentTeachers = tAttToday.filter(r=>r.status==='absent'||r.status==='leave');
     const behindSubjects = reportsToday.filter(r=>(r.actual_page||0)<(r.target_page||0));
-    const isThursday = new Date().getDay() === 4;
+    const isThursday = isThursdayKolkata();
     const actualAbsent = absentListDedup.length;
     const actualBehind = behindSubjects.length;
     const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:'+(typeof dashboardLocale!=='undefined'&&dashboardLocale==='en'?'ltr':'rtl')+';min-height:44px;box-sizing:border-box;'+s;
