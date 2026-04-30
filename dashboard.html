@@ -415,9 +415,31 @@ async function loadAll() {
     }
     let thuTestsToday = [];
     try {
-      const thuDate = todayYmdKolkata();
-      const tt = await sb('thursday_tests', 'select=*&date=eq.' + thuDate + '&order=created_at.desc&limit=200');
-      thuTestsToday = Array.isArray(tt) ? tt : [];
+      // Teacher app (index.html) saves `date` from genThursdays → toISOString().split('T')[0] (UTC calendar).
+      // Overview Thursday uses Asia/Kolkata weekday; those two YYYY-MM-DD strings can differ by one day.
+      const dK = todayYmdKolkata();
+      const dU = TODAY;
+      const byKey = new Map();
+      function absorbThuRows(rows) {
+        (rows || []).forEach(function (r) {
+          if (!r) return;
+          var id = r.id != null ? 'id:' + String(r.id) : 'row:' + [r.date, r.examiner_id, r.subject_id, r.created_at || '', r.examiner_name || '', r.subject_name || ''].join('|');
+          if (!byKey.has(id)) byKey.set(id, r);
+        });
+      }
+      absorbThuRows(await sb('thursday_tests', 'select=*&date=eq.' + dK + '&order=created_at.desc&limit=200'));
+      if (dK !== dU) {
+        try {
+          absorbThuRows(await sb('thursday_tests', 'select=*&date=eq.' + dU + '&order=created_at.desc&limit=200'));
+        } catch (e2) {
+          console.warn('thursday_tests alt date:', e2);
+        }
+      }
+      thuTestsToday = Array.from(byKey.values()).sort(function (a, b) {
+        var ca = a.created_at ? new Date(a.created_at).getTime() : 0;
+        var cb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return cb - ca;
+      });
     } catch (e) {
       console.warn('thursday_tests:', e);
     }
