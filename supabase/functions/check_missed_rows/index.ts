@@ -34,6 +34,15 @@ function isUniqueViolation(err: unknown): boolean {
 
 type PeriodRow = { id: string | number; start_time: string; end_time: string; type: string };
 type AsgRow = { teacher_id: string; subject_id: string; period_id: string | number };
+type PeriodGapRow = {
+  period_id: string;
+  start_time: string;
+  end_time: string;
+  gaps_attendance: number;
+  gaps_report: number;
+  new_notifications_attendance: number;
+  new_notifications_report: number;
+};
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -108,6 +117,9 @@ Deno.serve(async (req) => {
     let totalPushesSent = 0;
     let totalPushFail = 0;
     let expiredRemoved = 0;
+    let totalGapsAtt = 0;
+    let totalGapsRep = 0;
+    const byPeriod: PeriodGapRow[] = [];
 
     async function pushForNewNotification(notif: { id: number; title: string; message: string }) {
       if (!vapidPub || !vapidPriv) return;
@@ -181,6 +193,8 @@ Deno.serve(async (req) => {
 
       let missAtt = 0;
       let missRep = 0;
+      let gapAtt = 0;
+      let gapRep = 0;
 
       for (const a of rows) {
         const tid = String(a.teacher_id);
@@ -199,6 +213,7 @@ Deno.serve(async (req) => {
         if (attE) log(`att lookup err ${tid}/${sid} ${attE.message}`);
 
         if (!attRow) {
+          gapAtt++;
           const msg = `${tname} did not mark attendance for ${sname} (Period ${pid}, ${pStart}–${pEnd})`;
           const { data: ins, error: ie } = await supa
             .from("notifications")
@@ -237,6 +252,7 @@ Deno.serve(async (req) => {
         if (repE) log(`rep lookup err ${tid}/${sid}/${pid} ${repE.message}`);
 
         if (!repRow) {
+          gapRep++;
           const msg = `${tname} did not submit daily report for ${sname} (Period ${pid}, ${pStart}–${pEnd})`;
           const { data: ins2, error: ie2 } = await supa
             .from("notifications")
@@ -264,12 +280,23 @@ Deno.serve(async (req) => {
         }
       }
 
-      log(`period ${pid} missing_attendance=${missAtt} missing_report=${missRep}`);
+      totalGapsAtt += gapAtt;
+      totalGapsRep += gapRep;
+      byPeriod.push({
+        period_id: pid,
+        start_time: pStart,
+        end_time: pEnd,
+        gaps_attendance: gapAtt,
+        gaps_report: gapRep,
+        new_notifications_attendance: missAtt,
+        new_notifications_report: missRep,
+      });
+      log(`period ${pid} gaps_attendance=${gapAtt} gaps_report=${gapRep} new_notifs_att=${missAtt} new_notifs_rep=${missRep}`);
     }
 
     const dur = Date.now() - t0;
     log(
-      `end total_notifications_inserted=${totalInserted} total_pushes_sent=${totalPushesSent} pushes_failed=${totalPushFail} expired_removed=${expiredRemoved} duration_ms=${dur}`,
+      `end gaps_attendance=${totalGapsAtt} gaps_report=${totalGapsRep} total_notifications_inserted=${totalInserted} total_pushes_sent=${totalPushesSent} pushes_failed=${totalPushFail} expired_removed=${expiredRemoved} duration_ms=${dur}`,
     );
 
     return new Response(
@@ -278,6 +305,9 @@ Deno.serve(async (req) => {
         today,
         timezone: TZ,
         periods_completed: inWindow.length,
+        total_gaps_attendance: totalGapsAtt,
+        total_gaps_report: totalGapsRep,
+        by_period: byPeriod,
         total_notifications_inserted: totalInserted,
         total_pushes_sent: totalPushesSent,
         pushes_failed: totalPushFail,

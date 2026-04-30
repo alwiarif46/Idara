@@ -252,7 +252,7 @@ const TODAY = new Date().toISOString().split('T')[0];
   } catch (e) {}
 })();
 </script>
-<script src="dashboard-i18n.js?v=202604304"></script>
+<script src="dashboard-i18n.js?v=202604305"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script src="idara-notify-ov.js?v=202604302"></script>
 <script>
@@ -346,6 +346,16 @@ function isThursdayKolkata() {
 function todayYmdKolkata() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+/** Calendar date for notifications / missed-rows check (must match Edge `check_missed_rows`, Asia/Karachi). */
+function todayYmdKarachi() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Karachi',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -1846,9 +1856,24 @@ window.runMissedRowsCheck = async function (btn) {
     }
     const ins = Number(j.total_notifications_inserted || 0);
     const pus = Number(j.total_pushes_sent || 0);
+    const gAtt = Number(j.total_gaps_attendance || 0);
+    const gRep = Number(j.total_gaps_report || 0);
+    window.__idaraMissedCheck = {
+      checkedAt: new Date().toISOString(),
+      today: j.today || "",
+      timezone: j.timezone || "Asia/Karachi",
+      periods_completed: Number(j.periods_completed || 0),
+      total_gaps_attendance: gAtt,
+      total_gaps_report: gRep,
+      apiHasByPeriod: Array.isArray(j.by_period),
+      by_period: Array.isArray(j.by_period) ? j.by_period : [],
+      total_notifications_inserted: ins,
+      total_pushes_sent: pus,
+    };
     const tmpl = typeof t === "function" ? t("notif.checkResult") : "Inserted: {ins} — Pushed: {pus}";
     toast(tmpl.replace("{ins}", String(ins)).replace("{pus}", String(pus)));
     if (typeof window.reloadNotificationsOnly === "function") await window.reloadNotificationsOnly();
+    render();
   } catch (e) {
     const lab = typeof t === "function" ? t("notif.checkFailed") : "Check failed";
     toast(lab + ": " + (e && e.message ? e.message : String(e)));
@@ -3249,11 +3274,12 @@ function render() {
     if (notifUi.scope === "unread") list = list.filter(function (n) {
       return n && !n.is_read;
     });
-    const todayMs = new Date(TODAY + "T12:00:00").getTime();
+    const notifBizDay = todayYmdKarachi();
+    const todayMs = new Date((notifBizDay || TODAY) + "T07:00:00.000Z").getTime();
     const weekAgo = todayMs - 7 * 86400000;
     if (notifUi.scope === "today") {
       list = list.filter(function (n) {
-        return n && String(n.date || "").slice(0, 10) === TODAY;
+        return n && String(n.date || "").slice(0, 10) === notifBizDay;
       });
     }
     if (notifUi.scope === "week") {
@@ -3289,6 +3315,43 @@ function render() {
       escHtml(dashT("notif.runCheck")) +
       "</button>" +
       "</div>";
+    var missSum = window.__idaraMissedCheck;
+    if (missSum && missSum.checkedAt && missSum.apiHasByPeriod) {
+      var missRows = (missSum.by_period || []).filter(function (r) {
+        return r && (Number(r.gaps_attendance || 0) > 0 || Number(r.gaps_report || 0) > 0);
+      });
+      html += '<div style="margin-bottom:12px;padding:10px;border-radius:10px;background:var(--dk3);border:1px solid #1f3d5e;font-size:11px">';
+      html += '<div style="font-weight:800;color:var(--gd);margin-bottom:6px">' + escHtml(dashT("notif.missedSummaryTitle")) + "</div>";
+      html +=
+        '<div style="color:#8a9ab5;margin-bottom:8px;font-size:10px">' +
+        escHtml(dashT("notif.missedIntro", { date: missSum.today || "\u2014", n: String(missSum.periods_completed != null ? missSum.periods_completed : "\u2014") })) +
+        "</div>";
+      if (!missRows.length) {
+        html += '<div style="color:var(--gr);font-weight:700">' + escHtml(dashT("notif.missedAllClear")) + "</div>";
+      } else {
+        html += '<div style="overflow-x:auto"><table class="tbl" style="font-size:10px">';
+        html += "<thead><tr>";
+        html += "<th>" + escHtml(dashT("notif.missedColPeriod")) + "</th>";
+        html += "<th>" + escHtml(dashT("notif.missedColSlot")) + "</th>";
+        html += "<th>" + escHtml(dashT("notif.missedColAtt")) + "</th>";
+        html += "<th>" + escHtml(dashT("notif.missedColRep")) + "</th>";
+        html += "<th>" + escHtml(dashT("notif.missedColNew")) + "</th>";
+        html += "</tr></thead><tbody>";
+        missRows.forEach(function (r) {
+          var na = Number(r.new_notifications_attendance || 0);
+          var nr = Number(r.new_notifications_report || 0);
+          html += "<tr>";
+          html += "<td>" + escHtml(String(r.period_id != null ? r.period_id : "")) + "</td>";
+          html += "<td style=\"white-space:nowrap\">" + escHtml(String(r.start_time || "") + "\u2013" + String(r.end_time || "")) + "</td>";
+          html += "<td>" + escHtml(String(Number(r.gaps_attendance || 0))) + "</td>";
+          html += "<td>" + escHtml(String(Number(r.gaps_report || 0))) + "</td>";
+          html += "<td>" + escHtml(String(na + nr)) + "</td>";
+          html += "</tr>";
+        });
+        html += "</tbody></table></div>";
+      }
+      html += "</div>";
+    }
     if (!list.length) {
       html += '<div style="text-align:center;padding:24px;color:var(--gr);font-size:13px;font-weight:700">' + escHtml(dashT("notif.empty")) + "</div>";
     } else {

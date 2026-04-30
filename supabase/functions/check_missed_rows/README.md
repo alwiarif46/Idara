@@ -30,7 +30,9 @@ curl -i -X POST \
   -d "{}"
 ```
 
-Returns `periods_completed`, `total_notifications_inserted`, `total_pushes_sent`, plus `logs[]`. The dashboard exposes a **"Check missed rows now"** button on the Notifications tab that POSTs the same payload.
+Returns `periods_completed`, `total_gaps_attendance`, `total_gaps_report`, `by_period[]` (per ended period: `gaps_attendance`, `gaps_report`, `new_notifications_*`, slot times), `total_notifications_inserted`, `total_pushes_sent`, plus `logs[]`. The dashboard **"Check missed rows now"** button POSTs the same payload and renders the `by_period` table under the actions row.
+
+`gaps_*` counts every missing assignment row for that period; `new_notifications_*` counts only rows inserted this run (deduped hits appear in gaps but not in new counts).
 
 ## Cron
 
