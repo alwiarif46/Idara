@@ -53,11 +53,11 @@ body.dash-locale-en{font-family:'Noto Sans','Noto Sans Arabic',sans-serif;direct
 .container{max-width:1200px;margin:0 auto;padding:10px}
 .header{background:linear-gradient(135deg,var(--dk2),var(--dk3));border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .header h1{font-size:18px;color:var(--gd);font-weight:800}
-.header-main{display:grid;grid-template-columns:40px 1fr;column-gap:10px;row-gap:2px;align-items:start}
+.header-main{position:relative;display:grid;grid-template-columns:40px 1fr;column-gap:10px;row-gap:2px;align-items:start}
 .header-brand{display:contents}
 .header-brand h1{margin:0;grid-column:2;grid-row:1;align-self:start}
 .header-logo{width:40px;height:40px;border-radius:8px;flex-shrink:0;display:block;object-fit:contain;grid-column:1;grid-row:1/span 2;align-self:center}
-.header .sub{grid-column:2;grid-row:2;font-size:13px;color:var(--muted);white-space:nowrap;line-height:1.35}
+.header .sub{position:absolute;left:82px;grid-column:2;grid-row:2;font-size:13px;color:var(--muted);white-space:nowrap;line-height:1.35}
 body.dash-locale-en .header .sub{text-align:left}
 .dash-theme-toggle{font-size:20px;line-height:1}
 .header .live{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--gr)}
