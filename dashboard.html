@@ -11,6 +11,14 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230c1a2e'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='16' fill='%23d4a017'%3EI%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script>
+(function(){
+  try {
+    var t = localStorage.getItem('iri_dash_theme');
+    if (t === 'light') document.documentElement.setAttribute('data-dash-theme', 'light');
+  } catch (e) {}
+})();
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -18,60 +26,100 @@
   --gd:#d4a017;--gd2:#f4c430;
   --gr:#34a853;--rd:#ea4335;--yl:#fbbc04;--bl:#4285f4;
   --wh:#fff;--lg:#f4f6f8;
+  --text:#fff;--muted:#8a9ab5;--soft:#c5cee0;
+  --border:#1f3d5e;--border2:#243652;--line:#1a3350;
+  --input-border:#2d4a6e;--input-rail:#5a7a9e;--placeholder:#9eb4d8;
+  --overlay:rgba(8,20,40,.28);--field-hover:#152a45;--row-hover:#1a3350;
+  --subnav-fade:rgba(19,38,64,.97);
+  --tab-face:#4a7ab8;--tab-border:#356099;--tab-shadow:#040c18;--tab-text:#eef4ff;
+  --tab-hover-face:#5a8fd0;
+  --tab-active-face:var(--gd);--tab-active-border:#a67c00;--tab-active-shadow:#5c4500;
 }
-body{font-family:'Noto Sans Arabic',sans-serif;background:var(--dk);color:var(--wh);min-height:100vh;direction:rtl;
+html[data-dash-theme="light"]{
+  --dk:#eef2f7;--dk2:#ffffff;--dk3:#f4f7fb;
+  --wh:#0c1a2e;
+  --text:#0c1a2e;--muted:#5c6d8c;--soft:#3d5166;
+  --border:#d0dae8;--border2:#c5d0e0;--line:#dce4ef;
+  --input-border:#b8c8dc;--input-rail:#6b8cb8;--placeholder:#7a8fa8;
+  --overlay:rgba(255,255,255,.5);--field-hover:#eef3f9;--row-hover:#e8eef5;
+  --subnav-fade:rgba(244,247,251,.97);
+  --tab-face:#b8d0ec;--tab-border:#7aa3cc;--tab-shadow:#4a6080;--tab-text:#0c1a2e;
+  --tab-hover-face:#a8c4e4;
+  --tab-active-face:var(--gd);--tab-active-border:#a67c00;--tab-active-shadow:#6b5200;
+}
+body{font-family:'Noto Sans Arabic',sans-serif;background:var(--dk);color:var(--text);min-height:100vh;direction:rtl;
   -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
 body.dash-locale-en{font-family:'Noto Sans','Noto Sans Arabic',sans-serif;direction:ltr}
 .container{max-width:1200px;margin:0 auto;padding:10px}
 .header{background:linear-gradient(135deg,var(--dk2),var(--dk3));border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .header h1{font-size:18px;color:var(--gd);font-weight:800}
-.header .sub{font-size:10px;color:#8a9ab5}
+.header-main{display:grid;grid-template-columns:40px 1fr;column-gap:10px;row-gap:2px;align-items:start}
+.header-brand{display:contents}
+.header-brand h1{margin:0;grid-column:2;grid-row:1;align-self:start}
+.header-logo{width:40px;height:40px;border-radius:8px;flex-shrink:0;display:block;object-fit:contain;grid-column:1;grid-row:1/span 2;align-self:center}
+.header .sub{grid-column:2;grid-row:2;font-size:13px;color:var(--muted);white-space:nowrap;line-height:1.35}
+body.dash-locale-en .header .sub{text-align:left}
+.dash-theme-toggle{font-size:20px;line-height:1}
 .header .live{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--gr)}
 .header .live .dot{width:8px;height:8px;border-radius:50%;background:var(--gr);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* Tabs — horizontal scroll on mobile */
-.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;
   -webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{padding:10px 16px;border-radius:20px;border:none;font-family:inherit;font-size:12px;font-weight:700;
-  cursor:pointer;white-space:nowrap;transition:.2s;flex-shrink:0;scroll-snap-align:start;
-  min-height:44px;display:flex;align-items:center}
-.tab.active{background:var(--gd);color:var(--dk)}
-.tab:not(.active){background:var(--dk3);color:#8a9ab5}
-.tab:hover:not(.active){background:#1f3d5e}
+.tab{padding:10px 16px;border-radius:20px;font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;scroll-snap-align:start;
+  min-height:44px;display:flex;align-items:center;border:2px solid var(--tab-border);--btn-depth:4px;
+  background:var(--tab-face);color:var(--tab-text);--btn-shadow:var(--tab-shadow);
+  box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.22);
+  transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,filter .15s ease,border-color .12s ease,background .15s ease,color .15s ease}
+.tab:active{transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.1)}
+.tab.active{background:var(--tab-active-face);color:var(--wh);border-color:var(--tab-active-border);--btn-shadow:var(--tab-active-shadow);
+  box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.28)}
+.tab.active:active{box-shadow:0 0 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.14)}
+.tab:hover:not(.active):not(:active){background:var(--tab-hover-face);filter:brightness(1.04)}
+.tab:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
 
 /* Grid — 2 cols on mobile, 4 on desktop */
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
-.card{background:var(--dk2);border-radius:14px;padding:14px;border:1px solid #1f3d5e}
+.card{background:var(--dk2);border-radius:14px;padding:14px;border:1px solid var(--border)}
 .card .num{font-size:24px;font-weight:800;color:var(--gd)}
-.card .lbl{font-size:9px;color:#8a9ab5;margin-top:3px}
+.card .lbl{font-size:9px;color:var(--muted);margin-top:3px}
 .card.gr .num{color:var(--gr)}.card.rd .num{color:var(--rd)}.card.yl .num{color:var(--yl)}.card.bl .num{color:var(--bl)}
 .ov-card{cursor:pointer;transition:box-shadow .15s,border-color .15s;border:1px solid transparent}
 .ov-card:hover{box-shadow:0 0 0 2px rgba(66,133,244,.45);border-color:#4285f466}
 .idara-ov-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto}
-.idara-ov-panel{width:100%;max-width:520px;background:var(--dk2);border-radius:16px;border:1px solid #1f3d5e;margin-top:24px;max-height:90vh;display:flex;flex-direction:column}
-.idara-ov-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid #1f3d5e}
+.idara-ov-panel{width:100%;max-width:520px;background:var(--dk2);border-radius:16px;border:1px solid var(--border);margin-top:24px;max-height:90vh;display:flex;flex-direction:column}
+.idara-ov-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border)}
 .idara-ov-title{font-size:15px;font-weight:800;color:var(--gd)}
-.idara-ov-sub{font-size:10px;color:#8a9ab5;margin-top:4px}
-.idara-ov-x{width:40px;height:40px;border-radius:10px;border:none;background:var(--dk3);color:var(--wh);font-size:22px;line-height:1;cursor:pointer}
+.idara-ov-sub{font-size:10px;color:var(--muted);margin-top:4px}
+.idara-ov-x{width:40px;height:40px;border-radius:10px;border:2px solid var(--border);background:var(--dk3);color:var(--text);font-size:22px;line-height:1;cursor:pointer;--btn-depth:3px;--btn-shadow:#060e18;box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.08);transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,filter .15s ease}
+.idara-ov-x:active{transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow)}
+.idara-ov-x:hover:not(:active){filter:brightness(1.06)}
+.idara-ov-x:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
 .idara-ov-body{padding:12px 16px 16px;overflow:auto;-webkit-overflow-scrolling:touch}
 .idara-ov-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .idara-ov-tbl{font-size:11px}
-.idara-ov-hint{font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.45}
+.idara-ov-hint{font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.45}
 .idara-ov-classh{font-size:12px;color:var(--gd);margin:10px 0 6px}
 .idara-ov-list{list-style:none;padding:0}
-.idara-ov-linkbtn{display:block;width:100%;text-align:inherit;padding:10px 12px;margin-bottom:6px;background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;color:var(--wh);font-family:inherit;font-size:12px;cursor:pointer}
-.notif-bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:none;background:var(--dk3);color:var(--wh);font-size:18px;cursor:pointer}
+.idara-ov-linkbtn{display:block;width:100%;text-align:inherit;padding:10px 12px;margin-bottom:6px;background:var(--dk3);border:2px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:12px;cursor:pointer;--btn-depth:3px;--btn-shadow:#060e18;box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.08);transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,filter .15s ease}
+.idara-ov-linkbtn:active{transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow)}
+.idara-ov-linkbtn:hover:not(:active){filter:brightness(1.06)}
+.notif-bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:2px solid var(--border);background:var(--dk3);color:var(--text);font-size:18px;cursor:pointer;--btn-depth:3px;--btn-shadow:#060e18;box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.08);transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,filter .15s ease}
+.notif-bell:active{transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow)}
+.notif-bell:hover:not(:active){filter:brightness(1.06)}
+.notif-bell:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
 .notif-bell-badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rd);color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center}
 body.dash-locale-en .notif-bell-badge{right:auto;left:4px}
-.notif-row{display:flex;gap:10px;padding:10px 12px;margin-bottom:8px;background:var(--dk3);border-radius:10px;border:1px solid #1f3d5e;align-items:flex-start}
-.notif-sev{width:4px;border-radius:4px;flex-shrink:0;min-height:36px;background:#8a9ab5}
+.notif-row{display:flex;gap:10px;padding:10px 12px;margin-bottom:8px;background:var(--dk3);border-radius:10px;border:1px solid var(--border);align-items:flex-start}
+.notif-sev{width:4px;border-radius:4px;flex-shrink:0;min-height:36px;background:var(--muted)}
 .notif-sev.info{background:var(--bl)}.notif-sev.warning{background:var(--yl)}.notif-sev.critical{background:var(--rd)}
-.idara-spin{display:inline-block;width:12px;height:12px;border:2px solid #8a9ab5;border-top-color:var(--gd);border-radius:50%;animation:idaraSpin .7s linear infinite}
+.idara-spin{display:inline-block;width:12px;height:12px;border:2px solid var(--muted);border-top-color:var(--gd);border-radius:50%;animation:idaraSpin .7s linear infinite}
 @keyframes idaraSpin{to{transform:rotate(360deg)}}
 
-.section{background:var(--dk2);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid #1f3d5e}
+.section{background:var(--dk2);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid var(--border)}
 .section h2{font-size:14px;font-weight:800;color:var(--gd);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 /* Accountability checklist: banner + rows default RTL; English aligns start */
 #acc_checklist_banner{text-align:center}
@@ -83,42 +131,65 @@ body.dash-locale-en .acc-checklist-row{text-align:left}
 body.dash-locale-en #acc_anchor_checklist .acc-chk-confirm{justify-content:flex-start}
 
 /* Accountability report: sticky sub-nav + collapsible panels */
-.acc-subnav{position:sticky;top:0;z-index:6;padding:10px 0 12px;margin:0 0 8px;background:linear-gradient(180deg,var(--dk2) 0%,rgba(19,38,64,.97) 100%);border-bottom:1px solid #1f3d5e;border-radius:0}
+.acc-subnav{position:sticky;top:0;z-index:6;padding:10px 0 12px;margin:0 0 8px;background:linear-gradient(180deg,var(--dk2) 0%,var(--subnav-fade) 100%);border-bottom:1px solid var(--border);border-radius:0}
 .acc-subnav-hint{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5c6d8c;margin:0 0 8px;line-height:1.35}
 .acc-subnav-inner{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 body.dash-locale-en .acc-subnav-inner{justify-content:flex-start}
 /* Jump links — scroll only, not form submits */
-.acc-jump{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 14px;min-height:36px;border-radius:999px;font-family:inherit;font-size:11px;font-weight:600;color:#9eb4d8;background:rgba(8,20,40,.35);border:1px dashed #4a6fa5;cursor:pointer;transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
-.acc-jump:hover{background:rgba(66,133,244,.14);border-color:#5c8de0;color:var(--wh)}
+.acc-jump{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 14px;min-height:36px;border-radius:999px;font-family:inherit;font-size:11px;font-weight:600;color:#9eb4d8;background:rgba(8,20,40,.35);border:2px dashed #4a6fa5;cursor:pointer;--btn-depth:3px;--btn-shadow:#1a3350;box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.06);transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,background .15s,border-color .15s,color .15s,filter .15s ease}
+.acc-jump:active{transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow)}
+.acc-jump:hover:not(:active){background:rgba(66,133,244,.14);border-color:#5c8de0;color:var(--text);filter:brightness(1.05)}
 .acc-jump:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
 .acc-jump .acc-jump-ic{font-size:10px;line-height:1;opacity:.9;font-weight:800}
 /* Secondary / tertiary action — still a button, but not primary */
-.acc-btn-secondary{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;min-height:40px;border-radius:10px;font-family:inherit;font-size:11px;font-weight:700;color:#a8c4e8;background:transparent;border:1px solid #3d5a80;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
-.acc-btn-secondary:hover{background:rgba(66,133,244,.1);border-color:var(--bl);color:var(--wh)}
+.acc-btn-secondary{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;min-height:40px;border-radius:10px;font-family:inherit;font-size:11px;font-weight:700;color:#a8c4e8;background:var(--dk3);border:2px solid #3d5a80;cursor:pointer;--btn-depth:3px;--btn-shadow:#0a1525;box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.08);transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,background .15s,border-color .15s,color .15s,filter .15s ease}
+.acc-btn-secondary:active{transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow)}
+.acc-btn-secondary:hover:not(:active){background:rgba(66,133,244,.1);border-color:var(--bl);color:var(--text);filter:brightness(1.05)}
 .acc-btn-secondary:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
-.acc-details{border:1px solid #1f3d5e;border-radius:12px;margin-bottom:10px;background:var(--dk3);overflow:hidden}
+html[data-dash-theme="light"] .acc-btn-secondary{--btn-shadow:#a0aec0}
+.acc-details{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;background:var(--dk3);overflow:hidden}
 .acc-details > summary{list-style:none;cursor:pointer;padding:10px 12px;padding-inline-start:26px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--gd);position:relative}
 .acc-details > summary::-webkit-details-marker{display:none}
 .acc-details > summary.acc-details-sum::before{content:'\25BC';position:absolute;inset-inline-start:10px;top:50%;margin-top:-5px;font-size:8px;line-height:1;color:#6b7c99;transition:transform .18s ease}
 .acc-details:not([open]) > summary.acc-details-sum::before{transform:rotate(-90deg)}
-.acc-details[open] > summary{border-bottom:1px solid #1f3d5e;background:var(--dk)}
+.acc-details[open] > summary{border-bottom:1px solid var(--border);background:var(--dk)}
 .acc-details-body{padding:0 12px 12px}
 .acc-sum-tag{font-size:11px;min-width:1.2em;text-align:center}
 .acc-class-details[open] .acc-details-body{padding-top:8px}
 #acc_class_visited_adv_wrap{margin-top:8px}
+.acc-class-preview{font-size:11px;line-height:1.65;color:var(--text);min-height:48px;white-space:pre-wrap;word-break:break-word}
+.acc-class-table .acc-btn-secondary{width:100%;max-width:100%;box-sizing:border-box}
+.acc-qa-table-wrap{border-radius:10px;border:1px solid var(--border);margin-bottom:10px;background:var(--dk3);overflow:hidden}
+.acc-qa-table-2col{width:100%;table-layout:fixed;border-collapse:collapse}
+.acc-qa-table-2col th,.acc-qa-table-2col td{display:table-cell;vertical-align:top;word-break:break-word;white-space:normal!important;text-align:start!important}
+.acc-qa-table-2col thead th{background:var(--dk);color:var(--gd);font-size:10px;font-weight:800;padding:8px 10px;border-bottom:2px solid var(--input-border)}
+.acc-qa-table-2col thead th.acc-qa-th-label{width:38%;border-inline-end:1px solid var(--border)}
+.acc-qa-table-2col thead th.acc-qa-th-field{width:62%}
+.acc-qa-table-2col td.acc-qa-label{width:38%;font-size:10px;color:var(--muted);padding:8px 10px;background:var(--overlay);border-inline-end:1px solid var(--border2);border-bottom:1px solid var(--line)}
+.acc-qa-table-2col td.acc-qa-field{width:62%;padding:6px 10px;border-bottom:1px solid var(--line)}
+.acc-qa-table-2col td .acc-qa-cell-select{width:100%;max-width:100%;font-size:10px;padding:6px 32px 6px 8px;box-sizing:border-box}
+.acc-qa-table-2col td .acc-field-box{width:100%;max-width:100%;font-size:10px;padding:6px 8px;line-height:1.4;box-sizing:border-box}
+.acc-qa-group-row td{background:var(--dk);border-top:1px solid var(--border);border-bottom:1px solid var(--border2);padding:10px 12px;font-weight:700;color:var(--gd)}
+.acc-qa-group-row:first-child td{border-top:none}
+.acc-qa-group-inner{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.acc-qa-table-2col tr:hover td.acc-qa-field{background:var(--field-hover)}
+.acc-qa-table-2col tr:hover td.acc-qa-label{background:var(--overlay)}
+.acc-qa-table-readonly td.acc-qa-field{font-size:11px;color:var(--soft);white-space:pre-wrap!important;word-break:break-word;line-height:1.45}
+.acc-qa-narr-row td.acc-qa-label{padding-top:12px;border-top:2px solid var(--input-border)}
+.acc-qa-narr-row td.acc-qa-field{padding-top:10px;border-top:2px solid var(--input-border)}
 /* Selects = form fields (accent rail + chevron), distinct from .btn */
-.acc-select-chevron{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1.5 2.25L7 7l5.5-4.75' fill='none' stroke='%238a9ab5' stroke-width='1.65' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-size:12px 8px !important;-webkit-appearance:none !important;appearance:none !important;background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid var(--bl) !important;font-weight:500 !important;padding-inline-end:38px !important;color:var(--wh) !important;font-family:inherit !important}
+.acc-select-chevron{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1.5 2.25L7 7l5.5-4.75' fill='none' stroke='%238a9ab5' stroke-width='1.65' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-size:12px 8px !important;-webkit-appearance:none !important;appearance:none !important;background-color:var(--dk) !important;border:1px solid var(--input-border) !important;border-inline-start:3px solid var(--bl) !important;font-weight:500 !important;padding-inline-end:38px !important;color:var(--text) !important;font-family:inherit !important}
 html[dir="rtl"] .acc-select-chevron{background-position:left 12px center !important}
 body.dash-locale-en .acc-select-chevron{background-position:right 12px center !important}
-.acc-field-box{background-color:var(--dk) !important;border:1px solid #2d4a6e !important;border-inline-start:3px solid #5a7a9e !important;font-weight:400 !important;color:var(--wh) !important;caret-color:var(--gd) !important}
-.acc-field-box::placeholder{color:#9eb4d8;opacity:1}
-.acc-select-chevron option,.acc-field-box option{background:var(--dk2);color:var(--wh)}
+.acc-field-box{background-color:var(--dk) !important;border:1px solid var(--input-border) !important;border-inline-start:3px solid var(--input-rail) !important;font-weight:400 !important;color:var(--text) !important;caret-color:var(--gd) !important}
+.acc-field-box::placeholder{color:var(--placeholder);opacity:1}
+.acc-select-chevron option,.acc-field-box option{background:var(--dk2);color:var(--text)}
 
 /* Tables — horizontal scroll */
 .tbl{width:100%;border-collapse:collapse;font-size:11px}
 .tbl th{background:var(--dk3);color:var(--gd);padding:10px 6px;text-align:center;font-weight:700;position:sticky;top:0;white-space:nowrap}
-.tbl td{padding:8px 6px;text-align:center;border-bottom:1px solid #1a3350;white-space:nowrap}
-.tbl tr:hover td{background:#1a3350}
+.tbl td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl tr:hover td{background:var(--row-hover)}
 .scroll-table{max-height:400px;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
 
 .badge{display:inline-block;padding:3px 10px;border-radius:8px;font-size:10px;font-weight:700}
@@ -126,30 +197,51 @@ body.dash-locale-en .acc-select-chevron{background-position:right 12px center !i
 .badge.l{background:#fbbc0422;color:var(--yl)}.badge.late{background:#ff980022;color:#ff9800}
 .badge.approved{background:#34a85322;color:var(--gr)}.badge.pending{background:#ff980022;color:#ff9800}
 
-/* Buttons — min 44px touch target */
-.btn{padding:10px 18px;border-radius:12px;border:none;font-family:inherit;font-size:12px;font-weight:700;
-  cursor:pointer;transition:.2s;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
-.btn-gd{background:var(--gd);color:var(--dk)}.btn-gd:hover{background:var(--gd2)}
-.btn-gr{background:var(--gr);color:#fff}.btn-rd{background:var(--rd);color:#fff}
-.btn-bl{background:var(--bl);color:#fff}
-.btn-sm{padding:6px 12px;font-size:10px;min-height:36px}
+/* Buttons — shadcn depth-button style (raised + press on active), min 44px touch target */
+.btn{padding:10px 18px;border-radius:12px;border:2px solid transparent;font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;min-height:44px;display:inline-flex;align-items:center;justify-content:center;
+  --btn-depth:4px;--btn-shadow:rgba(0,0,0,.35);
+  box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.14);
+  transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,filter .15s ease,border-color .12s ease}
+.btn:active:not(:disabled){transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.08)}
+.btn:focus-visible{outline:2px solid var(--gd);outline-offset:2px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-gd{background:var(--gd);color:var(--wh);--btn-shadow:#8a6400;border-color:#b8860b}
+.btn-gd:hover:not(:active):not(:disabled){filter:brightness(1.08)}
+.btn-gr{background:var(--gr);color:#fff;--btn-shadow:#137333;border-color:#1e8e3e}
+.btn-gr:hover:not(:active):not(:disabled){filter:brightness(1.08)}
+.btn-rd{background:var(--rd);color:#fff;--btn-shadow:#9b1c1c;border-color:#c5221f}
+.btn-rd:hover:not(:active):not(:disabled){filter:brightness(1.08)}
+.btn-bl{background:var(--bl);color:#fff;--btn-shadow:#1a4dab;border-color:#3367d6}
+.btn-bl:hover:not(:active):not(:disabled){filter:brightness(1.08)}
+.btn-sm{padding:6px 12px;font-size:10px;min-height:36px;--btn-depth:3px;border-radius:10px}
+.btn:not(.btn-gd):not(.btn-gr):not(.btn-rd):not(.btn-bl){background:var(--dk3);color:var(--text);--btn-shadow:#060e18;border-color:var(--border)}
+.btn:not(.btn-gd):not(.btn-gr):not(.btn-rd):not(.btn-bl):hover:not(:active):not(:disabled){filter:brightness(1.06)}
+html[data-dash-theme="light"] .btn:not(.btn-gd):not(.btn-gr):not(.btn-rd):not(.btn-bl){--btn-shadow:#a8b4c4}
+html[data-dash-theme="light"] .tab:not(.active),html[data-dash-theme="light"] .notif-bell,html[data-dash-theme="light"] .idara-ov-x,html[data-dash-theme="light"] .idara-ov-linkbtn{--btn-shadow:#a8b4c4}
+button.acc-checklist-row{--btn-depth:3px;--btn-shadow:#060e18;box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.08)!important;transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease!important}
+button.acc-checklist-row:active{transform:translateY(var(--btn-depth))!important;box-shadow:0 0 0 0 var(--btn-shadow)!important}
 
 /* Call button — prominent on mobile */
-.call-btn{background:var(--gr);color:#fff;border:none;padding:8px 14px;border-radius:10px;
+.call-btn{background:var(--gr);color:#fff;border:2px solid #1e8e3e;padding:8px 14px;border-radius:10px;
   font-family:inherit;font-size:11px;cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;gap:4px;min-height:36px}
+  display:inline-flex;align-items:center;gap:4px;min-height:36px;--btn-depth:3px;--btn-shadow:#137333;
+  box-shadow:0 var(--btn-depth) 0 0 var(--btn-shadow),inset 0 1px 0 0 rgba(255,255,255,.14);
+  transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease,filter .15s ease}
+.call-btn:active{transform:translateY(var(--btn-depth));box-shadow:0 0 0 0 var(--btn-shadow)}
+.call-btn:hover:not(:active){filter:brightness(1.08)}
 
 .filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
-.filter-bar select,.filter-bar input{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);
+.filter-bar select,.filter-bar input{background:var(--dk3);border:1px solid var(--border);color:var(--text);
   padding:8px 10px;border-radius:10px;font-family:inherit;font-size:11px;min-height:40px}
 .filter-bar input[type=date]{direction:ltr;text-align:center}
-.search{background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:12px;
+.search{background:var(--dk3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:12px;
   font-family:inherit;font-size:12px;width:100%;margin-bottom:10px;min-height:44px}
 
 .current-period{background:linear-gradient(135deg,#1a5276,#1a2780);border-radius:14px;padding:14px;margin-bottom:12px;border:2px solid var(--gd)}
 .current-period h2{color:var(--gd);font-size:14px;margin-bottom:10px}
 .period-card{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--dk);border-radius:10px;margin-bottom:6px;min-height:48px}
-.period-card .teacher{font-weight:700;font-size:12px}.period-card .subject{font-size:10px;color:#8a9ab5}
+.period-card .teacher{font-weight:700;font-size:12px}.period-card .subject{font-size:10px;color:var(--muted)}
 .class-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700}
 .oola{background:#fdebd033;color:#f39c12}.sania{background:#d6eaf833;color:#3498db}
 .salisa{background:#e8daef33;color:#9b59b6}.rabia{background:#d1f2eb33;color:#1abc9c}
@@ -157,17 +249,17 @@ body.dash-locale-en .acc-select-chevron{background-position:right 12px center !i
 .hifz{background:#eaecee33;color:#95a5a6}
 
 /* Task items — big touch targets */
-.task-item{background:var(--dk);border:1px solid #1f3d5e;border-radius:14px;padding:14px;margin-bottom:8px;
+.task-item{background:var(--dk);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px;
   display:flex;align-items:flex-start;gap:12px;min-height:60px;transition:.2s}
 .task-item:active{transform:scale(0.98)}
 .task-icon{font-size:24px;flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;
   border-radius:10px;cursor:pointer}
 .task-done{background:#34a85315;border-color:#34a85344}
 
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gd);color:var(--dk);
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gd);color:var(--wh);
   padding:12px 28px;border-radius:14px;font-weight:700;font-size:13px;z-index:999;display:none;
   box-shadow:0 4px 20px rgba(0,0,0,.4)}
-.loading{text-align:center;padding:40px;color:#8a9ab5;font-size:13px}
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:13px}
 
 /* Desktop */
 @media(min-width:768px){
@@ -252,7 +344,8 @@ const TODAY = new Date().toISOString().split('T')[0];
   } catch (e) {}
 })();
 </script>
-<script src="dashboard-i18n.js?v=202604304"></script>
+<script src="constants.js"></script>
+<script src="dashboard-i18n.js?v=202605165"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script src="idara-notify-ov.js?v=202604302"></script>
 <script>
@@ -630,33 +723,28 @@ function classObsScoringOk(raw) {
 }
 
 function formatVisitStructuredCardInner(v) {
-  const rows = (v.qa || []).slice(0, VISIT_QA_REQUIRED).map((q, idx) => {
+  const lblTo = iriTranslate('acc.qa.toLabel');
+  const lblName = iriTranslate('acc.qa.nameLabel');
+  const lblQ = iriTranslate('acc.qa.qLabel');
+  const lblA = iriTranslate('acc.qa.aLabel');
+  const lblNar = iriTranslate('acc.inspect.extraNotes');
+  let rows = '';
+  (v.qa || []).slice(0, VISIT_QA_REQUIRED).forEach((q, idx) => {
+    const qi = idx + 1;
     const whoUr = q.whoType === 'teacher' ? '\u0627\u0633\u062A\u0627\u0630' : '\u0637\u0627\u0644\u0628 \u0639\u0644\u0645';
     const whoEn = q.whoType === 'teacher' ? 'Teacher' : 'Student';
     const nm = escHtml(q.whoLabel || q.whoId || '\u2014');
-    return `<tr>
-      <td style="font-weight:700">${idx + 1}</td>
-      <td>${escHtml(whoUr)}<br><span style="font-size:9px;color:#8a9ab5">${whoEn}</span></td>
-      <td style="text-align:right;max-width:100px;white-space:normal;word-break:break-word">${nm}</td>
-      <td style="text-align:right;max-width:140px;white-space:normal;word-break:break-word">${escHtml(q.question || '')}</td>
-      <td style="text-align:right;max-width:140px;white-space:normal;word-break:break-word">${escHtml(q.answer || '')}</td>
-    </tr>`;
-  }).join('');
+    rows += `<tr class="acc-qa-group-row"><td colspan="2"><div class="acc-qa-group-inner"><span>${escHtml(iriTranslate('acc.qa.hdr', { qi: qi }))}</span></div></td></tr>`;
+    rows += `<tr><td class="acc-qa-label">${lblTo}</td><td class="acc-qa-field">${escHtml(whoUr)}<br><span style="font-size:9px;color:var(--muted)">${whoEn}</span></td></tr>`;
+    rows += `<tr><td class="acc-qa-label">${lblName}</td><td class="acc-qa-field">${nm}</td></tr>`;
+    rows += `<tr><td class="acc-qa-label">${lblQ}</td><td class="acc-qa-field">${escHtml(q.question || '')}</td></tr>`;
+    rows += `<tr><td class="acc-qa-label">${lblA}</td><td class="acc-qa-field">${escHtml(q.answer || '')}</td></tr>`;
+  });
   const nar = (v.narrative || '').trim();
-  const narBlock = nar
-    ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><span style="font-size:9px;color:#8a9ab5">\u0636\u0645\u06CC\u0645\u06CC \u0646\u0648\u0679 / narrative</span><div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;margin-top:4px">${escHtml(nar)}</div></div>`
-    : '';
-  return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-    <table class="tbl" style="font-size:10px;white-space:normal">
-      <thead><tr>
-        <th>#</th>
-        <th>\u06A9\u0633 \u0633\u06D2 / To</th>
-        <th>\u0646\u0627\u0645 / Name</th>
-        <th>\u0633\u0648\u0627\u0644 / Question</th>
-        <th>\u062C\u0648\u0627\u0628 / Answer</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>${narBlock}`;
+  if (nar) rows += `<tr class="acc-qa-narr-row"><td class="acc-qa-label">${lblNar}</td><td class="acc-qa-field">${escHtml(nar)}</td></tr>`;
+  const thLbl = escHtml(iriTranslate('acc.qa.colLabel'));
+  const thVal = escHtml(iriTranslate('acc.qa.colValue'));
+  return `<div class="acc-qa-table-wrap"><table class="tbl acc-qa-table acc-qa-table-2col acc-qa-table-readonly"><colgroup><col class="acc-qa-th-label"><col class="acc-qa-th-field"></colgroup><thead><tr><th class="acc-qa-th-label">${thLbl}</th><th class="acc-qa-th-field">${thVal}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function formatVisitObsCardBody(v, omitGradeBadge) {
@@ -678,8 +766,8 @@ function formatVisitObsCardBody(v, omitGradeBadge) {
       </div>`;
   const body = v.structured
     ? formatVisitStructuredCardInner(v)
-    : `<div style="font-size:11px;white-space:pre-wrap;color:#c5cee0;max-height:160px;overflow-y:auto">${escHtml(v.text || '')}</div>`;
-  return `<div style="border:1px solid #1f3d5e;border-radius:10px;padding:10px;background:var(--dk)">${head}${body}</div>`;
+    : `<div style="font-size:11px;white-space:pre-wrap;color:var(--soft);max-height:160px;overflow-y:auto">${escHtml(v.text || '')}</div>`;
+  return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--dk)">${head}${body}</div>`;
 }
 
 /** One row per grade in CLASS_ORDER: note under its درجہ heading (not random save order). */
@@ -691,19 +779,19 @@ function formatVisitObsCardsHtml(visits) {
   const extras = sorted.filter(v => !v.legacy && !known.has(v.classId));
 
   if (!legacy.length && !byGrade.size && !extras.length) {
-    return '<span style="color:#8a9ab5;font-size:11px">' + iriTranslate('visit.empty', '') + '</span>';
+    return '<span style="color:var(--muted);font-size:11px">' + iriTranslate('visit.empty', '') + '</span>';
   }
 
   const blocks = [];
   legacy.forEach(v => {
-    blocks.push(`<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a9ab5;margin-bottom:6px">${iriTranslate('visit.legacyHdr', '')}</div>${formatVisitObsCardBody(v)}</div>`);
+    blocks.push(`<div style="margin-bottom:14px"><div style="font-size:10px;color:var(--muted);margin-bottom:6px">${iriTranslate('visit.legacyHdr', '')}</div>${formatVisitObsCardBody(v)}</div>`);
   });
 
   for (const cid of CLASS_ORDER) {
     const v = byGrade.get(cid);
     if (!v) continue;
     const name = (typeof classLabel==='function'?classLabel(cid):CLASS_UR[cid]) || cid;
-    blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #243652">
+    blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border2)">
       <div style="font-weight:800;font-size:12px;color:var(--gd);margin-bottom:8px;display:flex;align-items:center;gap:8px"><span class="class-badge ${cid}">${escHtml(name)}</span></div>
       ${formatVisitObsCardBody(v, true)}
     </div>`);
@@ -712,7 +800,7 @@ function formatVisitObsCardsHtml(visits) {
   extras.forEach(v => {
     const name = (typeof classLabel==='function'?classLabel(v.classId):CLASS_UR[v.classId]) || v.classId;
     const xid = v.classId;
-    blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #243652">
+    blocks.push(`<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border2)">
       <div style="font-weight:800;font-size:12px;color:var(--gd);margin-bottom:8px"><span class="class-badge ${xid}">${escHtml(name)}</span></div>
       ${formatVisitObsCardBody(v, true)}
     </div>`);
@@ -767,7 +855,7 @@ window.runPeriodFilingCheck = function () {
   var periodId = perEl.value;
   var asg = findAssignmentForClassPeriod(D.assignments, D.subjects || [], classId, periodId);
   if (!asg) {
-    out.innerHTML = '<div style="color:#8a9ab5;font-size:12px;font-weight:700">' + escHtml(T('pf.noSlot')) + '</div>';
+    out.innerHTML = '<div style="color:var(--muted);font-size:12px;font-weight:700">' + escHtml(T('pf.noSlot')) + '</div>';
     return;
   }
   var tid = String(asg.teacher_id || '');
@@ -801,7 +889,7 @@ window.runPeriodFilingCheck = function () {
     var comp = rep.complete === true || rep.complete === 1 || String(rep.complete).toLowerCase() === 'true';
     var rs = rep.reason != null && String(rep.reason).trim() !== '' ? String(rep.reason).trim() : '';
     repBlock =
-      '<div style="margin-top:10px;padding:10px;background:var(--dk);border-radius:8px;font-size:11px;color:#c5cee0;line-height:1.55">' +
+      '<div style="margin-top:10px;padding:10px;background:var(--dk);border-radius:8px;font-size:11px;color:var(--soft);line-height:1.55">' +
       '<div><strong style="color:var(--gd)">' + escHtml(T('pf.repDetail')) + '</strong></div>' +
       '<div>' + escHtml(T('pf.target')) + ': <strong>' + escHtml(tp) + '</strong> \u00b7 ' + escHtml(T('pf.actual')) + ': <strong>' + escHtml(ap) + '</strong></div>' +
       '<div>' + escHtml(T('pf.complete')) + ': <strong>' + escHtml(comp ? T('pf.boolYes') : T('pf.boolNo')) + '</strong></div>' +
@@ -812,9 +900,9 @@ window.runPeriodFilingCheck = function () {
   out.innerHTML =
     '<div class="period-card" style="margin-top:10px;border-right:4px solid var(--gd)">' +
     '<div style="font-weight:800;font-size:13px;margin-bottom:8px">' + escHtml(tname) + ' \u00b7 ' + escHtml(sname) + '</div>' +
-    '<div style="font-size:11px;color:#c5cee0;margin-bottom:4px"><strong>' + escHtml(T('pf.teacher')) + ':</strong> ' + escHtml(tLine) + '</div>' +
-    '<div style="font-size:11px;color:#c5cee0;margin-bottom:4px"><strong>' + escHtml(T('pf.att')) + ':</strong> ' + escHtml(attLabel) + '</div>' +
-    '<div style="font-size:11px;color:#c5cee0"><strong>' + escHtml(T('pf.rep')) + ':</strong> ' + escHtml(repLabel) + '</div>' +
+    '<div style="font-size:11px;color:var(--soft);margin-bottom:4px"><strong>' + escHtml(T('pf.teacher')) + ':</strong> ' + escHtml(tLine) + '</div>' +
+    '<div style="font-size:11px;color:var(--soft);margin-bottom:4px"><strong>' + escHtml(T('pf.att')) + ':</strong> ' + escHtml(attLabel) + '</div>' +
+    '<div style="font-size:11px;color:var(--soft)"><strong>' + escHtml(T('pf.rep')) + ':</strong> ' + escHtml(repLabel) + '</div>' +
     repBlock +
     skipNote +
     '</div>';
@@ -1641,7 +1729,7 @@ window.refreshAccountabilityChecklist = function () {
     const icon = s.done ? '\u2713' : '\u25CB';
     const col = s.done ? 'var(--gr)' : 'var(--yl)';
     const aid = String(s.anchor || '').replace(/'/g, '');
-    return `<button type="button" class="acc-checklist-row" data-acc-anchor="${escAttr(aid)}" style="display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--dk);border:1px solid ${s.done ? '#1f3d5e' : '#b45309'};border-radius:10px;cursor:pointer;font-family:inherit;color:var(--wh)" onclick="window.scrollToAccSection('${aid}')">
+    return `<button type="button" class="acc-checklist-row" data-acc-anchor="${escAttr(aid)}" style="display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--dk);border:1px solid ${s.done ? 'var(--border)' : '#b45309'};border-radius:10px;cursor:pointer;font-family:inherit;color:var(--text)" onclick="window.scrollToAccSection('${aid}')">
       <span style="font-size:16px;color:${col};flex-shrink:0">${icon}</span>
       <span style="flex:1;font-size:12px;font-weight:700">${escHtml(iriTranslate(s.labelKey, s.labelKey))}</span>
     </button>`;
@@ -1918,8 +2006,11 @@ function render() {
   // ── HEADER ──
   html += `
   <div class="header">
-    <div>
-      <h1>${dashT('header.title')}</h1>
+    <div class="header-main">
+      <div class="header-brand">
+        <img class="header-logo" src="${escAttr(window.IDARA_LOGO || './favicon.svg')}" width="40" height="40" alt="Idara">
+        <h1>${escHtml(dashT('header.title'))}</h1>
+      </div>
       <div class="sub">${todayIST()} • ${now()} ${dashT('common.ist')}</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1927,10 +2018,11 @@ function render() {
         \uD83D\uDD14
         <span id="notif-bell-badge" class="notif-bell-badge" style="display:${(notificationsUnread||0)>0?'flex':'none'}">${notificationsUnread>99?'99+':(notificationsUnread||0)}</span>
       </button>
+      <button type="button" class="notif-bell dash-theme-toggle" id="dash_theme_toggle" onclick="window.setDashboardTheme(window.dashboardTheme==='light'?'dark':'light')" aria-label="${escAttr(dashT(window.dashboardTheme==='light'?'theme.light':'theme.dark'))}" title="${escAttr(dashT(window.dashboardTheme==='light'?'theme.toDark':'theme.toLight'))}">${window.dashboardTheme==='light'?'\u2600\uFE0F':'\uD83C\uDF19'}</button>
       <div class="lang-switch" style="display:flex;gap:4px;align-items:center">
-        <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='en'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('en')">${dashT('lang.en')}</button>
-        <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='ur'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('ur')">${dashT('lang.ur')}</button>
-        <button type="button" class="btn btn-sm" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale==='ar'?'background:var(--gd);color:var(--dk)':'background:var(--dk3);color:#8a9ab5'}" onclick="setDashboardLocale('ar')">${dashT('lang.ar')}</button>
+        <button type="button" class="btn btn-sm${dashboardLocale==='en'?' btn-gd':''}" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale!=='en'?'color:var(--muted)':''}" onclick="setDashboardLocale('en')">${dashT('lang.en')}</button>
+        <button type="button" class="btn btn-sm${dashboardLocale==='ur'?' btn-gd':''}" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale!=='ur'?'color:var(--muted)':''}" onclick="setDashboardLocale('ur')">${dashT('lang.ur')}</button>
+        <button type="button" class="btn btn-sm${dashboardLocale==='ar'?' btn-gd':''}" style="min-height:36px;padding:6px 10px;font-size:10px;${dashboardLocale!=='ar'?'color:var(--muted)':''}" onclick="setDashboardLocale('ar')">${dashT('lang.ar')}</button>
       </div>
       <div class="live"><span class="dot"></span> ${dashT('header.live')}</div>
       <button class="btn btn-gd btn-sm" onclick="refresh()">${dashT('header.refresh')}</button>
@@ -1971,24 +2063,12 @@ function render() {
     html += `<div class="card bl ov-card" role="button" tabindex="0" data-ov="roster"><div class="num">${students.length}</div><div class="lbl">${dashT('ov.totalStudents')}</div></div>`;
     html += `<div class="card ov-card" role="button" tabindex="0" data-ov="subjects"><div class="num">${subjects.length}</div><div class="lbl">${dashT('ov.totalSubjects')}</div></div>`;
     html += '</div>';
-    const vpk = (appConfig && appConfig.vapid_public_key) ? String(appConfig.vapid_public_key).trim() : '';
-    html += `<div class="section"><h2>${escHtml(dashT('push.settingsTitle'))}</h2>
-      <div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.5">${escHtml(dashT('push.settingsHelp'))}</div>
-      ${vpk ? '' : '<div style="font-size:10px;color:#fdba74;margin-bottom:10px;padding:10px 12px;background:rgba(251,188,4,.12);border:1px solid rgba(251,188,4,.35);border-radius:10px;line-height:1.55">' + escHtml(dashT('push.vapidBanner')) + '</div>'}
-      ${vpk ? '' : '<label style="font-size:11px;font-weight:700;display:block;margin-bottom:6px;color:#c5cee0">' + escHtml(dashT('push.vapidPastePh')) + '</label><input type="text" id="push-vapid-pub-override" class="acc-field-box" autocomplete="off" spellcheck="false" style="width:100%;margin-bottom:10px;box-sizing:border-box" placeholder="' + escAttr(dashT('push.vapidPastePh')) + '"/>'}
-      <p id="push-state-line" style="font-size:12px;margin-bottom:10px;font-weight:700"></p>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">
-        <button type="button" class="btn btn-bl btn-sm" onclick="window.registerIdaraPush&&window.registerIdaraPush()">${escHtml(dashT('push.enable'))}</button>
-        <button type="button" class="btn btn-sm" style="background:var(--dk3);color:var(--wh)" onclick="window.sendIdaraTestPush&&window.sendIdaraTestPush()">${escHtml(dashT('push.test'))}</button>
-      </div>
-      <input type="hidden" id="push-vapid-pub" value="${escAttr(vpk)}"/>
-    </div>`;
 
     // Current Period — on Thursday (Kolkata) show Thursday tests instead of timetable slot
     html += '<div class="current-period">';
     if (isThursdayKolkata()) {
       html += '<h2>✍️ ' + escHtml(dashT('ov.thuBlockTitle')) + '</h2>';
-      html += '<div style="font-size:10px;color:#c5cee0;margin-bottom:10px;line-height:1.45">' + escHtml(dashT('ov.thuBlockHint')) + '</div>';
+      html += '<div style="font-size:10px;color:var(--soft);margin-bottom:10px;line-height:1.45">' + escHtml(dashT('ov.thuBlockHint')) + '</div>';
       const thuRows = thuTestsToday || [];
       if (thuRows.length) {
         html += '<div style="max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch">';
@@ -2004,7 +2084,7 @@ function render() {
           if (row.weak != null && String(row.weak).trim() !== '') bits.push(escHtml(dashT('ov.thuW')) + ' ' + escHtml(String(row.weak)));
           if (row.fail != null && String(row.fail).trim() !== '') bits.push(escHtml(dashT('ov.thuF')) + ' ' + escHtml(String(row.fail)));
           if (row.average != null && String(row.average).trim() !== '') bits.push(escHtml(dashT('ov.thuAvg')) + ' ' + escHtml(String(row.average)));
-          var scoreLine = bits.length ? '<div style="font-size:10px;color:#8a9ab5;margin-top:4px">' + bits.join(' · ') + '</div>' : '';
+          var scoreLine = bits.length ? '<div style="font-size:10px;color:var(--muted);margin-top:4px">' + bits.join(' · ') + '</div>' : '';
           html += '<div class="period-card" style="margin-bottom:6px;border-right:4px solid var(--yl)">';
           html += '<div><div class="teacher">' + exm + '</div>';
           html += '<div class="subject">' + sub + (cls ? ' <span class="class-badge ' + escAttr(String(cls)) + '">' + escHtml(clsLab || cls) + '</span>' : '') + '</div></div>';
@@ -2012,7 +2092,7 @@ function render() {
         });
         html += '</div>';
       } else {
-        html += '<div style="color:#8a9ab5;font-size:12px">' + escHtml(dashT('ov.thuEmpty')) + '</div>';
+        html += '<div style="color:var(--muted);font-size:12px">' + escHtml(dashT('ov.thuEmpty')) + '</div>';
       }
     } else {
       html += `<h2>🕐 ${dashT('ov.nowPeriod')} — ${curPeriod ? dashT('ov.period')+' '+curPeriod.id+' ('+curPeriod.start_time+'–'+curPeriod.end_time+')' : dashT('ov.noPeriod')}</h2>`;
@@ -2033,10 +2113,10 @@ function render() {
           </div>`;
           });
         } else {
-          html += '<div style="color:#8a9ab5;font-size:12px">'+dashT('ov.noAssignCur')+'</div>';
+          html += '<div style="color:var(--muted);font-size:12px">'+dashT('ov.noAssignCur')+'</div>';
         }
       } else {
-        html += '<div style="color:#8a9ab5;font-size:12px">'+dashT('ov.notTeaching')+' — ';
+        html += '<div style="color:var(--muted);font-size:12px">'+dashT('ov.notTeaching')+' — ';
         const nextP = periods.find(p=>p.type!=='break'&&p.start_time.padStart(5,'0')>now());
         if (nextP) html += dashT('ov.nextPeriod')+': '+nextP.start_time;
         else html += dashT('ov.periodsDone');
@@ -2066,7 +2146,7 @@ function render() {
         });
         html += '</div>';
       } else {
-        html += '<div style="color:#8a9ab5;font-size:12px">'+dashT('ov.allReportsNote')+'</div>';
+        html += '<div style="color:var(--muted);font-size:12px">'+dashT('ov.allReportsNote')+'</div>';
       }
       html += '</div>';
     }
@@ -2085,11 +2165,11 @@ function render() {
     }).join('');
     html += '<div class="section" style="border:1.5px solid #3b6cb855">';
     html += '<h2>' + escHtml(dashT('pf.title')) + '</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.5">' + escHtml(dashT('pf.help')) + '</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.5">' + escHtml(dashT('pf.help')) + '</div>';
     html += '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px">';
-    html += '<div><label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">' + escHtml(dashT('pf.class')) + '</label>';
+    html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">' + escHtml(dashT('pf.class')) + '</label>';
     html += '<select id="pf-class" class="acc-field-box" style="min-width:140px">' + pfClassOpts + '</select></div>';
-    html += '<div><label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">' + escHtml(dashT('pf.period')) + '</label>';
+    html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">' + escHtml(dashT('pf.period')) + '</label>';
     html += '<select id="pf-period" class="acc-field-box" style="min-width:200px">' + pfPeriodOpts + '</select></div>';
     html += '<button type="button" class="btn btn-gd btn-sm" onclick="window.runPeriodFilingCheck&&window.runPeriodFilingCheck()">' + escHtml(dashT('pf.check')) + '</button>';
     html += '</div><div id="pf-result"></div></div>';
@@ -2136,7 +2216,7 @@ function render() {
           html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:var(--dk);border-radius:8px;margin-bottom:3px">
             <span style="font-size:11px">${st?st.name:r.student_id}</span>
             <div style="display:flex;gap:6px;align-items:center">
-              <span style="font-size:9px;color:#8a9ab5">${r.subject_name||''}</span>
+              <span style="font-size:9px;color:var(--muted)">${r.subject_name||''}</span>
               ${phone ? `<a href="tel:${phone}" class="call-btn" style="font-size:9px">${dashT('ov.parentCall')}</a>` : ''}
             </div>
           </div>`;
@@ -2169,7 +2249,7 @@ function render() {
     const isThursday = isThursdayKolkata();
     const actualAbsent = absentListDedup.length;
     const actualBehind = behindSubjects.length;
-    const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid #1f3d5e;color:var(--wh);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:'+(typeof dashboardLocale!=='undefined'&&dashboardLocale==='en'?'ltr':'rtl')+';min-height:44px;box-sizing:border-box;'+s;
+    const iS = s => 'font-size:12px;background:var(--dk3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;width:100%;font-family:inherit;direction:'+(typeof dashboardLocale!=='undefined'&&dashboardLocale==='en'?'ltr':'rtl')+';min-height:44px;box-sizing:border-box;'+s;
 
     // Calculate score from filled fields
     let filled = 0, total = 10;
@@ -2208,12 +2288,12 @@ function render() {
 
     var pending100Html = '';
     if (pendingFor100.length) {
-      pending100Html = '<div style="margin-top:14px;text-align:right;border-top:1px solid #1f3d5e;padding-top:12px">' +
+      pending100Html = '<div style="margin-top:14px;text-align:right;border-top:1px solid var(--border);padding-top:12px">' +
         '<div style="font-size:11px;font-weight:800;color:#fdba74;margin-bottom:8px;line-height:1.45">' + escHtml(dashT('acc.pending100.remain', { n: pendingFor100.length, total })) + '</div>' +
-        '<ul style="list-style:none;margin:0;padding:0;font-size:11px;line-height:1.55;color:var(--wh)">' +
+        '<ul style="list-style:none;margin:0;padding:0;font-size:11px;line-height:1.55;color:var(--text)">' +
         pendingFor100.map(function (it) {
           var aid = String(it.anchor || '').replace(/'/g, '');
-          return '<li style="margin-bottom:6px"><button type="button" class="btn btn-sm" style="width:100%;text-align:right;padding:10px 12px;font-size:11px;font-weight:700;background:var(--dk3);border:1px solid #b45309;color:var(--wh);border-radius:10px;cursor:pointer;font-family:inherit" onclick="window.scrollToAccSection && window.scrollToAccSection(\'' + aid + '\')">\u2190 ' + escHtml(it.label) + '</button></li>';
+          return '<li style="margin-bottom:6px"><button type="button" class="btn btn-sm" style="width:100%;text-align:right;padding:10px 12px;font-size:11px;font-weight:700;background:var(--dk3);border:1px solid #b45309;color:var(--text);border-radius:10px;cursor:pointer;font-family:inherit" onclick="window.scrollToAccSection && window.scrollToAccSection(\'' + aid + '\')">\u2190 ' + escHtml(it.label) + '</button></li>';
         }).join('') +
         '</ul></div>';
     } else {
@@ -2224,7 +2304,7 @@ function render() {
     html += `<div class="section" style="text-align:center;border:2px solid ${scoreColor}">
       <div style="font-size:56px;font-weight:800;color:${scoreColor}">${pct}%</div>
       <div style="font-size:14px;font-weight:700;color:var(--gd);margin:4px 0">${escHtml(dashT('acc.scoreTitle'))}</div>
-      <div style="font-size:11px;color:#8a9ab5">${escHtml(dashT('acc.scoreSlots', { filled, total }))}</div>
+      <div style="font-size:11px;color:var(--muted)">${escHtml(dashT('acc.scoreSlots', { filled, total }))}</div>
       ${isSubmitted ? `<div style="font-size:10px;color:var(--gr);margin-top:4px">${escHtml(dashT('acc.submittedAt', { time: new Date(rpt.submitted_at).toLocaleTimeString(typeof dashTimeLocaleTag === 'function' ? dashTimeLocaleTag() : 'ur-PK', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) }))}</div>` : ''}
       <div style="width:100%;height:8px;background:var(--dk);border-radius:4px;margin-top:10px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${scoreColor};border-radius:4px;transition:.5s"></div>
@@ -2248,7 +2328,7 @@ function render() {
 
     // ═══ Section B: Verifiable Fields ═══
     html += '<div class="section" id="acc_anchor_verify" style="scroll-margin-top:72px"><h2>' + escHtml(dashT('acc.verify.title')) + '</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px">' + escHtml(dashT('acc.verify.hint')) + '</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-bottom:12px">' + escHtml(dashT('acc.verify.hint')) + '</div>';
 
     // Absent students count
     const enteredAbsent = rpt.absent_students_entered;
@@ -2258,7 +2338,7 @@ function render() {
       <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(dashT('acc.verify.absentLabel'))}</label>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="number" id="acc_absent" value="${enteredAbsent!=null?enteredAbsent:''}" placeholder="${escAttr(dashT('acc.verify.phNumber'))}" style="${iS('flex:1;')}" min="0">
-        <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${absMatch?'#34a85322':absMismatch?'#ea433522':'var(--dk)'};color:${absMatch?'var(--gr)':absMismatch?'var(--rd)':'#8a9ab5'}">
+        <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${absMatch?'#34a85322':absMismatch?'#ea433522':'var(--dk)'};color:${absMatch?'var(--gr)':absMismatch?'var(--rd)':'var(--muted)'}">
           ${enteredAbsent!=null?(absMatch?escHtml(dashT('acc.verify.correct')):escHtml(dashT('acc.verify.actual'))+actualAbsent):escHtml(dashT('acc.verify.actualOnly'))+actualAbsent}
         </div>
       </div>
@@ -2272,7 +2352,7 @@ function render() {
       <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(dashT('acc.verify.behindLabel'))}</label>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="number" id="acc_behind" value="${enteredBehind!=null?enteredBehind:''}" placeholder="${escAttr(dashT('acc.verify.phNumber'))}" style="${iS('flex:1;')}" min="0">
-        <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${behMatch?'#34a85322':behMismatch?'#ea433522':'var(--dk)'};color:${behMatch?'var(--gr)':behMismatch?'var(--rd)':'#8a9ab5'}">
+        <div style="font-size:11px;min-width:80px;text-align:center;padding:8px;border-radius:8px;background:${behMatch?'#34a85322':behMismatch?'#ea433522':'var(--dk)'};color:${behMatch?'var(--gr)':behMismatch?'var(--rd)':'var(--muted)'}">
           ${enteredBehind!=null?(behMatch?escHtml(dashT('acc.verify.correct')):escHtml(dashT('acc.verify.actual'))+actualBehind):escHtml(dashT('acc.verify.actualOnly'))+actualBehind}
         </div>
       </div>
@@ -2294,7 +2374,7 @@ function render() {
 
     // ═══ Section C: Descriptive Reports (intro + sticky sub-nav) ═══
     html += '<div class="section" id="acc_anchor_report" style="scroll-margin-top:72px"><h2>' + escHtml(dashT('acc.report.title')) + '</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:8px">' + escHtml(dashT('acc.report.hint')) + '</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-bottom:8px">' + escHtml(dashT('acc.report.hint')) + '</div>';
     html += '<nav class="acc-subnav" aria-label="' + escAttr(dashT('acc.nav.aria')) + '">' +
       '<span class="acc-subnav-hint">' + escHtml(dashT('acc.nav.jumpHint')) + '</span>' +
       '<div class="acc-subnav-inner">' +
@@ -2310,20 +2390,41 @@ function render() {
     const savedClassSel = savedClassMatch ? savedClassMatch[1] : '';
     html += `<div class="section" id="acc_anchor_class_visit" style="scroll-margin-top:72px">
       <details class="acc-details acc-class-details" open>
-        <summary class="acc-details-sum"><span>${escHtml(dashT('acc.panel.classSum'))}</span><span id="acc_class_visit_summary" class="acc-sum-tag" style="color:#8a9ab5">\u2014</span></summary>
+        <summary class="acc-details-sum"><span>${escHtml(dashT('acc.panel.classSum'))}</span><span id="acc_class_visit_summary" class="acc-sum-tag" style="color:var(--muted)">\u2014</span></summary>
         <div class="acc-details-body">
-          <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">${escHtml(dashT('acc.class.pick'))}</label>
-          <select id="acc_inspect_class_sel" class="acc-select-chevron" onchange="window.onInspectClassChange && window.onInspectClassChange()" style="${iS('margin-bottom:10px;')}">
-            <option value="">${escHtml(dashT('acc.class.optChoose'))}</option>
-            ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${escHtml(classLabel(cid))}</option>`).join('')}
-          </select>
-          <div id="acc_inspect_preview" style="font-size:11px;line-height:1.65;color:var(--wh);background:var(--dk3);border:1px solid #1f3d5e;border-radius:10px;padding:12px;margin-bottom:8px;min-height:48px">
-            <span style="color:#8a9ab5">${escHtml(dashT('acc.class.previewHint'))}</span>
-          </div>
-          <div style="font-size:9px;color:#8a9ab5;margin-bottom:6px">${escHtml(dashT('acc.class.subnoteHint'))}</div>
-          <button type="button" class="acc-btn-secondary" id="acc_class_visited_toggle_btn" onclick="window.toggleAccClassVisitedAdvanced()">${escHtml(dashT('acc.class.advShow'))}</button>
-          <div id="acc_class_visited_adv_wrap" style="display:none;margin-top:8px">
-            <textarea id="acc_class_visited" class="acc-field-box" rows="4" placeholder="${escAttr(dashT('acc.class.phEdit'))}" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter();window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+          <div class="acc-qa-table-wrap">
+            <table class="tbl acc-qa-table acc-qa-table-2col acc-class-table">
+              <colgroup><col class="acc-qa-th-label"><col class="acc-qa-th-field"></colgroup>
+              <thead><tr><th class="acc-qa-th-label">${escHtml(dashT('acc.qa.colLabel'))}</th><th class="acc-qa-th-field">${escHtml(dashT('acc.qa.colValue'))}</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="acc-qa-label">${escHtml(dashT('acc.class.pick'))}</td>
+                  <td class="acc-qa-field">
+                    <select id="acc_inspect_class_sel" class="acc-select-chevron acc-qa-cell-select" onchange="window.onInspectClassChange && window.onInspectClassChange()">
+                      <option value="">${escHtml(dashT('acc.class.optChoose'))}</option>
+                      ${CLASS_ORDER.map(cid => `<option value="${cid}"${savedClassSel === cid ? ' selected' : ''}>${escHtml(classLabel(cid))}</option>`).join('')}
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="acc-qa-label">${escHtml(dashT('ov.period'))}</td>
+                  <td class="acc-qa-field">
+                    <div id="acc_inspect_preview" class="acc-class-preview">
+                      <span style="color:var(--muted)">${escHtml(dashT('acc.class.previewHint'))}</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="acc-qa-label">${escHtml(dashT('acc.class.subnoteHint'))}</td>
+                  <td class="acc-qa-field">
+                    <button type="button" class="acc-btn-secondary" id="acc_class_visited_toggle_btn" onclick="window.toggleAccClassVisitedAdvanced()">${escHtml(dashT('acc.class.advShow'))}</button>
+                    <div id="acc_class_visited_adv_wrap" style="display:none;margin-top:8px">
+                      <textarea id="acc_class_visited" class="acc-field-box" rows="4" placeholder="${escAttr(dashT('acc.class.phEdit'))}" oninput="window.updateAccClassVisitedCounter&&window.updateAccClassVisitedCounter();window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </details>
@@ -2332,7 +2433,10 @@ function render() {
     const coRaw = typeof rpt.class_observations === 'string' ? rpt.class_observations : '';
     const visits0 = parseVisitObservations(coRaw);
     const accQaPresetKeys = ['acc.qa.preset.lesson', 'acc.qa.preset.discipline', 'acc.qa.preset.env', 'acc.qa.preset.behavior', 'acc.qa.preset.engagement'];
-    let accQaFormHtml = '';
+    let accQaFormHtml =
+      '<div class="acc-qa-table-wrap"><table class="tbl acc-qa-table acc-qa-table-2col">' +
+      '<colgroup><col class="acc-qa-th-label"><col class="acc-qa-th-field"></colgroup>' +
+      '<thead><tr><th class="acc-qa-th-label">' + escHtml(dashT('acc.qa.colLabel')) + '</th><th class="acc-qa-th-field">' + escHtml(dashT('acc.qa.colValue')) + '</th></tr></thead><tbody>';
     for (let qi = 1; qi <= VISIT_QA_REQUIRED; qi++) {
       const presetOpts =
         '<option value="">' +
@@ -2342,47 +2446,58 @@ function render() {
         '<option value="__other">' +
         escHtml(dashT('acc.qa.presetOther')) +
         '</option>';
-      accQaFormHtml += `<details class="acc-details acc-qa-details" id="acc_qa_details_${qi}">
-        <summary class="acc-details-sum"><span>${escHtml(dashT('acc.qa.hdr', { qi }))}</span><span id="acc_qa_sum_${qi}" class="acc-sum-tag" style="color:#8a9ab5">\u25CB</span></summary>
-        <div class="acc-details-body" style="display:flex;flex-direction:column;gap:10px">
-          <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.qa.toLabel')}</label>
-            <select id="acc_qa_who_type_${qi}" class="acc-select-chevron" onchange="window.refreshAccVisitQaWhoRow(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}">
-              <option value="student">${escHtml(dashT('acc.qa.optStudent'))}</option>
-              <option value="teacher">${escHtml(dashT('acc.qa.optTeacher'))}</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.qa.nameLabel')}</label>
-            <select id="acc_qa_who_id_${qi}" class="acc-select-chevron" onchange="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('')}"></select>
-          </div>
-          <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.presetLabel'))}</label>
-            <select id="acc_qa_preset_${qi}" class="acc-select-chevron" onchange="window.onAccQaPresetChange(${qi})" style="${iS('margin-bottom:6px;')}">${presetOpts}</select>
-          </div>
-          <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.qLabel'))}</label>
-            <textarea id="acc_qa_question_${qi}" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.qa.qPh'))}" oninput="window.syncAccQaPresetFromQuestion(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
-          </div>
-          <div>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${escHtml(dashT('acc.qa.aLabel'))}</label>
-            <textarea id="acc_qa_answer_${qi}" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.qa.aPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
-          </div>
-        </div>
-      </details>`;
+      accQaFormHtml += `<tr class="acc-qa-group-row" id="acc_qa_row_${qi}">
+        <td colspan="2"><div class="acc-qa-group-inner"><span>${escHtml(dashT('acc.qa.hdr', { qi }))}</span><span id="acc_qa_sum_${qi}" class="acc-sum-tag" style="color:var(--muted)">\u25CB</span></div></td>
+      </tr>
+      <tr>
+        <td class="acc-qa-label">${dashT('acc.qa.toLabel')}</td>
+        <td class="acc-qa-field">
+          <select id="acc_qa_who_type_${qi}" class="acc-select-chevron acc-qa-cell-select" onchange="window.refreshAccVisitQaWhoRow(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();">
+            <option value="student">${escHtml(dashT('acc.qa.optStudent'))}</option>
+            <option value="teacher">${escHtml(dashT('acc.qa.optTeacher'))}</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td class="acc-qa-label">${dashT('acc.qa.nameLabel')}</td>
+        <td class="acc-qa-field">
+          <select id="acc_qa_who_id_${qi}" class="acc-select-chevron acc-qa-cell-select" onchange="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();"></select>
+        </td>
+      </tr>
+      <tr>
+        <td class="acc-qa-label">${escHtml(dashT('acc.qa.presetLabel'))}</td>
+        <td class="acc-qa-field">
+          <select id="acc_qa_preset_${qi}" class="acc-select-chevron acc-qa-cell-select" onchange="window.onAccQaPresetChange(${qi})">${presetOpts}</select>
+        </td>
+      </tr>
+      <tr>
+        <td class="acc-qa-label">${escHtml(dashT('acc.qa.qLabel'))}</td>
+        <td class="acc-qa-field">
+          <textarea id="acc_qa_question_${qi}" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.qa.qPh'))}" oninput="window.syncAccQaPresetFromQuestion(${qi});window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;min-height:48px;')}"></textarea>
+        </td>
+      </tr>
+      <tr>
+        <td class="acc-qa-label">${escHtml(dashT('acc.qa.aLabel'))}</td>
+        <td class="acc-qa-field">
+          <textarea id="acc_qa_answer_${qi}" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.qa.aPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;min-height:48px;')}"></textarea>
+        </td>
+      </tr>`;
     }
+    accQaFormHtml +=
+      `<tr class="acc-qa-narr-row">
+        <td class="acc-qa-label">${dashT('acc.inspect.extraNotes')}</td>
+        <td class="acc-qa-field">
+          <textarea id="acc_visit_narrative" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.visit.narrPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
+        </td>
+      </tr></tbody></table></div>`;
     html += `<div class="section" id="acc_anchor_inspection" style="scroll-margin-top:72px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">${escHtml(dashT('acc.inspect.title'))}</label>
-        <span id="acc_class_obs_score_hint" style="font-size:9px;color:#8a9ab5"></span>
+        <span id="acc_class_obs_score_hint" style="font-size:9px;color:var(--muted)"></span>
       </div>
-      <div style="font-size:10px;color:#8a9ab5;margin-bottom:8px;line-height:1.55">${dashT('acc.inspect.help')}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.55">${dashT('acc.inspect.help')}</div>
       ${accQaFormHtml}
-      <div style="margin-bottom:10px">
-        <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.inspect.extraNotes')}</label>
-        <textarea id="acc_visit_narrative" class="acc-field-box" rows="2" placeholder="${escAttr(dashT('acc.visit.narrPh'))}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}"></textarea>
-      </div>
-      <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">${escHtml(dashT('acc.inspect.saveBtn'))}</button>
+      <button type="button" class="btn btn-gd" style="width:100%;margin-bottom:12px;min-height:44px;margin-top:10px" onclick="window.saveClassVisitObservation&&window.saveClassVisitObservation()">${escHtml(dashT('acc.inspect.saveBtn'))}</button>
       <div id="acc_visits_list" style="margin-bottom:4px">${formatVisitObsCardsHtml(visits0)}</div>
       <textarea id="acc_class_obs" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(coRaw)}</textarea>
     </div>`;
@@ -2399,11 +2514,11 @@ function render() {
         const cid = abs.class || '';
         const badge = cid ? `<span class="class-badge ${escAttr(cid)}">${escHtml(classLabel(cid))}</span> ` : '';
         absentFollowHtml += `<details class="acc-details acc-abs-row-details" style="margin-bottom:10px">
-          <summary class="acc-details-sum" style="font-size:12px">${badge}${escHtml(abs.name)} <span id="acc_abs_sum_${idx}" class="acc-sum-tag" style="color:#8a9ab5">\u25CB</span></summary>
+          <summary class="acc-details-sum" style="font-size:12px">${badge}${escHtml(abs.name)} <span id="acc_abs_sum_${idx}" class="acc-sum-tag" style="color:var(--muted)">\u25CB</span></summary>
           <div class="acc-details-body">
           <input type="hidden" id="acc_abs_sid_${idx}" value="${escAttr(abs.student_id)}">
-          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.absent.teacherFirst'))}</div>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.nextPath')}</label>
+          <div style="font-size:9px;color:var(--muted);margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.absent.teacherFirst'))}</div>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.absent.nextPath')}</label>
           <select id="acc_abs_path_${idx}" class="acc-select-chevron" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
             <option value="">${escHtml(dashT('acc.opt.choose'))}</option>
             <option value="teacher_ok">${escHtml(dashT('acc.absent.path_teacher_ok'))}</option>
@@ -2411,25 +2526,25 @@ function render() {
             <option value="assigned_call">${escHtml(dashT('acc.absent.path_assigned'))}</option>
           </select>
           <div id="acc_abs_twrap_${idx}" style="display:none">
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.whichTeacher')}</label>
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.absent.whichTeacher')}</label>
             <select id="acc_abs_teacher_${idx}" class="acc-select-chevron" onchange="window.syncAbsentActionsToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${teacherPickOpts}</select>
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.explain')}</label>
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.absent.explain')}</label>
             <textarea id="acc_abs_teacher_explain_${idx}" class="acc-field-box" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(dashT('acc.absent.explainPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
           <div id="acc_abs_assignwrap_${idx}" style="display:none">
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.assignee')}</label>
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.absent.assignee')}</label>
             <select id="acc_abs_assignee_${idx}" class="acc-select-chevron" onchange="window.toggleAccAbsentRow(${idx});window.syncAbsentActionsToHidden();" style="${iS('margin-bottom:8px;')}">
               <option value="">\u2014</option>
               ${teacherPickOpts}
               <option value="__name_only__">${escHtml(dashT('acc.absent.nameManual'))}</option>
             </select>
             <div id="acc_abs_assignname_wrap_${idx}" style="display:none;margin-bottom:8px">
-              <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.nameLbl')}</label>
+              <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.absent.nameLbl')}</label>
               <input type="text" id="acc_abs_assignee_name_${idx}" class="acc-field-box" oninput="window.syncAbsentActionsToHidden()" style="${iS('')}" placeholder="${escAttr(dashT('acc.absent.namePh'))}">
             </div>
           </div>
           <div id="acc_abs_replywrap_${idx}" style="display:none">
-            <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.absent.callReply')}</label>
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.absent.callReply')}</label>
             <textarea id="acc_abs_reply_${idx}" class="acc-field-box" rows="2" oninput="window.syncAbsentActionsToHidden()" placeholder="${escAttr(dashT('acc.absent.callPh'))}" style="${iS('resize:vertical;')}"></textarea>
           </div>
           </div>
@@ -2439,9 +2554,9 @@ function render() {
     html += `<div class="section" id="acc_anchor_absent_actions" style="scroll-margin-top:72px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">${escHtml(dashT('acc.absent.blockTitle'))}</label>
-        <span id="acc_absent_actions_hint" style="font-size:9px;color:${absentActOk?'var(--gr)':'#8a9ab5'}">${escHtml(absentActHint)}</span>
+        <span id="acc_absent_actions_hint" style="font-size:9px;color:${absentActOk?'var(--gr)':'var(--muted)'}">${escHtml(absentActHint)}</span>
       </div>
-      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${dashT('acc.absent.jsonHint')}</div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:8px;line-height:1.45">${dashT('acc.absent.jsonHint')}</div>
       <div id="acc_absent_actions_wrap" data-abs-count="${absentListDedup.length}">
         ${absentFollowHtml}
       </div>
@@ -2455,17 +2570,17 @@ function render() {
     const hifzStudentOpts = hifzRoster.map(s => '<option value="' + escAttr(s.id) + '">' + escHtml(s.name) + '</option>').join('');
     let hifzSlotsHtml = '';
     if (!hifzRoster.length) {
-      hifzSlotsHtml = '<div style="font-size:11px;color:#8a9ab5;padding:10px;background:var(--dk);border-radius:10px;margin-bottom:10px">' + dashT('acc.hifz.noRoster') + '</div>';
+      hifzSlotsHtml = '<div style="font-size:11px;color:var(--muted);padding:10px;background:var(--dk);border-radius:10px;margin-bottom:10px">' + dashT('acc.hifz.noRoster') + '</div>';
     } else {
       for (let hi = 0; hi < HIFZ_MEMORY_SLOTS; hi++) {
         const slotN = hi + 1;
         hifzSlotsHtml += `<details class="acc-details acc-hifz-slot-details" style="margin-bottom:10px">
-          <summary class="acc-details-sum" style="font-size:11px">${escHtml(dashT('acc.hifz.slotTitle', { n: slotN }))} <span id="acc_hf_sum_${hi}" class="acc-sum-tag" style="color:#8a9ab5">\u2014</span></summary>
+          <summary class="acc-details-sum" style="font-size:11px">${escHtml(dashT('acc.hifz.slotTitle', { n: slotN }))} <span id="acc_hf_sum_${hi}" class="acc-sum-tag" style="color:var(--muted)">\u2014</span></summary>
           <div class="acc-details-body">
-          <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.hifz.slotHelp'))}</div>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.student')}</label>
+          <div style="font-size:9px;color:var(--muted);margin-bottom:8px;line-height:1.45">${escHtml(dashT('acc.hifz.slotHelp'))}</div>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.hifz.student')}</label>
           <select id="acc_hf_sid_${hi}" class="acc-select-chevron" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}"><option value="">\u2014</option>${hifzStudentOpts}</select>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.span')}</label>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.hifz.span')}</label>
           <select id="acc_hf_span_${hi}" class="acc-select-chevron" onchange="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}">
             <option value="">\u2014</option>
             <option value="last_2_days">${escHtml(dashT('acc.hifz.span2'))}</option>
@@ -2473,13 +2588,13 @@ function render() {
             <option value="last_week">${escHtml(dashT('acc.hifz.spanWk'))}</option>
             <option value="other">${escHtml(dashT('acc.hifz.spanOther'))}</option>
           </select>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.prompt')}</label>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.hifz.prompt')}</label>
           <textarea id="acc_hf_prompt_${hi}" class="acc-field-box" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(dashT('acc.hifz.promptPh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.response')}</label>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.hifz.response')}</label>
           <textarea id="acc_hf_resp_${hi}" class="acc-field-box" rows="2" oninput="window.syncHifzNotesToHidden()" placeholder="${escAttr(dashT('acc.hifz.responsePh'))}" style="${iS('resize:vertical;margin-bottom:8px;')}"></textarea>
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.where')}</label>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.hifz.where')}</label>
           <input type="text" id="acc_hf_pos_${hi}" class="acc-field-box" oninput="window.syncHifzNotesToHidden()" style="${iS('margin-bottom:8px;')}" placeholder="${escAttr(dashT('acc.hifz.wherePh'))}">
-          <label style="font-size:10px;color:#8a9ab5;display:block;margin-bottom:4px">${dashT('acc.hifz.quality')}</label>
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">${dashT('acc.hifz.quality')}</label>
           <select id="acc_hf_quality_${hi}" class="acc-select-chevron" onchange="window.syncHifzNotesToHidden()" style="${iS('')}">
             <option value="">\u2014</option>
             <option value="weak">${escHtml(dashT('acc.hifz.qWeak'))}</option>
@@ -2493,9 +2608,9 @@ function render() {
     const hifzBlockHtml = `<div class="section" id="acc_anchor_hifz" style="scroll-margin-top:72px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px">
         <label style="font-size:12px;font-weight:700">${escHtml(dashT('acc.hifz.blockTitle'))}</label>
-        <span id="acc_hifz_actions_hint" style="font-size:9px;color:${hifzActOk?'var(--gr)':'#8a9ab5'}">${escHtml(hifzActHint)}</span>
+        <span id="acc_hifz_actions_hint" style="font-size:9px;color:${hifzActOk?'var(--gr)':'var(--muted)'}">${escHtml(hifzActHint)}</span>
       </div>
-      <div style="font-size:9px;color:#8a9ab5;margin-bottom:8px;line-height:1.45">${dashT('acc.hifz.jsonHint')}</div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:8px;line-height:1.45">${dashT('acc.hifz.jsonHint')}</div>
       <div id="acc_hifz_wrap" data-hifz-roster-len="${hifzRoster.length}">${hifzSlotsHtml}</div>
       <pre id="acc_hifz_legacy_note" style="display:none;font-size:10px;color:#fdba74;white-space:pre-wrap;word-break:break-word;margin-top:8px;padding:8px;background:var(--dk);border-radius:8px;border:1px solid #7c2d12"></pre>
       <textarea id="acc_hifz" style="display:none" tabindex="-1" aria-hidden="true">${escHtml(hifzActRaw)}</textarea>
@@ -2515,7 +2630,7 @@ function render() {
       html += secOpen + `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <label style="font-size:12px;font-weight:700">${escHtml(fLabel)}</label>
-          <span style="font-size:9px;color:${ok?'var(--gr)':'#8a9ab5'}">${val.length}/${f.min} ${ok?'✅':''}</span>
+          <span style="font-size:9px;color:${ok?'var(--gr)':'var(--muted)'}">${val.length}/${f.min} ${ok?'✅':''}</span>
         </div>
         <textarea id="${f.id}" class="acc-field-box" rows="${f.rows}" placeholder="${escAttr(fPh)}" oninput="window.refreshAccPanelSummaries&&window.refreshAccPanelSummaries();" style="${iS('resize:vertical;')}">${val}</textarea>
       ` + secClose;
@@ -2523,10 +2638,10 @@ function render() {
 
     // ═══ Section D: Checklist (progress + confirmations) ═══
     html += '<div class="section" id="acc_anchor_checklist" style="scroll-margin-top:72px"><h2>' + escHtml(dashT('acc.chklist.sectionTitle')) + '</h2>';
-    html += '<div id="acc_checklist_banner" style="margin-bottom:12px;padding:12px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.5;background:var(--dk3);border:1px solid #1f3d5e;color:#8a9ab5">\u2026</div>';
+    html += '<div id="acc_checklist_banner" style="margin-bottom:12px;padding:12px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.5;background:var(--dk3);border:1px solid var(--border);color:var(--muted)">\u2026</div>';
     html += '<div id="acc_checklist_rows" style="margin-bottom:12px"></div>';
     html += '<button type="button" class="btn btn-gd btn-sm" id="acc_checklist_scroll_btn" style="width:100%;margin-bottom:12px;display:none;min-height:44px" onclick="window.scrollToFirstIncompleteAccountability()">' + escHtml(dashT('acc.chklist.scrollBtn')) + '</button>';
-    html += '<div class="acc-checklist-foot" style="font-size:10px;color:#8a9ab5;margin-bottom:10px">' + escHtml(dashT('acc.chklist.footer')) + '</div>';
+    html += '<div class="acc-checklist-foot" style="font-size:10px;color:var(--muted);margin-bottom:10px">' + escHtml(dashT('acc.chklist.footer')) + '</div>';
     const checks = [
       { id: 'acc_chk_parents', label: dashT('acc.chk.parentsLbl'), field: 'called_parents', anchor: 'acc_anchor_chk_parents' },
       { id: 'acc_chk_hifz', label: dashT('acc.chk.hifzLbl'), field: 'checked_hifz', anchor: 'acc_anchor_chk_hifz' },
@@ -2574,7 +2689,7 @@ function render() {
       console.error('Admin tab error:', err);
       html += `<div class="section" style="border:2px solid var(--rd)"><h2>${escHtml(dashT('acc.errTitle'))}</h2>
         <div style="font-size:11px;color:var(--rd)">${escHtml(err.message)}</div>
-        <div style="font-size:10px;color:#8a9ab5;margin-top:8px">${escHtml(dashT('acc.errConsole'))}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px">${escHtml(dashT('acc.errConsole'))}</div>
       </div>`;
     }
   }
@@ -2598,7 +2713,7 @@ function render() {
         <div><span class="badge ${badgeCls}">${status==='present'?dashT('common.present'):status==='absent'?dashT('common.absent'):status==='leave'?dashT('common.leave'):status==='late'?dashT('common.late'):dashT('common.unknown')}</span>
           ${att ? `<span class="badge ${approved?'approved':'pending'}" style="margin-right:4px">${approved?dashT('common.approved'):dashT('common.pending')}</span>` : ''}
         </div>
-        ${ls ? `<div style="font-size:9px;color:#8a9ab5;margin-top:6px">${dashT('common.present')}:${ls.present_days||0} ${dashT('common.leave')}:${ls.leave_days||0} ${dashT('common.absent')}:${ls.absent_days||0} ${dashT('common.late')}:${ls.late_days||0}</div>` : ''}
+        ${ls ? `<div style="font-size:9px;color:var(--muted);margin-top:6px">${dashT('common.present')}:${ls.present_days||0} ${dashT('common.leave')}:${ls.leave_days||0} ${dashT('common.absent')}:${ls.absent_days||0} ${dashT('common.late')}:${ls.late_days||0}</div>` : ''}
         ${att && !approved ? `<button class="btn btn-gr btn-sm" style="margin-top:6px" onclick="approveTeacher('${tm.id}')">${dashT('tAtt.approveOne')}</button>` : ''}
       </div>`;
     });
@@ -2613,12 +2728,12 @@ function render() {
 
     // ═══ Evidence-based Verification Grid ═══
     html += '<div class="section"><h2>'+dashT('tAtt.verifyTitle')+'</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:12px;line-height:1.5">'+dashT('tAtt.verifyHelp')+'</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.5">'+dashT('tAtt.verifyHelp')+'</div>';
 
     html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">';
-    html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === 'all' ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'all\';render();">'+dashT('common.allGrades')+'</button>';
+    html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === 'all' ? 'background:var(--gd);color:var(--wh)' : 'background:var(--dk3);color:var(--muted)') + '" onclick="tVerifyFilter=\'all\';render();">'+dashT('common.allGrades')+'</button>';
     CLASS_ORDER.forEach(function(cid) {
-      html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="tVerifyFilter=\'' + cid + '\';render();">' + escHtml(classLabel(cid) || cid) + '</button>';
+      html += '<button class="btn btn-sm" style="font-size:9px;' + (tVerifyFilter === cid ? 'background:var(--gd);color:var(--wh)' : 'background:var(--dk3);color:var(--muted)') + '" onclick="tVerifyFilter=\'' + cid + '\';render();">' + escHtml(classLabel(cid) || cid) + '</button>';
     });
     html += '</div>';
 
@@ -2680,14 +2795,14 @@ function render() {
     var summaryColor = vPct >= 80 ? 'var(--gr)' : vPct >= 50 ? 'var(--yl)' : 'var(--rd)';
 
     html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:12px;background:var(--dk);border-radius:12px;border:1px solid ' + summaryColor + '">';
-    html += '<div style="text-align:center;flex:1;min-width:80px"><div style="font-size:28px;font-weight:800;color:' + summaryColor + '">' + vPct + '%</div><div style="font-size:9px;color:#8a9ab5">'+dashT('tAtt.verified')+'</div></div>';
-    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gr)">' + vGreen + '</div><div style="font-size:9px;color:#8a9ab5">'+dashT('tAtt.proofOk')+'</div></div>';
-    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--rd)">' + vRed + '</div><div style="font-size:9px;color:#8a9ab5">'+dashT('tAtt.noProof')+'</div></div>';
-    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gd)">' + vTotal + '</div><div style="font-size:9px;color:#8a9ab5">'+dashT('tAtt.totalAsg')+'</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:80px"><div style="font-size:28px;font-weight:800;color:' + summaryColor + '">' + vPct + '%</div><div style="font-size:9px;color:var(--muted)">'+dashT('tAtt.verified')+'</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gr)">' + vGreen + '</div><div style="font-size:9px;color:var(--muted)">'+dashT('tAtt.proofOk')+'</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--rd)">' + vRed + '</div><div style="font-size:9px;color:var(--muted)">'+dashT('tAtt.noProof')+'</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:60px"><div style="font-size:20px;font-weight:800;color:var(--gd)">' + vTotal + '</div><div style="font-size:9px;color:var(--muted)">'+dashT('tAtt.totalAsg')+'</div></div>';
     html += '</div>';
 
     if (!verifyRows.length) {
-      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">'+dashT('ov.noAssignCur')+'</div>';
+      html += '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">'+dashT('ov.noAssignCur')+'</div>';
     } else {
       var byClass = {};
       verifyRows.forEach(function(r) {
@@ -2707,7 +2822,7 @@ function render() {
         var clsPct = clsTotal > 0 ? Math.round(clsVerified / clsTotal * 100) : 0;
         var clsColor = clsPct >= 80 ? 'var(--gr)' : clsPct >= 50 ? 'var(--yl)' : 'var(--rd)';
 
-        html += '<div style="margin-bottom:14px;border:1px solid #1f3d5e;border-radius:12px;overflow:hidden">';
+        html += '<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:12px;overflow:hidden">';
         html += '<div style="background:var(--dk3);padding:10px 12px;display:flex;justify-content:space-between;align-items:center">';
         html += '<div style="display:flex;align-items:center;gap:8px"><span class="class-badge ' + escAttr(cls) + '">' + escHtml(classLabel(cls) || cls) + '</span>';
         html += '<span style="font-size:12px;font-weight:700;color:var(--gd)">' + clsVerified + '/' + clsTotal + '</span></div>';
@@ -2742,7 +2857,7 @@ function render() {
           if (!r.verified && (!r.selfStatus || r.selfStatus === 'present')) rowBg = 'background:#ea433515';
 
           html += '<tr style="' + rowBg + '">';
-          html += '<td style="font-weight:700">P' + (r.periodId != null ? r.periodId : '?') + '<div style="font-size:8px;color:#8a9ab5">' + escHtml(r.periodLabel) + '</div></td>';
+          html += '<td style="font-weight:700">P' + (r.periodId != null ? r.periodId : '?') + '<div style="font-size:8px;color:var(--muted)">' + escHtml(r.periodLabel) + '</div></td>';
           html += '<td>' + escHtml(r.teacherName) + '</td>';
           html += '<td>' + escHtml(r.subjectName) + '</td>';
           html += '<td>' + selfBadge + '</td>';
@@ -2766,7 +2881,7 @@ function render() {
       discrepancies.forEach(function(r) {
         html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--dk);border-radius:8px;margin-bottom:4px;min-height:40px">';
         html += '<div><span style="font-weight:700;font-size:12px">' + escHtml(r.teacherName) + '</span>';
-        html += '<span style="font-size:10px;color:#8a9ab5;margin-right:8px"> • ' + escHtml(r.subjectName) + ' • P' + (r.periodId != null ? r.periodId : '?') + '</span></div>';
+        html += '<span style="font-size:10px;color:var(--muted);margin-right:8px"> • ' + escHtml(r.subjectName) + ' • P' + (r.periodId != null ? r.periodId : '?') + '</span></div>';
         html += '<span class="class-badge ' + escAttr(r.cls) + '">' + escHtml(classLabel(r.cls) || r.cls) + '</span>';
         html += '</div>';
       });
@@ -2890,19 +3005,19 @@ function render() {
       <span style="color:var(--gr)">\u2705 ${dashT('common.present')}: ${fP}</span>
       <span style="color:var(--rd)">\u274C ${dashT('common.absent')}: ${fA}</span>
       <span style="color:var(--yl)">\uD83D\uDCDD ${dashT('common.leave')}: ${fL}</span>
-      <span style="color:#8a9ab5">${dashT('common.all')}: ${filtered.length}</span>
+      <span style="color:var(--muted)">${dashT('common.all')}: ${filtered.length}</span>
       ${classF !== 'all' ? `<span style="color:var(--gd)">${dashT('reports.thGrade')}: ${classLabel(classF) || classF}</span>` : ''}
     </div>`;
 
     if (!filtered.length) {
-      html += '<div style="text-align:center;padding:24px;color:#8a9ab5;font-size:12px">'+dashT('common.noneFilter')+'</div>';
+      html += '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">'+dashT('common.noneFilter')+'</div>';
     } else {
       groups.forEach(g => {
         const pLabel = g.pNum == null ? dashT('stu.periodQ') : (dashT('ov.period') + ' ' + g.pNum);
-        html += '<div style="margin-bottom:14px;border:1px solid #1f3d5e;border-radius:12px;overflow:hidden">';
+        html += '<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:12px;overflow:hidden">';
         html += `<div style="background:var(--dk3);padding:10px 12px;font-size:12px;font-weight:800;color:var(--gd)">
           🕐 ${pLabel} — ${g.subject_name || '—'} — ${g.teacher_name || '—'}
-          <span style="font-weight:600;color:#8a9ab5;font-size:10px;margin-right:8px">(${g.rows.length})</span>
+          <span style="font-weight:600;color:var(--muted);font-size:10px;margin-right:8px">(${g.rows.length})</span>
         </div>`;
         html += '<div class="scroll-table" style="max-height:260px"><table class="tbl"><thead><tr>';
         html += '<th>'+dashT('stu.student')+'</th><th>'+dashT('stu.grade')+'</th><th>'+dashT('stu.att')+'</th><th>'+dashT('stu.contact')+'</th>';
@@ -2948,7 +3063,7 @@ function render() {
       });
       html += '</tbody></table></div>';
     } else {
-      html += '<div style="text-align:center;padding:30px;color:#8a9ab5">'+dashT('reports.none')+'</div>';
+      html += '<div style="text-align:center;padding:30px;color:var(--muted)">'+dashT('reports.none')+'</div>';
     }
     html += '</div>';
   }
@@ -2965,11 +3080,11 @@ function render() {
       agg[n] = (agg[n] || 0) + 1;
     });
     const aggChips = Object.keys(agg).sort((a, b) => a.localeCompare(b, dashSortLocale())).map(n =>
-      `<span style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:999px;background:var(--dk3);font-size:10px;color:#c5cee0">${escHtml(n)} <strong style="color:var(--yl)">${agg[n]}</strong></span>`
+      `<span style="display:inline-block;margin:2px 4px 2px 0;padding:4px 10px;border-radius:999px;background:var(--dk3);font-size:10px;color:var(--soft)">${escHtml(n)} <strong style="color:var(--yl)">${agg[n]}</strong></span>`
     ).join('');
 
     html += '<div class="section"><h2>'+dashT('behind.title')+'</h2>';
-    html += '<div style="font-size:10px;color:#8a9ab5;margin-bottom:10px;line-height:1.55">'+dashT('behind.note')+'</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.55">'+dashT('behind.note')+'</div>';
 
     html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:14px 0 8px">'+dashT('behind.behindTitle')+'</h3>';
     if (behindRows.length) {
@@ -2994,7 +3109,7 @@ function render() {
       });
       html += '</tbody></table></div>';
     } else {
-      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">'+dashT('behind.noBehind')+'</div>';
+      html += '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">'+dashT('behind.noBehind')+'</div>';
     }
 
     html += '<h3 style="font-size:12px;font-weight:800;color:var(--gd);margin:18px 0 8px">'+dashT('behind.pendingTitle')+'</h3>';
@@ -3013,7 +3128,7 @@ function render() {
       });
       html += '</tbody></table></div>';
     } else {
-      html += '<div style="text-align:center;padding:20px;color:#8a9ab5;font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">'+dashT('behind.allIn')+'</div>';
+      html += '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;border:1px dashed #2a4a6e;border-radius:12px">'+dashT('behind.allIn')+'</div>';
     }
     html += '</div>';
   }
@@ -3029,7 +3144,7 @@ function render() {
     html += '<div class="section"><h2>'+dashT('exp.title')+'</h2>';
     html += '<div class="filter-bar">';
     html += '<input type="date" id="expFrom" value="'+escAttr(expFromVal)+'">';
-    html += '<span style="color:#8a9ab5">→</span>';
+    html += '<span style="color:var(--muted)">→</span>';
     html += '<input type="date" id="expTo" value="'+escAttr(expToVal)+'">';
     html += '</div>';
 
@@ -3042,7 +3157,7 @@ function render() {
       html += '<div style="font-weight:700;font-size:11px;margin-bottom:8px">' + escHtml(Array.from(expLab).slice(1).join('')) + '</div>';
       html += '<div style="display:flex;gap:4px">';
       html += '<button class="btn btn-gd btn-sm" style="flex:1;font-size:9px" onclick="fetchExportView(\'' + e.id + '\',\'' + e.cols + '\')">' + dashT('exp.preview') + '</button>';
-      html += '<button class="btn btn-sm" style="flex:1;font-size:9px;background:var(--dk3);color:var(--wh)" onclick="exportCSV(\'' + e.id + '\',\'' + e.cols + '\')">' + dashT('exp.csv') + '</button>';
+      html += '<button class="btn btn-sm" style="flex:1;font-size:9px;background:var(--dk3);color:var(--text)" onclick="exportCSV(\'' + e.id + '\',\'' + e.cols + '\')">' + dashT('exp.csv') + '</button>';
       html += '</div></div>';
     });
     html += '</div>';
@@ -3080,16 +3195,16 @@ function render() {
 
       if (['student_attendance','daily_reports','thursday_tests','students'].indexOf(vt) >= 0) {
         html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
-        html += '<button class="btn btn-sm" style="font-size:9px;' + (!f.cls ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'\')">' + dashT('common.all') + '</button>';
+        html += '<button class="btn btn-sm" style="font-size:9px;' + (!f.cls ? 'background:var(--gd);color:var(--wh)' : 'background:var(--dk3);color:var(--muted)') + '" onclick="setExpFilter(\'cls\',\'\')">' + dashT('common.all') + '</button>';
         CLASS_ORDER.forEach(function(cid) {
-          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.cls === cid ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'cls\',\'' + cid + '\')">' + escHtml(classLabel(cid) || cid) + '</button>';
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.cls === cid ? 'background:var(--gd);color:var(--wh)' : 'background:var(--dk3);color:var(--muted)') + '" onclick="setExpFilter(\'cls\',\'' + cid + '\')">' + escHtml(classLabel(cid) || cid) + '</button>';
         });
         html += '</div>';
       }
 
       if (['student_attendance','daily_attendance'].indexOf(vt) >= 0) {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:dashT('common.all'),c:'#8a9ab5'},{v:'P',l:dashT('common.present'),c:'var(--gr)'},{v:'A',l:dashT('common.absent'),c:'var(--rd)'},{v:'L',l:dashT('common.leave'),c:'var(--bl)'}].forEach(function(s) {
+        [{v:'',l:dashT('common.all'),c:'var(--muted)'},{v:'P',l:dashT('common.present'),c:'var(--gr)'},{v:'A',l:dashT('common.absent'),c:'var(--rd)'},{v:'L',l:dashT('common.leave'),c:'var(--bl)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -3097,7 +3212,7 @@ function render() {
 
       if (vt === 'teacher_attendance') {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:dashT('common.all'),c:'#8a9ab5'},{v:'present',l:dashT('common.present'),c:'var(--gr)'},{v:'late',l:dashT('common.late'),c:'var(--yl)'},{v:'absent',l:dashT('common.absent'),c:'var(--rd)'},{v:'leave',l:dashT('common.leave'),c:'var(--bl)'}].forEach(function(s) {
+        [{v:'',l:dashT('common.all'),c:'var(--muted)'},{v:'present',l:dashT('common.present'),c:'var(--gr)'},{v:'late',l:dashT('common.late'),c:'var(--yl)'},{v:'absent',l:dashT('common.absent'),c:'var(--rd)'},{v:'leave',l:dashT('common.leave'),c:'var(--bl)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -3105,7 +3220,7 @@ function render() {
 
       if (vt === 'daily_reports') {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:dashT('common.all'),c:'#8a9ab5'},{v:'\u06C1\u0627\u06BA',l:dashT('exp.completeFilterFull'),c:'var(--gr)'},{v:'\u062C\u0632\u0648\u06CC',l:dashT('exp.completeFilterPartial'),c:'var(--yl)'},{v:'\u0646\u06C1\u06CC\u06BA',l:dashT('exp.completeFilterNo'),c:'var(--rd)'}].forEach(function(s) {
+        [{v:'',l:dashT('common.all'),c:'var(--muted)'},{v:'\u06C1\u0627\u06BA',l:dashT('exp.completeFilterFull'),c:'var(--gr)'},{v:'\u062C\u0632\u0648\u06CC',l:dashT('exp.completeFilterPartial'),c:'var(--yl)'},{v:'\u0646\u06C1\u06CC\u06BA',l:dashT('exp.completeFilterNo'),c:'var(--rd)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -3114,14 +3229,14 @@ function render() {
       if (vt === 'daily_attendance') {
         html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
         [{v:'',l:dashT('common.all')},{v:'fajr',l:dashT('slot.fajr')},{v:'salam',l:dashT('slot.salam')},{v:'zuhr',l:dashT('slot.zuhr')},{v:'asr',l:dashT('slot.asr')},{v:'maghrib',l:dashT('slot.maghrib')},{v:'isha',l:dashT('slot.isha')}].forEach(function(s) {
-          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.slot === s.v ? 'background:var(--gd);color:var(--dk)' : 'background:var(--dk3);color:#8a9ab5') + '" onclick="setExpFilter(\'slot\',\'' + s.v + '\')">' + s.l + '</button>';
+          html += '<button class="btn btn-sm" style="font-size:9px;' + (f.slot === s.v ? 'background:var(--gd);color:var(--wh)' : 'background:var(--dk3);color:var(--muted)') + '" onclick="setExpFilter(\'slot\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
       }
 
       if (vt === 'students') {
         html += '<div style="display:flex;gap:4px;margin-bottom:8px">';
-        [{v:'',l:dashT('common.all'),c:'#8a9ab5'},{v:'active',l:dashT('exp.active'),c:'var(--gr)'},{v:'left',l:dashT('exp.stuLeft'),c:'var(--rd)'}].forEach(function(s) {
+        [{v:'',l:dashT('common.all'),c:'var(--muted)'},{v:'active',l:dashT('exp.active'),c:'var(--gr)'},{v:'left',l:dashT('exp.stuLeft'),c:'var(--rd)'}].forEach(function(s) {
           html += '<button class="btn btn-sm" style="font-size:9px;' + (f.status === s.v ? 'background:' + s.c + ';color:var(--dk)' : 'background:var(--dk3);color:' + s.c) + '" onclick="setExpFilter(\'status\',\'' + s.v + '\')">' + s.l + '</button>';
         });
         html += '</div>';
@@ -3176,11 +3291,11 @@ function render() {
         html += '<span style="color:var(--gr)">'+dashT('exp.active')+': '+act+'</span>';
         html += '<span style="color:var(--gd)">'+dashT('common.all')+': '+filtered.length+'</span>';
       }
-      html += '<span style="color:#8a9ab5">'+dashT('exp.showing')+': '+filtered.length+'/'+vd.length+'</span>';
+      html += '<span style="color:var(--muted)">'+dashT('exp.showing')+': '+filtered.length+'/'+vd.length+'</span>';
       html += '</div>';
 
       if (!filtered.length) {
-        html += '<div style="text-align:center;padding:30px;color:#8a9ab5;font-size:12px">'+dashT('common.noneFilter')+'</div>';
+        html += '<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px">'+dashT('common.noneFilter')+'</div>';
       } else {
         var cols = exp ? exp.cols.split(',') : Object.keys(filtered[0]);
         html += '<div class="scroll-table" style="max-height:500px"><table class="tbl"><thead><tr>';
@@ -3216,7 +3331,7 @@ function render() {
         });
         html += '</tbody></table></div>';
         if (filtered.length > 200) {
-          html += '<div style="text-align:center;padding:10px;color:#8a9ab5;font-size:10px">'+dashT('exp.first200')+'</div>';
+          html += '<div style="text-align:center;padding:10px;color:var(--muted);font-size:10px">'+dashT('exp.first200')+'</div>';
         }
       }
       html += '</div>';
@@ -3237,7 +3352,7 @@ function render() {
     const mkBtn = function (key, label, active) {
       return (
         '<button type="button" class="btn btn-sm" style="font-size:9px;' +
-        (active ? "background:var(--gd);color:var(--dk)" : "background:var(--dk3);color:#8a9ab5") +
+        (active ? "background:var(--gd);color:var(--wh)" : "background:var(--dk3);color:var(--muted)") +
         '" onclick="notifUi.' +
         key +
         ";render();\">" +
@@ -3285,7 +3400,7 @@ function render() {
       '<button type="button" class="btn btn-bl btn-sm" onclick="window.markAllNotificationsRead()">' +
       escHtml(dashT("notif.markAll")) +
       "</button>" +
-      '<button type="button" class="btn btn-sm" style="background:var(--dk3);color:var(--wh)" onclick="window.runMissedRowsCheck&&window.runMissedRowsCheck(this)">' +
+      '<button type="button" class="btn btn-sm" style="background:var(--dk3);color:var(--text)" onclick="window.runMissedRowsCheck&&window.runMissedRowsCheck(this)">' +
       escHtml(dashT("notif.runCheck")) +
       "</button>" +
       "</div>";
@@ -3299,9 +3414,9 @@ function render() {
         const tnm = tch ? tch.name : n.teacher_id || "\u2014";
         html += '<div class="notif-row"><div class="notif-sev ' + escAttr(sev) + '"></div><div style="flex:1;min-width:0">';
         html += '<div style="font-weight:800;font-size:12px">' + escHtml(n.title || "") + "</div>";
-        html += '<div style="font-size:11px;color:#c5cee0;margin-top:4px;white-space:pre-wrap;word-break:break-word">' + escHtml(n.message || "") + "</div>";
+        html += '<div style="font-size:11px;color:var(--soft);margin-top:4px;white-space:pre-wrap;word-break:break-word">' + escHtml(n.message || "") + "</div>";
         html +=
-          '<div style="font-size:9px;color:#8a9ab5;margin-top:6px">' +
+          '<div style="font-size:9px;color:var(--muted);margin-top:6px">' +
           escHtml(tnm) +
           " \u00b7 " +
           escHtml(notifTimeAgo(n.created_at)) +
@@ -3673,7 +3788,7 @@ window.onInspectClassChange = async function (opts) {
   if (!sel || !ta || !prev) return;
   const classId = sel.value;
   if (!classId) {
-    prev.innerHTML = '<span style="color:#8a9ab5">' + escHtml(t('acc.class.previewHint')) + '</span>';
+    prev.innerHTML = '<span style="color:var(--muted)">' + escHtml(t('acc.class.previewHint')) + '</span>';
     if (!preserveTa) ta.value = '';
     if (!skipVisitQaReload) loadAccVisitFormForClass('', null);
     window.updateAccClassVisitedCounter();
@@ -3706,7 +3821,7 @@ window.onInspectClassChange = async function (opts) {
   textLines.push(line2);
   linesHtml.push('<div style="font-weight:800;color:var(--gd);margin-top:6px">' + escHtml(head) + '</div>');
   linesHtml.push('<div>' + escHtml((sub ? sub.name : asg.subject_id) + ' \u2014 ' + tLbl + ': ' + (tm ? tm.name : asg.teacher_id)) + '</div>');
-  linesHtml.push('<div style="font-size:10px;color:#8a9ab5">' + escHtml(period.start_time + '\u2013' + period.end_time) + '</div>');
+  linesHtml.push('<div style="font-size:10px;color:var(--muted)">' + escHtml(period.start_time + '\u2013' + period.end_time) + '</div>');
   const todayR = (reportsToday || []).find(r => r.teacher_id === asg.teacher_id && r.subject_id === asg.subject_id);
   const tp = todayR && todayR.target_page != null ? todayR.target_page : '\u2014';
   const ap = todayR && todayR.actual_page != null ? todayR.actual_page : '\u2014';
@@ -3716,7 +3831,7 @@ window.onInspectClassChange = async function (opts) {
   const compDisp = todayR && todayR.complete ? displayComplete(todayR.complete) : '';
   const todayTxt = todayStrong + ': ' + tgtLbl + ' ' + tp + ' \u00B7 ' + actLbl + ' ' + ap + (compDisp ? ' \u00B7 ' + compDisp : '');
   textLines.push(todayTxt);
-  linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>' + escHtml(todayStrong) + '</strong>: ' + escHtml(tgtLbl) + ' <strong>' + escHtml(String(tp)) + '</strong> \u00B7 ' + escHtml(actLbl) + ' <strong>' + escHtml(String(ap)) + '</strong>' + (compDisp ? ' \u00B7 ' + escHtml(compDisp) : '') + '</div>');
+  linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><strong>' + escHtml(todayStrong) + '</strong>: ' + escHtml(tgtLbl) + ' <strong>' + escHtml(String(tp)) + '</strong> \u00B7 ' + escHtml(actLbl) + ' <strong>' + escHtml(String(ap)) + '</strong>' + (compDisp ? ' \u00B7 ' + escHtml(compDisp) : '') + '</div>');
   window._inspectClassSeq = (window._inspectClassSeq | 0) + 1;
   const inspectRun = window._inspectClassSeq;
   const taSnapshot = ta.value;
@@ -3730,10 +3845,10 @@ window.onInspectClassChange = async function (opts) {
       const prevS = t('acc.inspect.prevStrong');
       const _tl = t('acc.inspect.targetLbl');
       const _al = t('acc.inspect.actualLbl');
-      linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f3d5e"><strong>' + escHtml(prevS) + '</strong> (' + escHtml(String(lr[0].date)) + '): ' + escHtml(_tl) + ' ' + escHtml(String(ptp)) + ' \u00B7 ' + escHtml(_al) + ' ' + escHtml(String(pap)) + '</div>');
+      linesHtml.push('<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><strong>' + escHtml(prevS) + '</strong> (' + escHtml(String(lr[0].date)) + '): ' + escHtml(_tl) + ' ' + escHtml(String(ptp)) + ' \u00B7 ' + escHtml(_al) + ' ' + escHtml(String(pap)) + '</div>');
     } else {
       lastTxt = t('acc.inspect.prevNone');
-      linesHtml.push('<div style="margin-top:8px;font-size:10px;color:#8a9ab5">' + escHtml(lastTxt) + '</div>');
+      linesHtml.push('<div style="margin-top:8px;font-size:10px;color:var(--muted)">' + escHtml(lastTxt) + '</div>');
     }
   } catch (e) {
     lastTxt = t('acc.inspect.prevFail');

@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   var LC = 'iri_dash_locale';
+  var TC = 'iri_dash_theme';
   var U_YES = '\u06C1\u0627\u06BA';
   var U_PARTIAL = '\u062C\u0632\u0648\u06CC';
   var U_NO = '\u0646\u06C1\u06CC\u06BA';
@@ -13,10 +14,14 @@
     'lang.en': { ur: 'EN', en: 'EN', ar: 'EN' },
     'lang.ur': { ur: '\u0627\u0631\u062F\u0648', en: 'Urdu', ar: '\u0627\u0644\u0623\u0631\u062F\u064A\u0629' },
     'lang.ar': { ur: '\u0639\u0631\u0628\u06CC', en: 'Arabic', ar: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629' },
-    'header.title': { ur: '\uD83D\uDCCA \u0627\u062F\u0627\u0631\u06C1 \u062A\u062D\u0642\u06CC\u0642\u0627\u062A \u0627\u0633\u0644\u0627\u0645\u06CC', en: '\uD83D\uDCCA Imam Azam Research Institute', ar: '\uD83D\uDCCA \u0645\u0624\u0633\u0633\u0629 \u0627\u0644\u0628\u062D\u0648\u062B \u0627\u0644\u0625\u0633\u0644\u0627\u0645\u064A\u0629' },
+    'header.title': { ur: '\u0627\u0645\u0627\u0645 \u0627\u0639\u0638\u0645 \u06A9\u0627\u0644\u062C', en: 'IMAM-E-AZAM COLLEGE', ar: '\u0643\u0644\u064A\u0629 \u0627\u0644\u0625\u0645\u0627\u0645 \u0623\u0639\u0638\u0645' },
     'header.live': { ur: '\u0632\u0646\u062F\u06C1', en: 'Live', ar: '\u0645\u0628\u0627\u0634\u0631' },
     'header.refresh': { ur: '\uD83D\uDD04 \u062A\u0627\u0632\u06C1', en: '\uD83D\uDD04 Refresh', ar: '\uD83D\uDD04 \u062A\u062D\u062F\u064A\u062B' },
     'header.principal': { ur: '\uD83D\uDCDE \u067E\u0631\u0646\u0633\u067E\u0644', en: '\uD83D\uDCDE Principal', ar: '\uD83D\uDCDE \u0627\u0644\u0645\u062F\u064A\u0631' },
+    'theme.dark': { ur: '\u0634\u0628 \u0645\u0648\u0688', en: 'Dark mode', ar: '\u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u062F\u0627\u0643\u0646' },
+    'theme.light': { ur: '\u0631\u0648\u0634\u0646 \u0645\u0648\u0688', en: 'Light mode', ar: '\u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0641\u0627\u062A\u062D' },
+    'theme.toDark': { ur: '\u0634\u0628 \u0645\u0648\u0688 \u067E\u0631 \u0644\u0627\u0626\u06CC\u06BA', en: 'Switch to dark mode', ar: '\u0627\u0644\u062A\u0628\u062F\u064A\u0644 \u0625\u0644\u0649 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u062F\u0627\u0643\u0646' },
+    'theme.toLight': { ur: '\u0631\u0648\u0634\u0646 \u0645\u0648\u0688 \u067E\u0631 \u0644\u0627\u0626\u06CC\u06BA', en: 'Switch to light mode', ar: '\u0627\u0644\u062A\u0628\u062F\u064A\u0644 \u0625\u0644\u0649 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0641\u0627\u062A\u062D' },
     'tab.overview': { ur: '\uD83D\uDCCA \u062C\u0627\u0626\u0632\u06C1', en: '\uD83D\uDCCA Overview', ar: '\uD83D\uDCCA \u0646\u0638\u0631\u0629 \u0639\u0627\u0645\u0629' },
     'tab.accountability': { ur: '\uD83D\uDCCB \u0630\u0645\u06C1 \u062F\u0627\u0631\u06CC\u0627\u06BA', en: '\uD83D\uDCCB Accountability', ar: '\uD83D\uDCCB \u0627\u0644\u0645\u0633\u0624\u0648\u0644\u064A\u0627\u062A' },
     'tab.tAttend': { ur: '\uD83D\uDC68\u200D\uD83C\uDFEB \u0627\u0633\u0627\u062A\u0630\u06C1 \u062D\u0627\u0636\u0631\u06CC', en: '\uD83D\uDC68\u200D\uD83C\uDFEB Teacher attendance', ar: '\uD83D\uDC68\u200D\uD83C\uDFEB \u062D\u0636\u0648\u0631 \u0627\u0644\u0645\u0639\u0644\u0645\u064A\u0646' },
@@ -369,6 +374,8 @@
     'acc.hint.absentProgress': { ur: '{ok}/{total} \u0637\u0644\u0628\u0627', en: '{ok}/{total} students', ar: '{ok}/{total} \u0637\u0644\u0627\u0628' },
     'acc.hint.noHifzRoster': { ur: '\u2014 \u062D\u0641\u0638 \u0637\u0644\u0628\u0627 \u0641\u06C1\u0631\u0633\u062A \u0645\u06CC\u06BA \u0646\u06C1\u06CC\u06BA', en: '\u2014 No Hifz students in roster', ar: '\u2014 \u0644\u0627 \u0637\u0644\u0627\u0628 \u062D\u0641\u0638 \u0641\u064A \u0627\u0644\u0642\u0627\u0626\u0645\u0629' },
     'acc.hint.hifzSlotsOk': { ur: '{ok} \u0633\u0644\u0627\u0679 \u0645\u06A9\u0645\u0644', en: '{ok} complete slot(s)', ar: '{ok} \u0645\u0646\u0632\u0644(\u0627\u062A) \u0643\u0627\u0645\u0644\u0629' },
+    'acc.qa.colLabel': { ur: '\u0641\u06CC\u0644\u0686 / Field', en: 'Field', ar: '\u0627\u0644\u062D\u0642\u0644' },
+    'acc.qa.colValue': { ur: '\u0645\u0642\u062F\u0627\u0631 / Value', en: 'Value', ar: '\u0627\u0644\u0642\u064A\u0645\u0629' },
     'acc.qa.hdr': { ur: '\u0633\u0648\u0627\u0644 {qi} / Question {qi}', en: 'Question {qi}', ar: '\u0633\u0624\u0627\u0644 {qi}' },
     'acc.qa.toLabel': { ur: '\u06A9\u0633 \u0633\u06D2\u061F / To (<span dir="ltr">whoType</span>)', en: 'To (<span dir="ltr">whoType</span>)', ar: '\u0625\u0644\u0649 (<span dir="ltr">whoType</span>)' },
     'acc.qa.optStudent': { ur: '\u0637\u0627\u0644\u0628 \u0639\u0644\u0645 / Student', en: 'Student', ar: '\u0637\u0627\u0644\u0628' },
@@ -429,8 +436,18 @@
     return 'ur';
   }
 
+  function readDashTheme() {
+    try {
+      var v = localStorage.getItem(TC);
+      if (v === 'light' || v === 'dark') return v;
+    } catch (eT) {}
+    return 'dark';
+  }
+
   window.dashboardLocale = readLc();
+  window.dashboardTheme = readDashTheme();
   try { if (typeof globalThis !== 'undefined') globalThis.dashboardLocale = window.dashboardLocale; } catch (eG) {}
+  try { if (typeof globalThis !== 'undefined') globalThis.dashboardTheme = window.dashboardTheme; } catch (eG3) {}
 
   window.t = function (key, vars) {
     var row = STR[key];
@@ -527,5 +544,27 @@
     if (typeof render === 'function') render();
   };
 
+  window.applyDashboardThemeShell = function () {
+    var th = window.dashboardTheme === 'light' ? 'light' : 'dark';
+    window.dashboardTheme = th;
+    try { if (typeof globalThis !== 'undefined') globalThis.dashboardTheme = th; } catch (eG4) {}
+    if (th === 'light') document.documentElement.setAttribute('data-dash-theme', 'light');
+    else document.documentElement.removeAttribute('data-dash-theme');
+    try {
+      var mc = document.querySelector('meta[name="theme-color"]');
+      if (mc) mc.setAttribute('content', th === 'light' ? '#eef2f7' : '#0c1a2e');
+    } catch (eMc) {}
+  };
+
+  window.setDashboardTheme = function (next) {
+    if (next !== 'light' && next !== 'dark') next = window.dashboardTheme === 'light' ? 'dark' : 'light';
+    window.dashboardTheme = next;
+    try { if (typeof globalThis !== 'undefined') globalThis.dashboardTheme = next; } catch (eG5) {}
+    try { localStorage.setItem(TC, next); } catch (eT2) {}
+    window.applyDashboardThemeShell();
+    if (typeof render === 'function') render();
+  };
+
   window.applyDashboardLocaleShell();
+  window.applyDashboardThemeShell();
 })();
